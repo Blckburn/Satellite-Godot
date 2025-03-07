@@ -11,6 +11,7 @@ size = Vector2(9.33126, 18.6625)
 [node name="Door" type="StaticBody2D" parent="."]
 collision_layer = 2
 script = ExtResource("5_kqpxy")
+InteractionRadius = 10.0
 
 [node name="Sprite2D" type="Sprite2D" parent="Door"]
 position = Vector2(-2.55, 5.01)

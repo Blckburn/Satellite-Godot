@@ -30,10 +30,12 @@ public partial class Door : StaticBody2D, IInteractable
 
     public bool CanInteract(Node source)
     {
+        GD.Print($"Door.CanInteract called by {source.Name}");
         // Проверка расстояния
         if (source is Node2D sourceNode)
         {
             float distance = GlobalPosition.DistanceTo(sourceNode.GlobalPosition);
+            GD.Print($"Distance to door: {distance}, Required: {InteractionRadius}");
             return distance <= InteractionRadius;
         }
         return true;

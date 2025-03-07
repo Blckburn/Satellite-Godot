@@ -10,6 +10,7 @@ public partial class Player : Character
     private Sprite2D _sprite;
     private CollisionShape2D _collisionShape;
     private Area2D _interactionArea;
+    private CollisionShape2D _interactionCollisionShape;
 
     // Система взаимодействия
     private IInteractable _currentInteractable;
@@ -22,8 +23,12 @@ public partial class Player : Character
         _sprite = GetNode<Sprite2D>("Sprite2D");
         _collisionShape = GetNode<CollisionShape2D>("CollisionShape2D");
         _interactionArea = GetNode<Area2D>("InteractionArea");
+        if (_interactionArea != null)
+        {
+            _interactionCollisionShape = _interactionArea.GetNode<CollisionShape2D>("CollisionShape2D");
+        }
 
-        // Исправленная эмиссия сигнала (заменяет EmitSignal(SignalName.HealthChanged, ...))
+        // Исправленная эмиссия сигнала
         HealthChanged += (currentHealth, maxHealth) => {
             GD.Print($"Player health: {currentHealth}/{maxHealth}");
         };
@@ -31,8 +36,13 @@ public partial class Player : Character
         // Коннект к сигналу входа объекта в область взаимодействия
         if (_interactionArea != null)
         {
+            GD.Print("Setting up interaction area signals");
             _interactionArea.BodyEntered += OnBodyEnteredInteractionArea;
             _interactionArea.BodyExited += OnBodyExitedInteractionArea;
+        }
+        else
+        {
+            GD.Print("WARNING: InteractionArea not found on Player");
         }
     }
 
@@ -78,8 +88,42 @@ public partial class Player : Character
         }
         else
         {
-            GD.Print("No interactable object found");
+            // Если нет текущего объекта для взаимодействия, ищем ближайший
+            var nearestInteractable = FindNearestInteractable();
+            if (nearestInteractable != null)
+            {
+                GD.Print($"Found nearest interactable: {nearestInteractable}");
+                bool success = nearestInteractable.Interact(this);
+                GD.Print($"Interaction success: {success}");
+            }
+            else
+            {
+                GD.Print("No interactable object found");
+            }
         }
+    }
+
+    private IInteractable FindNearestInteractable()
+    {
+        // Получаем все узлы с интерфейсом IInteractable в сцене
+        var interactables = GetTree().GetNodesInGroup("Interactables");
+        IInteractable nearest = null;
+        float minDistance = float.MaxValue;
+
+        foreach (var node in interactables)
+        {
+            if (node is IInteractable interactable && node is Node2D interactableNode)
+            {
+                float distance = GlobalPosition.DistanceTo(interactableNode.GlobalPosition);
+                if (distance <= interactable.GetInteractionRadius() && distance < minDistance)
+                {
+                    minDistance = distance;
+                    nearest = interactable;
+                }
+            }
+        }
+
+        return nearest;
     }
 
     private void OnBodyEnteredInteractionArea(Node2D body)
