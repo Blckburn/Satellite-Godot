@@ -1,10 +1,12 @@
-[gd_scene load_steps=9 format=3 uid="uid://dgp0p1mfdb25l"]
+[gd_scene load_steps=11 format=3 uid="uid://dgp0p1mfdb25l"]
 
 [ext_resource type="Script" uid="uid://cv1mep0nr8hkp" path="res://scenes/TileMap.cs" id="1_rarhs"]
 [ext_resource type="Texture2D" uid="uid://224ycgmtw07v" path="res://resources/tilemaps/outworld_tileset2.png" id="3_0bbpv"]
 [ext_resource type="PackedScene" uid="uid://df1fsrm24trwj" path="res://scenes/ui/ui_manager.tscn" id="5_vcsgt"]
 [ext_resource type="Script" uid="uid://btenqntxsc3nd" path="res://scripts/InteractionSystem.cs" id="6_c01mt"]
+[ext_resource type="PackedScene" uid="uid://cdpklt0cb7nbq" path="res://scenes/ui/inventory_ui.tscn" id="6_jlsqs"]
 [ext_resource type="PackedScene" uid="uid://bu3h56rpjxyms" path="res://scenes/player/Player.tscn" id="7_jlsqs"]
+[ext_resource type="PackedScene" uid="uid://rph2wu62gvml" path="res://scenes/ui/pickup_item.tscn" id="8_lhr70"]
 [ext_resource type="PackedScene" uid="uid://bvacl88sdtvrw" path="res://scenes/interactive_objects/door.tscn" id="8_q8u5g"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_rarhs"]
@@ -76,6 +78,12 @@ position = Vector2(-16, 33)
 layer = 0
 InteractionSystemPath = NodePath("../InteractionSystem")
 
+[node name="InventoryUI" parent="UIManager" instance=ExtResource("6_jlsqs")]
+z_index = 6
+
 [node name="InteractionSystem" type="Node" parent="."]
 script = ExtResource("6_c01mt")
 PlayerPath = NodePath("../Player")
+
+[node name="pickup_item" parent="." instance=ExtResource("8_lhr70")]
+position = Vector2(-81, 166)

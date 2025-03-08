@@ -16,8 +16,22 @@ public partial class Player : Character
     // Система взаимодействия
     private IInteractable _currentInteractable;
 
+
+
     public override void _Ready()
     {
+        AddToGroup("Player");
+        GD.Print("Player added to 'Player' group");
+        InitializeInventory();
+
+
+        // Подписка на события инвентаря
+        Connect("PlayerInventoryChanged", Callable.From(() =>
+        {
+            // Здесь можно добавить обновление UI или другие действия
+            Logger.Debug("Player inventory updated!", false);
+        }));
+
         base._Ready();
 
         // Инициализация компонентов

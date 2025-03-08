@@ -1,0 +1,30 @@
+[gd_scene load_steps=5 format=3 uid="uid://rph2wu62gvml"]
+
+[ext_resource type="Script" uid="uid://dc7ev0s531on7" path="res://scripts/PickupItem.cs" id="1_s618x"]
+[ext_resource type="Texture2D" uid="uid://bgyvvfne50cko" path="res://icon.svg" id="2_4k353"]
+[ext_resource type="Resource" uid="uid://dyeecshlmdmxd" path="res://resources/test_item.tres" id="2_usy2m"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_4k353"]
+radius = 28.1603
+
+[node name="pickup_item" type="Node2D"]
+script = ExtResource("1_s618x")
+ItemResource = ExtResource("2_usy2m")
+InteractionRadius = 100.0
+InteractionHint = "Press E to pickup"
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+scale = Vector2(0.135, 0.135)
+texture = ExtResource("2_4k353")
+
+[node name="Label" type="Label" parent="."]
+offset_left = -16.0
+offset_top = -30.0
+offset_right = 24.0
+offset_bottom = -7.0
+text = "Item"
+
+[node name="Area2D" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+shape = SubResource("CircleShape2D_4k353")
