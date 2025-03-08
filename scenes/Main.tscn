@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dyo2au6ey6im5" path="res://scenes/TileMap.cs" id="1_rarhs"]
 [ext_resource type="Texture2D" uid="uid://224ycgmtw07v" path="res://resources/tilemaps/outworld_tileset2.png" id="3_0bbpv"]
-[ext_resource type="PackedScene" uid="uid://bu3h56rpjxyms" path="res://scenes/player/player.tscn" id="7_jlsqs"]
+[ext_resource type="PackedScene" uid="uid://bu3h56rpjxyms" path="res://scenes/player/Player.tscn" id="7_jlsqs"]
 [ext_resource type="PackedScene" uid="uid://bvacl88sdtvrw" path="res://scenes/interactive_objects/door.tscn" id="8_q8u5g"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_rarhs"]
