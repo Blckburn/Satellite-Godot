@@ -11,6 +11,7 @@ public partial class Player : Character
     private CollisionShape2D _collisionShape;
     private Area2D _interactionArea;
     private CollisionShape2D _interactionCollisionShape;
+    private TileMap _tileMap; 
 
     // Система взаимодействия
     private IInteractable _currentInteractable;
@@ -20,54 +21,62 @@ public partial class Player : Character
         base._Ready();
 
         // Инициализация компонентов
-        _sprite = GetNode<Sprite2D>("Sprite2D");
-        _collisionShape = GetNode<CollisionShape2D>("CollisionShape2D");
-        _interactionArea = GetNode<Area2D>("InteractionArea");
-        if (_interactionArea != null)
+        _sprite = GetNodeOrNull<Sprite2D>("Sprite2D");
+        _collisionShape = GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
+        _interactionArea = GetNodeOrNull<Area2D>("InteractionArea");
+
+        // Находим изометрическую карту в сцене
+        _tileMap = GetTree().Root.GetNode<TileMap>("Node2D/TileMap");
+
+        if (_tileMap == null)
         {
-            _interactionCollisionShape = _interactionArea.GetNode<CollisionShape2D>("CollisionShape2D");
+            // Если путь не точный, попробуем найти через GetTree()
+            var tileMaps = GetTree().GetNodesInGroup("TileMap");
+            if (tileMaps.Count > 0 && tileMaps[0] is TileMap map)
+            {
+                _tileMap = map;
+                GD.Print("Found TileMap through GetNodesInGroup");
+            }
+            else
+            {
+                // Последняя попытка - попробовать найти через GetChildren
+                foreach (var node in GetTree().Root.GetChildren())
+                {
+                    _tileMap = FindTileMapInChildren(node);
+                    if (_tileMap != null)
+                    {
+                        GD.Print("Found TileMap through FindTileMapInChildren");
+                        break;
+                    }
+                }
+            }
         }
 
-        // Исправленная эмиссия сигнала
-        HealthChanged += (currentHealth, maxHealth) => {
-            GD.Print($"Player health: {currentHealth}/{maxHealth}");
-        };
-
-        // Коннект к сигналу входа объекта в область взаимодействия
-        if (_interactionArea != null)
+        if (_tileMap != null)
         {
-            GD.Print("Setting up interaction area signals");
-            _interactionArea.BodyEntered += OnBodyEnteredInteractionArea;
-            _interactionArea.BodyExited += OnBodyExitedInteractionArea;
+            GD.Print($"TileMap found at path: {_tileMap.GetPath()}");
+            // Не забудьте добавить вашу TileMap в группу для быстрого доступа
+            _tileMap.AddToGroup("TileMap");
         }
         else
         {
-            GD.Print("WARNING: InteractionArea not found on Player");
+            GD.Print("WARNING: TileMap not found in scene");
         }
+
+        // Отправляем сигнал о состоянии здоровья
+        EmitSignal(SignalName.HealthChanged, _currentHealth, MaxHealth);
     }
 
     public override void _Process(double delta)
     {
         // Обработка ввода
         HandleInput();
-
-        base._Process(delta);
     }
 
     private void HandleInput()
     {
-        // Движение
-        Vector2 inputDirection = Vector2.Zero;
-
-        if (Input.IsActionPressed("move_right"))
-            inputDirection.X += 1;
-        if (Input.IsActionPressed("move_left"))
-            inputDirection.X -= 1;
-        if (Input.IsActionPressed("move_down"))
-            inputDirection.Y += 1;
-        if (Input.IsActionPressed("move_up"))
-            inputDirection.Y -= 1;
-
+        // Получаем направление движения с учетом изометрии
+        Vector2 inputDirection = GetIsometricInput();
         SetMovementDirection(inputDirection);
 
         // Взаимодействие
@@ -76,15 +85,46 @@ public partial class Player : Character
             TryInteract();
         }
     }
+    
+    // Метод для получения вектора направления с учетом изометрической проекции
+    private Vector2 GetIsometricInput()
+    {
+        Vector2 input = Vector2.Zero;
+        
+        // Получаем стандартный ввод
+        if (Input.IsActionPressed("move_right"))
+            input.X += 1;
+        if (Input.IsActionPressed("move_left"))
+            input.X -= 1;
+        if (Input.IsActionPressed("move_down"))
+            input.Y += 1;
+        if (Input.IsActionPressed("move_up"))
+            input.Y -= 1;
+            
+        // Если ввод отсутствует, возвращаем нулевой вектор
+        if (input == Vector2.Zero)
+            return Vector2.Zero;
+            
+        // Преобразуем ввод в изометрический
+        // Для стандартной изометрии (2:1)
+        Vector2 isoInput = new Vector2(
+            input.X - input.Y,  // X-компонент
+            (input.X + input.Y) / 2  // Y-компонент
+        );
+        
+        // Нормализуем вектор, чтобы диагональное движение не было быстрее
+        return isoInput.Normalized();
+    }
 
     private void TryInteract()
     {
-        GD.Print("Trying to interact...");
         if (_currentInteractable != null)
         {
-            GD.Print($"Interacting with: {_currentInteractable}");
             bool success = _currentInteractable.Interact(this);
-            GD.Print($"Interaction success: {success}");
+            if (!success)
+            {
+                GD.Print("Interaction failed");
+            }
         }
         else
         {
@@ -92,13 +132,16 @@ public partial class Player : Character
             var nearestInteractable = FindNearestInteractable();
             if (nearestInteractable != null)
             {
-                GD.Print($"Found nearest interactable: {nearestInteractable}");
                 bool success = nearestInteractable.Interact(this);
-                GD.Print($"Interaction success: {success}");
+                if (!success)
+                {
+                    GD.Print("Interaction with nearest object failed");
+                }
             }
             else
             {
-                GD.Print("No interactable object found");
+                // Тихий вывод - не засоряем лог
+                // GD.Print("No interactable object found");
             }
         }
     }
@@ -128,24 +171,67 @@ public partial class Player : Character
 
     private void OnBodyEnteredInteractionArea(Node2D body)
     {
-        GD.Print($"Body entered: {body.Name}, Type: {body.GetType()}");
-
         if (body is IInteractable interactable)
         {
             _currentInteractable = interactable;
-            GD.Print($"Can interact with: {body.Name} (IInteractable)");
-        }
-        else
-        {
-            GD.Print($"Body is not IInteractable: {body.Name}");
+            GD.Print($"Can interact with: {body.Name}");
         }
     }
 
     private void OnBodyExitedInteractionArea(Node2D body)
     {
-        if (body is IInteractable && _currentInteractable == body)
+        if (body is IInteractable interactable && _currentInteractable == interactable)
         {
             _currentInteractable = null;
         }
     }
+
+    private void OnAreaEnteredInteractionArea(Area2D area)
+    {
+        // Проверяем непосредственно область
+        if (area is IInteractable areaInteractable)
+        {
+            _currentInteractable = areaInteractable;
+            GD.Print($"Can interact with area: {area.Name}");
+            return;
+        }
+
+        // Проверяем родителя или владельца области
+        if (area.Owner is IInteractable ownerInteractable)
+        {
+            _currentInteractable = ownerInteractable;
+            GD.Print($"Can interact with area owner: {area.Owner.Name}");
+        }
+    }
+
+    private void OnAreaExitedInteractionArea(Area2D area)
+    {
+        // Проверяем непосредственно область
+        if (area is IInteractable areaInteractable && _currentInteractable == areaInteractable)
+        {
+            _currentInteractable = null;
+            return;
+        }
+
+        // Проверяем родителя или владельца области
+        if (area.Owner is IInteractable ownerInteractable && _currentInteractable == ownerInteractable)
+        {
+            _currentInteractable = null;
+        }
+    }
+    private TileMap FindTileMapInChildren(Node node)
+    {
+        if (node is TileMap tileMap)
+            return tileMap;
+
+        foreach (var child in node.GetChildren())
+        {
+            var result = FindTileMapInChildren(child);
+            if (result != null)
+                return result;
+        }
+
+        return null;
+    }
 }
+

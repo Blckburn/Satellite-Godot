@@ -16,8 +16,11 @@ public partial class Door : StaticBody2D, IInteractable
 
     public override void _Ready()
     {
-        _sprite = GetNode<Sprite2D>("Sprite2D");
-        _collisionShape = GetNode<CollisionShape2D>("CollisionShape2D");
+        _sprite = GetNodeOrNull<Sprite2D>("Sprite2D");
+        _collisionShape = GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
+
+        // Добавляем дверь в группу интерактивных объектов
+        AddToGroup("Interactables");
 
         // Установка начального состояния
         UpdateVisuals();
@@ -30,23 +33,20 @@ public partial class Door : StaticBody2D, IInteractable
 
     public bool CanInteract(Node source)
     {
-        GD.Print($"Door.CanInteract called by {source.Name}");
         // Проверка расстояния
         if (source is Node2D sourceNode)
         {
             float distance = GlobalPosition.DistanceTo(sourceNode.GlobalPosition);
-            GD.Print($"Distance to door: {distance}, Required: {InteractionRadius}");
             return distance <= InteractionRadius;
         }
+
         return true;
     }
 
     public bool Interact(Node source)
     {
-        GD.Print("Door.Interact called");
         if (!CanInteract(source))
         {
-            GD.Print("Door cannot be interacted with");
             return false;
         }
 
@@ -83,6 +83,16 @@ public partial class Door : StaticBody2D, IInteractable
         {
             // Отключение коллизии, если дверь открыта
             _collisionShape.Disabled = IsOpen;
+        }
+    }
+
+    // Для визуализации радиуса взаимодействия в редакторе
+    public override void _Draw()
+    {
+        if (Engine.IsEditorHint())
+        {
+            // Рисуем круг, обозначающий радиус взаимодействия
+            DrawCircle(Vector2.Zero, InteractionRadius, new Color(0, 1, 0, 0.3f));
         }
     }
 }
