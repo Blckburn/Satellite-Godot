@@ -24,6 +24,9 @@ public partial class Door : StaticBody2D, IInteractable
 
         // Установка начального состояния
         UpdateVisuals();
+
+        AddToGroup("Interactables");
+        GD.Print($"Door '{Name}' added to Interactables group");
     }
 
     public string GetInteractionHint()

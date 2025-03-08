@@ -1,7 +1,9 @@
-[gd_scene load_steps=7 format=3 uid="uid://dgp0p1mfdb25l"]
+[gd_scene load_steps=9 format=3 uid="uid://dgp0p1mfdb25l"]
 
 [ext_resource type="Script" uid="uid://dyo2au6ey6im5" path="res://scenes/TileMap.cs" id="1_rarhs"]
 [ext_resource type="Texture2D" uid="uid://224ycgmtw07v" path="res://resources/tilemaps/outworld_tileset2.png" id="3_0bbpv"]
+[ext_resource type="PackedScene" uid="uid://df1fsrm24trwj" path="res://scenes/ui/ui_manager.tscn" id="5_vcsgt"]
+[ext_resource type="Script" uid="uid://w7uuhk7vv7by" path="res://scripts/InteractionSystem.cs" id="6_c01mt"]
 [ext_resource type="PackedScene" uid="uid://bu3h56rpjxyms" path="res://scenes/player/Player.tscn" id="7_jlsqs"]
 [ext_resource type="PackedScene" uid="uid://bvacl88sdtvrw" path="res://scenes/interactive_objects/door.tscn" id="8_q8u5g"]
 
@@ -69,3 +71,10 @@ script = ExtResource("1_rarhs")
 
 [node name="Player" parent="." instance=ExtResource("7_jlsqs")]
 position = Vector2(-16, 33)
+
+[node name="UIManager" parent="." instance=ExtResource("5_vcsgt")]
+layer = 0
+
+[node name="InteractionSystem" type="Node" parent="."]
+script = ExtResource("6_c01mt")
+PlayerPath = NodePath("../Player")

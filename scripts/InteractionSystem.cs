@@ -5,16 +5,21 @@ using System.Linq;
 
 public partial class InteractionSystem : Node
 {
+
     [Export] public NodePath PlayerPath;
 
     private Player _player;
     private IInteractable _currentInteractable;
+    private int _lastInteractableCount = 0;
+    private IInteractable _lastNearestInteractable = null;
 
     // Синглтон для удобного доступа
     public static InteractionSystem Instance { get; private set; }
 
     public override void _Ready()
     {
+        AddToGroup("InteractionSystem");
+        GD.Print("InteractionSystem added to group");
         // Настройка синглтона
         if (Instance == null)
             Instance = this;
@@ -79,7 +84,6 @@ public partial class InteractionSystem : Node
             }
     }
 
-    // Поиск ближайшего интерактивного объекта
     private IInteractable FindNearestInteractable()
     {
         if (_player == null)
@@ -88,8 +92,14 @@ public partial class InteractionSystem : Node
         IInteractable nearest = null;
         float minDistance = float.MaxValue;
 
-        // Получаем все узлы, реализующие интерфейс IInteractable
         var interactables = GetTree().GetNodesInGroup("Interactables");
+
+        // Логируем только при изменении количества объектов, не каждый кадр
+        if (interactables.Count != _lastInteractableCount)
+        {
+            Logger.Debug($"Found {interactables.Count} interactable objects", false);
+            _lastInteractableCount = interactables.Count;
+        }
 
         foreach (var obj in interactables)
         {
@@ -103,6 +113,18 @@ public partial class InteractionSystem : Node
                     nearest = interactable;
                 }
             }
+        }
+
+        // Здесь нам нужно отслеживать изменение текущего объекта,
+        // а не логировать каждый кадр
+        if (nearest != _lastNearestInteractable)
+        {
+            if (nearest != null)
+                Logger.Debug($"New nearest interactable: {nearest}", false);
+            else if (_lastNearestInteractable != null)
+                Logger.Debug("No interactable in range now", false);
+
+            _lastNearestInteractable = nearest;
         }
 
         return nearest;
@@ -122,4 +144,11 @@ public partial class InteractionSystem : Node
             _currentInteractable = interactable;
         }
     }
+
+    public override void _Process(double delta)
+    {
+        // Постоянно обновляем ближайший интерактивный объект
+        UpdateNearestInteractable();
+    }
+
 }
