@@ -1,33 +1,33 @@
 using Godot;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 
 public partial class InteractionSystem : Node
 {
-
     [Export] public NodePath PlayerPath;
 
     private Player _player;
-    private IInteractable _currentInteractable;
+    private IInteractable _nearestInteractable;
+    private IInteractable _lastInteractable;
     private int _lastInteractableCount = 0;
-    private IInteractable _lastNearestInteractable = null;
+
+    // Отслеживаем состояние клавиши взаимодействия
+    private bool _isInteractionKeyPressed = false;
 
     // Синглтон для удобного доступа
     public static InteractionSystem Instance { get; private set; }
 
     public override void _Ready()
     {
-        AddToGroup("InteractionSystem");
-        GD.Print("InteractionSystem added to group");
         // Настройка синглтона
         if (Instance == null)
             Instance = this;
         else
-            GD.PushWarning("Множественные экземпляры InteractionSystem не поддерживаются!");
+            Logger.Debug("Multiple InteractionSystem instances found!", true);
 
         // Добавляем в группу для быстрого поиска
         AddToGroup("InteractionSystem");
+        Logger.Debug("InteractionSystem added to group", true);
 
         // Получаем ссылку на игрока
         if (!string.IsNullOrEmpty(PlayerPath))
@@ -42,7 +42,7 @@ public partial class InteractionSystem : Node
         }
 
         if (_player == null)
-            GD.PushError("InteractionSystem: Player не найден");
+            Logger.Error("InteractionSystem: Player not found");
     }
 
     public override void _ExitTree()
@@ -50,6 +50,36 @@ public partial class InteractionSystem : Node
         // Очистка синглтона при удалении
         if (Instance == this)
             Instance = null;
+    }
+
+    public override void _Process(double delta)
+    {
+        UpdateNearestInteractable();
+
+        // Проверяем состояние клавиши взаимодействия
+        bool eKeyCurrentlyPressed = Input.IsActionPressed("interact");
+
+        // Если клавиша была нажата, а теперь отпущена
+        if (_isInteractionKeyPressed && !eKeyCurrentlyPressed)
+        {
+            OnInteractionKeyReleased();
+        }
+
+        _isInteractionKeyPressed = eKeyCurrentlyPressed;
+
+        // Проверяем, если игрок вышел из зоны взаимодействия во время процесса
+        if (_lastInteractable != _nearestInteractable)
+        {
+            // Если был предыдущий объект взаимодействия и это интерактивный объект с процессом
+            if (_lastInteractable != null && _lastInteractable is IInteraction interaction
+                && interaction.IsInteracting())
+            {
+                interaction.CancelInteraction();
+                Logger.Debug("Interaction canceled - player moved away", false);
+            }
+
+            _lastInteractable = _nearestInteractable;
+        }
     }
 
     // Обработка нажатия клавиши взаимодействия
@@ -60,12 +90,27 @@ public partial class InteractionSystem : Node
 
         UpdateNearestInteractable();
 
-        if (_currentInteractable != null && _currentInteractable.CanInteract(_player))
+        if (_nearestInteractable != null && _nearestInteractable.CanInteract(_player))
         {
-            return _currentInteractable.Interact(_player);
+            return _nearestInteractable.Interact(_player);
         }
 
         return false;
+    }
+
+    // Обработка отпускания клавиши взаимодействия
+    private void OnInteractionKeyReleased()
+    {
+        // Уведомляем текущий объект взаимодействия об отпускании клавиши
+        if (_nearestInteractable is IInteraction interaction)
+        {
+            // Если объект поддерживает интерфейс длительного взаимодействия
+            if (interaction.IsInteracting() && interaction.GetInteractionProgress() < 1.0f)
+            {
+                interaction.CancelInteraction();
+                Logger.Debug("Interaction canceled - key released", false);
+            }
+        }
     }
 
     // Обновление ближайшего интерактивного объекта
@@ -74,16 +119,10 @@ public partial class InteractionSystem : Node
         if (_player == null)
             return;
 
-        var nearest = FindNearestInteractable();
-
-        // Если ближайший объект изменился
-        if (_currentInteractable != nearest)
-        {
-            _currentInteractable = nearest;
-
-            }
+        _nearestInteractable = FindNearestInteractable();
     }
 
+    // Поиск ближайшего интерактивного объекта
     private IInteractable FindNearestInteractable()
     {
         if (_player == null)
@@ -92,9 +131,10 @@ public partial class InteractionSystem : Node
         IInteractable nearest = null;
         float minDistance = float.MaxValue;
 
+        // Получаем все узлы, реализующие интерфейс IInteractable
         var interactables = GetTree().GetNodesInGroup("Interactables");
 
-        // Логируем только при изменении количества объектов, не каждый кадр
+        // Логируем только при изменении количества объектов
         if (interactables.Count != _lastInteractableCount)
         {
             Logger.Debug($"Found {interactables.Count} interactable objects", false);
@@ -115,16 +155,13 @@ public partial class InteractionSystem : Node
             }
         }
 
-        // Здесь нам нужно отслеживать изменение текущего объекта,
-        // а не логировать каждый кадр
-        if (nearest != _lastNearestInteractable)
+        // Логируем только при изменении ближайшего объекта
+        if (nearest != _nearestInteractable)
         {
             if (nearest != null)
                 Logger.Debug($"New nearest interactable: {nearest}", false);
-            else if (_lastNearestInteractable != null)
+            else if (_nearestInteractable != null)
                 Logger.Debug("No interactable in range now", false);
-
-            _lastNearestInteractable = nearest;
         }
 
         return nearest;
@@ -133,22 +170,12 @@ public partial class InteractionSystem : Node
     // Получение текущего интерактивного объекта
     public IInteractable GetCurrentInteractable()
     {
-        return _currentInteractable;
+        return _nearestInteractable;
     }
 
     // Установка текущего интерактивного объекта напрямую
     public void SetCurrentInteractable(IInteractable interactable)
     {
-        if (_currentInteractable != interactable)
-        {
-            _currentInteractable = interactable;
-        }
+        _nearestInteractable = interactable;
     }
-
-    public override void _Process(double delta)
-    {
-        // Постоянно обновляем ближайший интерактивный объект
-        UpdateNearestInteractable();
-    }
-
 }

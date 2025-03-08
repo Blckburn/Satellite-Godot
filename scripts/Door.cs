@@ -1,18 +1,29 @@
 using Godot;
 using System;
 
-public partial class Door : StaticBody2D, IInteractable
+public partial class Door : StaticBody2D, IInteractable, IInteraction
 {
     [Export] public bool IsOpen { get; set; } = false;
     [Export] public float InteractionRadius { get; set; } = 2.0f;
-    [Export] public string InteractionHint { get; set; } = "Press E to open door";
+    [Export] public float InteractionTime { get; set; } = 1.5f; // Время для открытия двери в секундах
+
+    private string _interactionHintBase = "Press E to"; // Базовая часть подсказки
 
     private Sprite2D _sprite;
     private CollisionShape2D _collisionShape;
 
+    // Переменные для отслеживания прогресса взаимодействия
+    private bool _isInteracting = false;
+    private float _interactionProgress = 0.0f;
+    private float _interactionTimer = 0.0f;
+    private bool _keyHeld = false;
+
     // Сигналы
     [Signal] public delegate void DoorOpenedEventHandler();
     [Signal] public delegate void DoorClosedEventHandler();
+    [Signal] public delegate void InteractionStartedEventHandler();
+    [Signal] public delegate void InteractionCompletedEventHandler();
+    [Signal] public delegate void InteractionCanceledEventHandler();
 
     public override void _Ready()
     {
@@ -25,17 +36,43 @@ public partial class Door : StaticBody2D, IInteractable
         // Установка начального состояния
         UpdateVisuals();
 
-        AddToGroup("Interactables");
-        GD.Print($"Door '{Name}' added to Interactables group");
+        Logger.Debug($"Door '{Name}' initialized. IsOpen: {IsOpen}", true);
     }
 
+    public override void _Process(double delta)
+    {
+        // Обрабатываем прогресс взаимодействия только если клавиша удерживается
+        if (_isInteracting && _keyHeld)
+        {
+            _interactionTimer += (float)delta;
+            _interactionProgress = Mathf.Min(1.0f, _interactionTimer / InteractionTime);
+
+            // Если взаимодействие завершено
+            if (_interactionProgress >= 1.0f)
+            {
+                CompleteInteraction();
+            }
+        }
+    }
+
+    // Реализация IInteractable
     public string GetInteractionHint()
     {
-        return IsOpen ? "Press E to close" : "Press E to open";
+        if (_isInteracting)
+        {
+            // Просто показываем действие без процента
+            return $"{_interactionHintBase} {(IsOpen ? "close" : "open")}...";
+        }
+
+        return $"{_interactionHintBase} {(IsOpen ? "close" : "open")}";
     }
 
     public bool CanInteract(Node source)
     {
+        // Если уже идет взаимодействие, то новое не начинаем
+        if (_isInteracting)
+            return false;
+
         // Проверка расстояния
         if (source is Node2D sourceNode)
         {
@@ -53,9 +90,32 @@ public partial class Door : StaticBody2D, IInteractable
             return false;
         }
 
+        // Начинаем процесс взаимодействия
+        StartInteraction();
+        return true;
+    }
+
+    private void StartInteraction()
+    {
+        _isInteracting = true;
+        _interactionProgress = 0.0f;
+        _interactionTimer = 0.0f;
+        _keyHeld = true;
+
+        EmitSignal(SignalName.InteractionStarted);
+        Logger.Debug($"Door '{Name}' interaction started", false);
+    }
+
+    private void CompleteInteraction()
+    {
+        _isInteracting = false;
+        _interactionProgress = 0.0f;
+        _interactionTimer = 0.0f;
+        _keyHeld = false;
+
         // Переключаем состояние двери
         IsOpen = !IsOpen;
-        GD.Print($"Door is now {(IsOpen ? "open" : "closed")}");
+        Logger.Debug($"Door '{Name}' is now {(IsOpen ? "open" : "closed")}", false);
 
         // Обновляем визуал и коллизию
         UpdateVisuals();
@@ -66,12 +126,52 @@ public partial class Door : StaticBody2D, IInteractable
         else
             EmitSignal(SignalName.DoorClosed);
 
-        return true;
+        EmitSignal(SignalName.InteractionCompleted);
+    }
+
+    // Метод для обработки отпускания клавиши
+    public void OnInteractionKeyReleased()
+    {
+        if (_isInteracting && _keyHeld)
+        {
+            _keyHeld = false;
+
+            // Если прогресс не завершен, отменяем взаимодействие
+            if (_interactionProgress < 1.0f)
+            {
+                CancelInteraction();
+            }
+        }
     }
 
     public float GetInteractionRadius()
     {
         return InteractionRadius;
+    }
+
+    // Реализация IInteraction
+    public bool IsInteracting()
+    {
+        return _isInteracting;
+    }
+
+    public float GetInteractionProgress()
+    {
+        return _interactionProgress;
+    }
+
+    public void CancelInteraction()
+    {
+        if (_isInteracting)
+        {
+            _isInteracting = false;
+            _keyHeld = false;
+            _interactionProgress = 0.0f;
+            _interactionTimer = 0.0f;
+
+            EmitSignal(SignalName.InteractionCanceled);
+            Logger.Debug($"Door '{Name}' interaction canceled", false);
+        }
     }
 
     private void UpdateVisuals()

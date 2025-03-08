@@ -1,10 +1,10 @@
 [gd_scene load_steps=5 format=3 uid="uid://bu3h56rpjxyms"]
 
-[ext_resource type="Script" uid="uid://dloyy2t1ttwtn" path="res://scripts/Player.cs" id="1_gfjak"]
+[ext_resource type="Script" uid="uid://djcfkyrofhgqh" path="res://scripts/Player.cs" id="1_gfjak"]
 [ext_resource type="Texture2D" uid="uid://bgyvvfne50cko" path="res://icon.svg" id="2_4kuee"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_gmlin"]
-size = Vector2(64, 64)
+size = Vector2(31, 15)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_lvxji"]
 radius = 90.0222
@@ -13,10 +13,12 @@ radius = 90.0222
 script = ExtResource("1_gfjak")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+z_index = 2
 scale = Vector2(0.5, 0.5)
 texture = ExtResource("2_4kuee")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(3.5, 24.5)
 shape = SubResource("RectangleShape2D_gmlin")
 
 [node name="Camera2D" type="Camera2D" parent="."]

@@ -11,6 +11,7 @@ public partial class UIManager : CanvasLayer
 
     // Ссылки на UI элементы
     private Label _interactionHintLabel;
+    private ProgressBar _interactionProgressBar;
 
     // Ссылка на InteractionSystem
     private InteractionSystem _interactionSystem;
@@ -29,15 +30,14 @@ public partial class UIManager : CanvasLayer
         // Находим InteractionSystem
         _interactionSystem = GetInteractionSystem();
 
-        // Тестовое сообщение, чтобы проверить видимость
-        if (_interactionHintLabel != null)
-        {
-            _interactionHintLabel.Text = "TEST MESSAGE - PRESS E NEAR DOOR";
-            _interactionHintLabel.Visible = true;
-            Logger.Debug("Set test message to interaction hint", true);
-        }
-
         Logger.Debug("UIManager initialized", true);
+    }
+
+    public override void _ExitTree()
+    {
+        // Очистка синглтона при удалении
+        if (Instance == this)
+            Instance = null;
     }
 
     private InteractionSystem GetInteractionSystem()
@@ -80,15 +80,33 @@ public partial class UIManager : CanvasLayer
 
         if (_interactionHintLabel == null)
             Logger.Error("UIManager: InteractionHint label not found");
+        else
+        {
+            // Устанавливаем начальные свойства метки
+            _interactionHintLabel.Visible = false;
+        }
+
+        // Инициализация прогресс-бара
+        _interactionProgressBar = GetNodeOrNull<ProgressBar>("%InteractionProgress");
+
+        if (_interactionProgressBar == null)
+            Logger.Error("UIManager: InteractionProgress bar not found");
+        else
+        {
+            // Устанавливаем начальные свойства прогресс-бара
+            _interactionProgressBar.Visible = false;
+            _interactionProgressBar.MinValue = 0;
+            _interactionProgressBar.MaxValue = 100;
+        }
     }
 
     public override void _Process(double delta)
     {
         if (_interactionSystem != null)
-            UpdateInteractionHint();
+            UpdateInteractionUI();
     }
 
-    private void UpdateInteractionHint()
+    private void UpdateInteractionUI()
     {
         if (_interactionHintLabel == null)
             return;
@@ -97,12 +115,64 @@ public partial class UIManager : CanvasLayer
 
         if (currentInteractable != null)
         {
-            _interactionHintLabel.Text = currentInteractable.GetInteractionHint();
+            // Обновляем текст подсказки
+            string hintText = currentInteractable.GetInteractionHint();
+            _interactionHintLabel.Text = hintText;
             _interactionHintLabel.Visible = true;
+
+            // Обновляем прогресс-бар, если поддерживается
+            if (_interactionProgressBar != null &&
+                currentInteractable is IInteraction interaction &&
+                interaction.IsInteracting())
+            {
+                float progress = interaction.GetInteractionProgress();
+                _interactionProgressBar.Value = progress * 100;
+                _interactionProgressBar.Visible = true;
+            }
+            else if (_interactionProgressBar != null)
+            {
+                _interactionProgressBar.Visible = false;
+            }
         }
         else
         {
+            // Если нет объекта взаимодействия, скрываем элементы UI
             _interactionHintLabel.Visible = false;
+
+            if (_interactionProgressBar != null)
+                _interactionProgressBar.Visible = false;
         }
+    }
+
+    // Публичные методы для управления UI
+
+    public void ShowInteractionHint(string text)
+    {
+        if (_interactionHintLabel != null)
+        {
+            _interactionHintLabel.Text = text;
+            _interactionHintLabel.Visible = true;
+        }
+    }
+
+    public void HideInteractionHint()
+    {
+        if (_interactionHintLabel != null)
+            _interactionHintLabel.Visible = false;
+    }
+
+    public void UpdateProgressBar(float progress)
+    {
+        if (_interactionProgressBar != null)
+        {
+            _interactionProgressBar.Value = Mathf.Clamp(progress * 100, 0, 100);
+            _interactionProgressBar.Visible = true;
+        }
+    }
+
+    public void HideProgressBar()
+    {
+        if (_interactionProgressBar != null)
+            _interactionProgressBar.Visible = false;
     }
 }
