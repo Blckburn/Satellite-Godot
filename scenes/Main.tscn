@@ -72,7 +72,7 @@ layer_2/tile_data = PackedInt32Array(-196601, 65536, 0, -196602, 65536, 0, -2621
 script = ExtResource("1_rarhs")
 
 [node name="Player" parent="." instance=ExtResource("7_jlsqs")]
-position = Vector2(-16, 33)
+position = Vector2(-116, 35)
 
 [node name="UIManager" parent="." instance=ExtResource("5_vcsgt")]
 layer = 0
@@ -89,4 +89,7 @@ PlayerPath = NodePath("../Player")
 position = Vector2(-81, 166)
 
 [node name="pickup_item2" parent="." instance=ExtResource("8_lhr70")]
-position = Vector2(11, 185)
+position = Vector2(101, 207)
+
+[node name="pickup_item3" parent="." instance=ExtResource("8_lhr70")]
+position = Vector2(248, 212)

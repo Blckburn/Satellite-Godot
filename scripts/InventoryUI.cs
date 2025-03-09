@@ -19,6 +19,18 @@ public partial class InventoryUI : Control
     // Количество слотов в строке
     [Export] public int SlotsPerRow { get; set; } = 5;
 
+    // Путь к сцене тултипа (добавлено)
+    [Export] public string TooltipScenePath { get; set; } = "res://scenes/ui/item_tooltip.tscn";
+
+    // Ссылка на тултип (добавлено)
+    private ItemTooltip _itemTooltip;
+
+    // Текущий слот, на который наведена мышь (добавлено)
+    private Control _hoveredSlot;
+
+    // Текущий индекс слота для тултипа (добавлено)
+    private int _hoveredSlotIndex = -1;
+
     // Список созданных слотов
     private List<Control> _slots = new List<Control>();
 
@@ -51,6 +63,9 @@ public partial class InventoryUI : Control
 
         // Находим игрока и его инвентарь
         FindPlayerInventory();
+
+        //создаем тултип для подсказок в инвентаре
+        CreateTooltip();
     }
 
     public override void _Input(InputEvent @event)
@@ -75,6 +90,14 @@ public partial class InventoryUI : Control
         {
             // Обновляем UI при открытии
             UpdateInventoryUI();
+        }
+        else
+        {
+            // Скрываем тултип при закрытии инвентаря (добавлено)
+            if (_itemTooltip != null)
+            {
+                _itemTooltip.HideTooltip();
+            }
         }
     }
 
@@ -149,6 +172,12 @@ public partial class InventoryUI : Control
 
             // Устанавливаем имя слота для удобства
             slot.Name = $"Slot{i}";
+            slot.SetMeta("SlotIndex", i);
+            // Подписываемся на события мыши 
+            int index = i; // Сохраняем индекс для использования в лямбда-выражениях
+            slot.MouseEntered += () => OnSlotMouseEntered(slot, index);
+            slot.MouseExited += () => OnSlotMouseExited(slot, index);
+
         }
 
         Logger.Debug($"Created {_slots.Count} inventory slots", true);
@@ -186,6 +215,25 @@ public partial class InventoryUI : Control
             {
                 // Иначе очищаем слот
                 ClearSlot(_slots[i]);
+            }
+        }
+
+        // Если после обновления у нас был наведенный слот, проверяем его снова 
+        if (_hoveredSlot != null && _hoveredSlotIndex >= 0 && _itemTooltip != null)
+        {
+            Item hoveredItem = null;
+            if (_hoveredSlotIndex < _inventory.Items.Count)
+            {
+                hoveredItem = _inventory.Items[_hoveredSlotIndex];
+            }
+
+            if (hoveredItem != null)
+            {
+                _itemTooltip.ShowTooltip(hoveredItem);
+            }
+            else
+            {
+                _itemTooltip.HideTooltip();
             }
         }
     }
@@ -282,7 +330,7 @@ public partial class InventoryUI : Control
         }
 
         // Всплывающая подсказка
-        slot.TooltipText = item.GetTooltip();
+        slot.TooltipText = "";
 
         GD.Print($"Slot updated: {slot.Name}");
     }
@@ -305,5 +353,76 @@ public partial class InventoryUI : Control
         }
 
         slot.TooltipText = "";
+    }
+
+    // Создание тултипа 
+    private void CreateTooltip()
+    {
+        try
+        {
+            // Загружаем сцену тултипа
+            PackedScene tooltipScene = ResourceLoader.Load<PackedScene>(TooltipScenePath);
+            if (tooltipScene == null)
+            {
+                Logger.Error($"Failed to load tooltip scene from path: {TooltipScenePath}");
+                return;
+            }
+
+            // Инстанцируем тултип
+            _itemTooltip = tooltipScene.Instantiate<ItemTooltip>();
+            if (_itemTooltip == null)
+            {
+                Logger.Error("Failed to instantiate ItemTooltip");
+                return;
+            }
+
+            // Добавляем тултип в дерево сцены
+            AddChild(_itemTooltip);
+
+            Logger.Debug("ItemTooltip created successfully", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error creating tooltip: {ex.Message}");
+        }
+    }
+
+    // Обработчик наведения мыши на слот 
+    private void OnSlotMouseEntered(Control slot, int slotIndex)
+    {
+        _hoveredSlot = slot;
+        _hoveredSlotIndex = slotIndex;
+
+        // Показываем тултип, если в слоте есть предмет
+        if (_inventory != null && _itemTooltip != null)
+        {
+            Item item = null;
+            if (slotIndex < _inventory.Items.Count)
+            {
+                item = _inventory.Items[slotIndex];
+            }
+
+            if (item != null)
+            {
+                _itemTooltip.ShowTooltip(item);
+                Logger.Debug($"Showing tooltip for item: {item.DisplayName}", false);
+            }
+        }
+    }
+
+    // Обработчик ухода мыши со слота 
+    private void OnSlotMouseExited(Control slot, int slotIndex)
+    {
+        if (_hoveredSlot == slot)
+        {
+            _hoveredSlot = null;
+            _hoveredSlotIndex = -1;
+        }
+
+        // Скрываем тултип
+        if (_itemTooltip != null)
+        {
+            _itemTooltip.HideTooltip();
+        }
     }
 }
