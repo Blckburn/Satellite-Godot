@@ -1,9 +1,9 @@
 [gd_scene load_steps=4 format=3 uid="uid://b4sko0pilidyx"]
 
-[ext_resource type="Texture2D" uid="uid://dd48wrh3j83br" path="res://resources/tilemaps/outworld_tiles.png" id="1_elxja"]
+[ext_resource type="Texture2D" uid="uid://dd48wrh3j83br" path="res://resources/tilemaps/outworld_tiles.png" id="1_3x5t5"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_iu6qj"]
-texture = ExtResource("1_elxja")
+texture = ExtResource("1_3x5t5")
 texture_region_size = Vector2i(64, 64)
 0:0/0 = 0
 0:0/0/texture_origin = Vector2i(0, -16)
@@ -63,7 +63,7 @@ custom_data_layer_0/name = "IsWalkable"
 custom_data_layer_0/type = 1
 sources/0 = SubResource("TileSetAtlasSource_iu6qj")
 
-[node name="TileMapOutWorld" type="TileMap"]
+[node name="TileMap" type="TileMap" groups=["TileMap"]]
 y_sort_enabled = true
 tile_set = SubResource("TileSet_x1wya")
 format = 2

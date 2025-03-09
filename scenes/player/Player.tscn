@@ -1,7 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://bu3h56rpjxyms"]
+[gd_scene load_steps=6 format=3 uid="uid://bu3h56rpjxyms"]
 
 [ext_resource type="Script" uid="uid://djcfkyrofhgqh" path="res://scripts/Player.cs" id="1_gfjak"]
 [ext_resource type="Texture2D" uid="uid://bgyvvfne50cko" path="res://icon.svg" id="2_4kuee"]
+[ext_resource type="Script" uid="uid://d34tup0xvy3g2" path="res://scripts/CameraController.cs" id="3_4kuee"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_gmlin"]
 size = Vector2(31, 15)
@@ -13,7 +14,7 @@ radius = 90.0222
 script = ExtResource("1_gfjak")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
-z_index = 2
+z_index = 3
 scale = Vector2(0.5, 0.5)
 texture = ExtResource("2_4kuee")
 
@@ -22,6 +23,8 @@ position = Vector2(3.5, 24.5)
 shape = SubResource("RectangleShape2D_gmlin")
 
 [node name="Camera2D" type="Camera2D" parent="."]
+script = ExtResource("3_4kuee")
+PlayerPath = NodePath("..")
 
 [node name="InteractionArea" type="Area2D" parent="."]
 

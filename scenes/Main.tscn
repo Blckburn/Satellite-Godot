@@ -1,78 +1,79 @@
 [gd_scene load_steps=11 format=3 uid="uid://dgp0p1mfdb25l"]
 
-[ext_resource type="Script" uid="uid://cv1mep0nr8hkp" path="res://scenes/TileMap.cs" id="1_rarhs"]
-[ext_resource type="Texture2D" uid="uid://224ycgmtw07v" path="res://resources/tilemaps/outworld_tileset2.png" id="3_0bbpv"]
+[ext_resource type="Script" uid="uid://iyb7fjxu7j21" path="res://scripts/LevelGenerator.cs" id="5_c01mt"]
 [ext_resource type="PackedScene" uid="uid://df1fsrm24trwj" path="res://scenes/ui/ui_manager.tscn" id="5_vcsgt"]
 [ext_resource type="Script" uid="uid://btenqntxsc3nd" path="res://scripts/InteractionSystem.cs" id="6_c01mt"]
 [ext_resource type="PackedScene" uid="uid://cdpklt0cb7nbq" path="res://scenes/ui/inventory_ui.tscn" id="6_jlsqs"]
+[ext_resource type="PackedScene" uid="uid://b4sko0pilidyx" path="res://resources/tilemaps/IsometricTileMap.tscn" id="6_q8u5g"]
 [ext_resource type="PackedScene" uid="uid://bu3h56rpjxyms" path="res://scenes/player/Player.tscn" id="7_jlsqs"]
-[ext_resource type="PackedScene" uid="uid://rph2wu62gvml" path="res://scenes/ui/pickup_item.tscn" id="8_lhr70"]
-[ext_resource type="PackedScene" uid="uid://bvacl88sdtvrw" path="res://scenes/interactive_objects/door.tscn" id="8_q8u5g"]
+[ext_resource type="Texture2D" uid="uid://dd48wrh3j83br" path="res://resources/tilemaps/outworld_tiles.png" id="7_lhr70"]
+[ext_resource type="Script" uid="uid://b27sqnopxnkvx" path="res://scripts/BiomeInfoUI.cs" id="8_wp0k4"]
 
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_rarhs"]
-texture = ExtResource("3_0bbpv")
-texture_region_size = Vector2i(32, 32)
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_iu6qj"]
+texture = ExtResource("7_lhr70")
+texture_region_size = Vector2i(64, 64)
 0:0/0 = 0
-0:0/0/texture_origin = Vector2i(0, -8)
+0:0/0/texture_origin = Vector2i(0, -16)
 0:0/0/custom_data_0 = true
 1:0/0 = 0
-1:0/0/texture_origin = Vector2i(0, -8)
-1:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(0, -8, -16, 0, -14.6662, 16.9454, -0.396383, 24.4766, 15.6571, 16.3508, 16, 0)
+1:0/0/texture_origin = Vector2i(0, -16)
+1:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(0, -16, -32, 0, 0, 16, 32, 0)
 2:0/0 = 0
-2:0/0/texture_origin = Vector2i(0, -8)
-2:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(0, -8, -16, 0, -15.0625, 16.7472, -0.594574, 23.783, 15.6571, 16.7472, 16, 0)
+2:0/0/texture_origin = Vector2i(0, -16)
+2:0/0/custom_data_0 = true
 3:0/0 = 0
-3:0/0/texture_origin = Vector2i(0, -8)
+3:0/0/texture_origin = Vector2i(0, -16)
 3:0/0/custom_data_0 = true
 4:0/0 = 0
-4:0/0/texture_origin = Vector2i(0, -8)
+4:0/0/texture_origin = Vector2i(0, -16)
 4:0/0/custom_data_0 = true
 5:0/0 = 0
-5:0/0/texture_origin = Vector2i(0, -8)
-5:0/0/custom_data_0 = true
-6:0/0 = 0
-6:0/0/texture_origin = Vector2i(0, -8)
-6:0/0/custom_data_0 = true
+5:0/0/texture_origin = Vector2i(0, -16)
+5:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(0, -16, -32, 0, 0, 16, 32, 0)
+0:1/0 = 0
+0:1/0/texture_origin = Vector2i(0, -16)
+0:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(0, -16, -32, 0, 0, 16, 32, 0)
+1:1/0 = 0
+1:1/0/texture_origin = Vector2i(0, -16)
+1:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(0, -16, -32, 0, 0, 16, 32, 0)
+2:1/0 = 0
+2:1/0/texture_origin = Vector2i(0, -16)
+2:1/0/custom_data_0 = true
+3:1/0 = 0
+3:1/0/texture_origin = Vector2i(0, -16)
+3:1/0/custom_data_0 = true
+4:1/0 = 0
+4:1/0/texture_origin = Vector2i(0, -16)
+4:1/0/custom_data_0 = true
+5:1/0 = 0
+5:1/0/texture_origin = Vector2i(0, -16)
+0:2/0 = 0
+1:2/0 = 0
+2:2/0 = 0
+3:2/0 = 0
+4:2/0 = 0
+5:2/0 = 0
+0:3/0 = 0
+1:3/0 = 0
+2:3/0 = 0
+3:3/0 = 0
+4:3/0 = 0
+5:3/0 = 0
 
-[sub_resource type="TileSet" id="TileSet_vcsgt"]
+[sub_resource type="TileSet" id="TileSet_x1wya"]
 tile_shape = 1
 tile_layout = 5
 tile_offset_axis = 1
-tile_size = Vector2i(32, 16)
+tile_size = Vector2i(64, 32)
 physics_layer_0/collision_layer = 1
-custom_data_layer_0/name = "is_walkable"
+custom_data_layer_0/name = "IsWalkable"
 custom_data_layer_0/type = 1
-sources/0 = SubResource("TileSetAtlasSource_rarhs")
+sources/0 = SubResource("TileSetAtlasSource_iu6qj")
 
 [node name="Node2D" type="Node2D"]
 
-[node name="Door" parent="." instance=ExtResource("8_q8u5g")]
-light_mask = 7
-z_index = 2
-y_sort_enabled = true
-position = Vector2(81, 82)
-
-[node name="TileMap" type="TileMap" parent="."]
-y_sort_enabled = true
-tile_set = SubResource("TileSet_vcsgt")
-format = 2
-layer_0/name = "Level0"
-layer_0/y_sort_enabled = true
-layer_0/tile_data = PackedInt32Array(65539, 0, 0, 2, 0, 0, 65540, 0, 0, 3, 0, 0, 65538, 0, 0, 131074, 0, 0, 131075, 0, 0, 131076, 0, 0, 131077, 0, 0, 196613, 0, 0, 196612, 0, 0, 196611, 0, 0, 196610, 0, 0, 262147, 0, 0, 65541, 0, 0, 4, 0, 0, 5, 0, 0, 65542, 0, 0, 131078, 0, 0, 262149, 0, 0, 262148, 0, 0, 262146, 0, 0, 327683, 0, 0, 327684, 0, 0, 262150, 0, 0, 196614, 0, 0, 131079, 0, 0, 196615, 0, 0, 262151, 0, 0, 327686, 0, 0, 327685, 0, 0, 327682, 0, 0, 327681, 0, 0, 262145, 0, 0, 196609, 0, 0, 131073, 0, 0, 65537, 0, 0, 1, 0, 0, -65535, 0, 0, -131071, 0, 0, -131070, 0, 0, -65534, 0, 0, -65533, 0, 0, -131069, 0, 0, -131068, 0, 0, -65532, 0, 0, -65531, 0, 0, -65530, 0, 0, 6, 0, 0, 7, 0, 0, 65543, 0, 0, 393222, 0, 0, -65529, 0, 0, -131067, 0, 0, -131066, 0, 0, -131065, 0, 0, -65528, 0, 0, 8, 0, 0, 65544, 0, 0, 131080, 0, 0, 196616, 0, 0, 262152, 0, 0, 327688, 0, 0, 327687, 0, 0, 393221, 0, 0, 393220, 0, 0, 393219, 0, 0, 393218, 0, 0, 393217, 0, 0, -65527, 0, 0, 65545, 0, 0, 9, 0, 0, 131081, 327680, 0, 65546, 327680, 0, 10, 327680, 0, -65526, 327680, 0)
-layer_1/name = "Level1"
-layer_1/y_sort_enabled = true
-layer_1/y_sort_origin = 1
-layer_1/z_index = 1
-layer_1/tile_data = PackedInt32Array(-65528, 65536, 0, -131065, 65536, 0, -131066, 65536, 0, -196602, 65536, 0, -196603, 65536, 0, -196604, 65536, 0, -196605, 65536, 0, -196606, 65536, 0, -196607, 65536, 0, -131072, 65536, 0, -196608, 65536, 0, -131064, 65536, 0, 65539, 393216, 0, 5, 393216, 0)
-layer_2/name = "Level2"
-layer_2/y_sort_enabled = true
-layer_2/y_sort_origin = 2
-layer_2/z_index = 2
-layer_2/tile_data = PackedInt32Array(-196601, 65536, 0, -196602, 65536, 0, -262139, 65536, 0, -262140, 65536, 0, -262141, 65536, 0, -262142, 65536, 0, -262143, 65536, 0, -262144, 65536, 0, -196609, 65536, 0, -131073, 65536, 0, -131065, 65536, 0, -196603, 196608, 0)
-script = ExtResource("1_rarhs")
-
 [node name="Player" parent="." instance=ExtResource("7_jlsqs")]
-position = Vector2(-116, 35)
+position = Vector2(-1, -1)
 
 [node name="UIManager" parent="." instance=ExtResource("5_vcsgt")]
 layer = 0
@@ -85,11 +86,32 @@ z_index = 6
 script = ExtResource("6_c01mt")
 PlayerPath = NodePath("../Player")
 
-[node name="pickup_item" parent="." instance=ExtResource("8_lhr70")]
-position = Vector2(-81, 166)
+[node name="LevelGenerator" type="Node" parent="." node_paths=PackedStringArray("TileMap")]
+script = ExtResource("5_c01mt")
+TileMap = NodePath("../TileMap")
+WallLayerIndex = 1
 
-[node name="pickup_item2" parent="." instance=ExtResource("8_lhr70")]
-position = Vector2(101, 207)
+[node name="TileMap" parent="." instance=ExtResource("6_q8u5g")]
 
-[node name="pickup_item3" parent="." instance=ExtResource("8_lhr70")]
-position = Vector2(248, 212)
+[node name="Level3" type="TileMapLayer" parent="TileMap"]
+y_sort_enabled = true
+use_parent_material = true
+tile_set = SubResource("TileSet_x1wya")
+
+[node name="Level4" type="TileMapLayer" parent="TileMap"]
+z_index = 1
+y_sort_enabled = true
+use_parent_material = true
+tile_set = SubResource("TileSet_x1wya")
+y_sort_origin = 1
+
+[node name="Level5" type="TileMapLayer" parent="TileMap"]
+z_index = 2
+y_sort_enabled = true
+use_parent_material = true
+tile_set = SubResource("TileSet_x1wya")
+y_sort_origin = 2
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+script = ExtResource("8_wp0k4")
+LevelGeneratorPath = NodePath("../LevelGenerator")
