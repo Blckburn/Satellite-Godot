@@ -87,3 +87,6 @@ PlayerPath = NodePath("../Player")
 
 [node name="pickup_item" parent="." instance=ExtResource("8_lhr70")]
 position = Vector2(-81, 166)
+
+[node name="pickup_item2" parent="." instance=ExtResource("8_lhr70")]
+position = Vector2(11, 185)

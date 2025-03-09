@@ -200,24 +200,37 @@ public partial class InventoryUI : Control
         var iconTexture = item.Icon;
         GD.Print($"Icon loaded: {iconTexture != null}");
 
-        // Получаем или создаем дочерние элементы для отображения иконки и количества
+        // Получаем или создаем дочерние элементы
         var iconRect = slot.GetNodeOrNull<TextureRect>("IconTexture");
         var quantityLabel = slot.GetNodeOrNull<Label>("QuantityLabel");
 
-        // Если элементов нет, создаем их
+        // Создание TextureRect если его нет
         if (iconRect == null)
         {
             GD.Print("Creating new IconTexture");
             iconRect = new TextureRect();
             iconRect.Name = "IconTexture";
-            iconRect.StretchMode = TextureRect.StretchModeEnum.KeepAspect;
-            iconRect.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            iconRect.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
-            iconRect.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+
+            // Настройки отображения текстуры
+            iconRect.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+            iconRect.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+
+            // Установка размера и положения для полного заполнения слота
+            iconRect.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+            iconRect.Size = slot.Size; // Устанавливаем размер равным размеру слота
+            iconRect.Position = Vector2.Zero; // Убираем смещение
 
             slot.AddChild(iconRect);
         }
+        else
+        {
+            // Обновляем размер и положение при каждом вызове, если слот изменился
+            iconRect.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+            iconRect.Size = slot.Size;
+            iconRect.Position = Vector2.Zero;
+        }
 
+        // Создание QuantityLabel если нужно
         if (quantityLabel == null && item.Quantity > 1)
         {
             GD.Print("Creating new QuantityLabel");
@@ -225,22 +238,34 @@ public partial class InventoryUI : Control
             quantityLabel.Name = "QuantityLabel";
             quantityLabel.HorizontalAlignment = HorizontalAlignment.Right;
             quantityLabel.VerticalAlignment = VerticalAlignment.Bottom;
-            quantityLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
-            quantityLabel.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
-            quantityLabel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+
+            quantityLabel.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
+
+            // Стили
+            quantityLabel.AddThemeColorOverride("font_color", Colors.White);
+            quantityLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
+            quantityLabel.AddThemeConstantOverride("outline_size", 1);
 
             slot.AddChild(quantityLabel);
         }
 
-        // Обновляем значения
+        // Обновление значений
         if (iconTexture != null)
         {
             iconRect.Texture = iconTexture;
         }
         else
         {
-            // Если иконка не загрузилась, установим цвет фона
-            iconRect.Modulate = new Color(1, 0, 0); // Красный для отладки
+            Color bgColor = Colors.Gray;
+            switch (item.Type)
+            {
+                case ItemType.Weapon: bgColor = new Color(0.8f, 0.2f, 0.2f); break;
+                case ItemType.Consumable: bgColor = new Color(0.2f, 0.8f, 0.2f); break;
+                case ItemType.Resource: bgColor = new Color(0.2f, 0.2f, 0.8f); break;
+                case ItemType.Key: bgColor = new Color(0.8f, 0.8f, 0.2f); break;
+                case ItemType.Tool: bgColor = new Color(0.8f, 0.2f, 0.8f); break;
+            }
+            iconRect.Modulate = bgColor;
         }
 
         if (quantityLabel != null)
@@ -256,7 +281,7 @@ public partial class InventoryUI : Control
             }
         }
 
-        // Добавляем всплывающую подсказку
+        // Всплывающая подсказка
         slot.TooltipText = item.GetTooltip();
 
         GD.Print($"Slot updated: {slot.Name}");

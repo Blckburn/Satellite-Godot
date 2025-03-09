@@ -1,7 +1,8 @@
 using Godot;
 using System;
 
-public partial class PickupItem : InteractiveObject, IInteraction
+// Удаляем реализацию IInteraction, так как нам больше не нужен процесс каста
+public partial class PickupItem : InteractiveObject // убираем ", IInteraction"
 {
     // Ссылка на предмет, который будет подобран
     [Export] public Item ItemResource { get; set; }
@@ -11,9 +12,6 @@ public partial class PickupItem : InteractiveObject, IInteraction
 
     // Количество предметов в стеке
     [Export] public int Quantity { get; set; } = 1;
-
-    // Время взаимодействия для подбора предмета
-    [Export] public float InteractionTime { get; set; } = 0.5f;
 
     // Визуальные компоненты
     private Sprite2D _sprite;
@@ -29,28 +27,15 @@ public partial class PickupItem : InteractiveObject, IInteraction
     private Vector2 _initialPosition;
     private float _time = 0f;
 
-    // Переменные для процесса взаимодействия
-    private bool _isInteracting = false;
-    private float _interactionProgress = 0.0f;
-    private float _interactionTimer = 0.0f;
-    private bool _keyHeld = false;
-
     // Кэшированный предмет
     private Item _cachedItem;
 
     // Сигналы
     [Signal] public delegate void ItemPickedUpEventHandler(string itemId, int quantity);
-    [Signal] public delegate void InteractionStartedEventHandler();
-    [Signal] public delegate void InteractionCompletedEventHandler();
-    [Signal] public delegate void InteractionCanceledEventHandler();
 
     public override void _Ready()
     {
         base._Ready();
-        // добавляем предмет в Interactables
-        AddToGroup("Interactables");
-        // для дебага
-        GD.Print($"PickupItem '{Name}' added to Interactables group");
 
         // Инициализация компонентов
         _sprite = GetNodeOrNull<Sprite2D>("Sprite2D");
@@ -70,7 +55,10 @@ public partial class PickupItem : InteractiveObject, IInteraction
 
         // Добавляем в группу PickupItems для удобного поиска
         AddToGroup("PickupItems");
+        // Добавляем в группу интерактивных объектов 
+        AddToGroup("Interactables");
 
+        Logger.Debug($"PickupItem '{Name}' added to Interactables group", true);
         Logger.Debug($"PickupItem initialized: {GetItemName()}", true);
     }
 
@@ -83,19 +71,6 @@ public partial class PickupItem : InteractiveObject, IInteraction
 
         // Применяем эффекты
         ApplyVisualEffects(delta);
-
-        // Обрабатываем процесс взаимодействия
-        if (_isInteracting && _keyHeld)
-        {
-            _interactionTimer += (float)delta;
-            _interactionProgress = Mathf.Min(1.0f, _interactionTimer / InteractionTime);
-
-            // Если взаимодействие завершено
-            if (_interactionProgress >= 1.0f)
-            {
-                CompleteInteraction();
-            }
-        }
     }
 
     // Визуальные эффекты: вращение и покачивание
@@ -169,116 +144,48 @@ public partial class PickupItem : InteractiveObject, IInteraction
         return "Unknown Item";
     }
 
-    // Реализация интерфейса IInteractable
+    // Реализация интерфейса IInteractable - модифицируем для мгновенного подбора
     public override bool Interact(Node source)
     {
         if (!CanInteract(source))
             return false;
 
-        // Начинаем процесс подбора предмета
-        StartInteraction();
-        return true;
-    }
-
-    // Реализация интерфейса IInteraction
-
-    // Начало процесса взаимодействия
-    private void StartInteraction()
-    {
-        _isInteracting = true;
-        _interactionProgress = 0.0f;
-        _interactionTimer = 0.0f;
-        _keyHeld = true;
-
-        EmitSignal("InteractionStarted");
-        Logger.Debug($"Started picking up {GetItemName()}", false);
-    }
-
-    // Завершение процесса взаимодействия
-    private void CompleteInteraction()
-    {
-        if (!_isInteracting)
-            return;
-
-        _isInteracting = false;
-        _interactionProgress = 0.0f;
-        _interactionTimer = 0.0f;
-        _keyHeld = false;
-
         // Получаем предмет
         Item item = GetItem();
-        if (item != null)
+        if (item == null)
         {
-            // Передаем предмет игроку, если это возможно
-            bool pickedUp = false;
+            Logger.Debug("PickupItem has no associated item", true);
+            return false;
+        }
 
-            // Найти игрока, который взаимодействовал с предметом
-            var players = GetTree().GetNodesInGroup("Player");
-            if (players.Count > 0 && players[0] is Player player)
+        // Передаем предмет игроку, если это возможно
+        bool pickedUp = false;
+
+        // Найти игрока, который взаимодействовал с предметом
+        var players = GetTree().GetNodesInGroup("Player");
+        if (players.Count > 0 && players[0] is Player player)
+        {
+            pickedUp = player.AddItemToInventory(item);
+
+            if (pickedUp)
             {
-                pickedUp = player.AddItemToInventory(item);
+                // Отправляем сигнал о подборе предмета
+                EmitSignal("ItemPickedUp", item.ID, item.Quantity);
+                Logger.Debug($"Player picked up {item.DisplayName} x{item.Quantity}", false);
 
-                if (pickedUp)
-                {
-                    // Отправляем сигнал о подборе предмета
-                    EmitSignal("ItemPickedUp", item.ID, item.Quantity);
-                    Logger.Debug($"Player picked up {item.DisplayName} x{item.Quantity}", false);
-
-                    // Удаляем предмет из сцены
-                    QueueFree();
-                }
-                else
-                {
-                    Logger.Debug($"Player's inventory couldn't hold {item.DisplayName}", false);
-                }
+                // Удаляем предмет из сцены
+                QueueFree();
             }
             else
             {
-                Logger.Debug("No player found to give the item to", false);
+                Logger.Debug($"Player's inventory couldn't hold {item.DisplayName}", false);
             }
         }
-
-        EmitSignal("InteractionCompleted");
-    }
-
-    // Отмена взаимодействия
-    public void CancelInteraction()
-    {
-        if (_isInteracting)
+        else
         {
-            _isInteracting = false;
-            _keyHeld = false;
-            _interactionProgress = 0.0f;
-            _interactionTimer = 0.0f;
-
-            EmitSignal("InteractionCanceled");
-            Logger.Debug($"Cancelled picking up {GetItemName()}", false);
+            Logger.Debug("No player found to give the item to", false);
         }
-    }
 
-    // Для обработки отпускания клавиши взаимодействия
-    public void OnInteractionKeyReleased()
-    {
-        if (_isInteracting && _keyHeld)
-        {
-            _keyHeld = false;
-
-            // Если прогресс не завершен, отменяем взаимодействие
-            if (_interactionProgress < 1.0f)
-            {
-                CancelInteraction();
-            }
-        }
-    }
-
-    // Реализация методов интерфейса IInteraction
-    public bool IsInteracting()
-    {
-        return _isInteracting;
-    }
-
-    public float GetInteractionProgress()
-    {
-        return _interactionProgress;
+        return pickedUp;
     }
 }
