@@ -4,8 +4,14 @@ using System.Collections.Generic;
 
 public partial class LevelGenerator : Node
 {
+    // Сигнал о завершении генерации уровня с передачей точки спавна
+    [Signal] public delegate void LevelGeneratedEventHandler(Vector2 spawnPosition);
+
     // Ссылка на TileMap для размещения тайлов
     [Export] public Godot.TileMap TileMap { get; set; }
+
+    // Сцена игрока для спавна
+    [Export] public PackedScene PlayerScene { get; set; }
 
     // Индексы слоев
     [Export] public int BaseLayerIndex { get; set; } = 0;  // Для пола
@@ -17,26 +23,34 @@ public partial class LevelGenerator : Node
     [Export] public int MapHeight { get; set; } = 50;
 
     // Настройки комнат
-    [Export] public int MinRoomSize { get; set; } = 5;  // Увеличено для более заметных комнат
-    [Export] public int MaxRoomSize { get; set; } = 12; // Увеличено для более заметных комнат
+    [Export] public int MinRoomSize { get; set; } = 5;
+    [Export] public int MaxRoomSize { get; set; } = 12;
     [Export] public int MaxRooms { get; set; } = 12;
-    [Export] public int MinRoomDistance { get; set; } = 2;  // Минимальное расстояние между комнатами
+    [Export] public int MinRoomDistance { get; set; } = 2;
 
     // Настройки коридоров
-    [Export] public int CorridorWidth { get; set; } = 2;  // Ширина коридоров (1-3)
+    [Export] public int CorridorWidth { get; set; } = 2;
 
     // Настройки биомов
-    [Export] public int BiomeType { get; set; } = 0; // 0 - Default, 1 - Forest, 2 - Desert, etc.
-    [Export] public int MaxBiomeTypes { get; set; } = 6; // Общее количество типов биомов
+    [Export] public int BiomeType { get; set; } = 0;
+    [Export] public int MaxBiomeTypes { get; set; } = 6;
 
-    // ID источника тайлов в тайлсете (обычно 0 для первого атласа)
+    // ID источника тайлов в тайлсете
     [Export] public int SourceID { get; set; } = 0;
 
     // Клавиша для генерации нового уровня
     [Export] public Key GenerationKey { get; set; } = Key.G;
 
     // Настройки декорирования
-    [Export] public int DecorationDensity { get; set; } = 25; // Процент шанса декорации в комнате (0-100)
+    [Export] public int DecorationDensity { get; set; } = 25;
+
+    // Настройки спавна игрока
+    [Export] public bool CreatePlayerOnGeneration { get; set; } = true;
+    [Export] public string PlayerGroup { get; set; } = "Player";
+    [Export] public bool TeleportExistingPlayer { get; set; } = true;
+
+    // Настройки стен
+    [Export] public bool UseVariedWalls { get; set; } = true;  // Включить вариативность стен
 
     // Псевдослучайный генератор
     private Random _random;
@@ -44,10 +58,10 @@ public partial class LevelGenerator : Node
     // Список сгенерированных комнат
     private List<Rect2I> _rooms = new List<Rect2I>();
 
-    // Тайлы для фонового заполнения (вокруг комнат и коридоров)
+    // Тайлы для фонового заполнения
     private Vector2I _backgroundTile;
 
-    // ПРАВИЛЬНЫЕ КООРДИНАТЫ ТАЙЛОВ из AtlasCoordinates.txt и скриншотов
+    // Координаты тайлов
     private static readonly Vector2I Grass = new Vector2I(0, 0);
     private static readonly Vector2I Stone = new Vector2I(1, 0);
     private static readonly Vector2I Ground = new Vector2I(2, 0);
@@ -61,20 +75,27 @@ public partial class LevelGenerator : Node
     private static readonly Vector2I Anomal = new Vector2I(4, 1);
     private static readonly Vector2I Empty = new Vector2I(5, 1);
 
-    // Маска карты для отслеживания тайлов
+    // Типы тайлов для маски карты
     private enum TileType
     {
-        None,       // Пустой тайл
-        Background, // Фоновый тайл
-        Room,       // Тайл комнаты
-        Corridor,   // Тайл коридора
-        Wall,       // Тайл стены
-        Decoration  // Тайл декорации
+        None,
+        Background,
+        Room,
+        Corridor,
+        Wall,
+        Decoration
     }
 
+    // Маска карты
     private TileType[,] _mapMask;
 
-    // Флаг, указывающий, что уровень был сгенерирован хотя бы раз
+    // Текущая позиция спавна игрока
+    private Vector2 _currentSpawnPosition = Vector2.Zero;
+
+    // Ссылка на текущего игрока
+    private Node2D _currentPlayer;
+
+    // Флаг, указывающий, что уровень был сгенерирован
     private bool _levelGenerated = false;
 
     public override void _Ready()
@@ -85,7 +106,7 @@ public partial class LevelGenerator : Node
         // Инициализируем маску карты
         _mapMask = new TileType[MapWidth, MapHeight];
 
-        // Если TileMap не указан, ищем его в дереве сцены
+        // Поиск TileMap, если не указан
         if (TileMap == null)
         {
             TileMap = GetNode<Godot.TileMap>("../TileMap");
@@ -103,7 +124,7 @@ public partial class LevelGenerator : Node
             }
         }
 
-        // Проверяем, есть ли тайлсет
+        // Проверка тайлсета
         if (TileMap.TileSet == null)
         {
             Logger.Error("TileMap does not have a TileSet assigned!");
@@ -112,14 +133,22 @@ public partial class LevelGenerator : Node
 
         Logger.Debug($"TileMap found: {TileMap.Name}, TileSet OK", true);
 
-        // Генерируем начальный уровень при запуске с небольшой задержкой
+        // Генерируем начальный уровень с задержкой
         GetTree().CreateTimer(0.5).Timeout += () => GenerateRandomLevel();
+    }
+
+    // Обработка ввода для генерации нового уровня
+    public override void _Input(InputEvent @event)
+    {
+        if (@event is InputEventKey keyEvent && keyEvent.Pressed && keyEvent.Keycode == GenerationKey)
+        {
+            GenerateRandomLevel();
+        }
     }
 
     // Метод для поиска TileMap в сцене
     private Godot.TileMap FindTileMapInScene()
     {
-        // Поиск TileMap в корне сцены и ее дочерних узлах
         return FindTileMapInNode(GetTree().Root);
     }
 
@@ -137,15 +166,6 @@ public partial class LevelGenerator : Node
         }
 
         return null;
-    }
-
-    // Обработка ввода для генерации нового уровня по нажатию клавиши
-    public override void _Input(InputEvent @event)
-    {
-        if (@event is InputEventKey keyEvent && keyEvent.Pressed && keyEvent.Keycode == GenerationKey)
-        {
-            GenerateRandomLevel();
-        }
     }
 
     // Генерация уровня со случайным биомом
@@ -237,14 +257,153 @@ public partial class LevelGenerator : Node
             // Добавляем опасные зоны (вода/лава)
             AddHazards();
 
+            // Вычисляем позицию спавна игрока
+            _currentSpawnPosition = GetPlayerSpawnPosition();
+
             // Устанавливаем флаг, что уровень был сгенерирован
             _levelGenerated = true;
 
             Logger.Debug($"Level generated with {_rooms.Count} rooms", true);
+
+            // Вызываем сигнал о завершении генерации
+            EmitSignal(SignalName.LevelGenerated, _currentSpawnPosition);
+
+            // Спавним или перемещаем игрока
+            if (CreatePlayerOnGeneration)
+            {
+                HandlePlayerSpawn();
+            }
         }
         catch (Exception e)
         {
             Logger.Error($"Error during level generation: {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    // Метод для получения позиции спавна игрока
+    public Vector2 GetPlayerSpawnPosition()
+    {
+        if (_rooms.Count == 0)
+        {
+            Logger.Error("No rooms available for player spawn!");
+            return Vector2.Zero;
+        }
+
+        // Выбираем случайную комнату
+        int roomIndex = _random.Next(0, _rooms.Count);
+        Rect2I spawnRoom = _rooms[roomIndex];
+
+        // Получаем центр комнаты
+        Vector2I center = spawnRoom.Position + spawnRoom.Size / 2;
+
+        // Преобразуем координаты тайла в мировые координаты
+        Vector2 worldPos = MapTileToIsometricWorld(center);
+
+        Logger.Debug($"Selected spawn position at room {roomIndex}, tile ({center.X}, {center.Y}), world pos: {worldPos}", true);
+
+        return worldPos;
+    }
+
+    // Обработка спавна игрока
+    private void HandlePlayerSpawn()
+    {
+        if (!_levelGenerated)
+        {
+            Logger.Debug("Level not generated yet, cannot spawn player", true);
+            return;
+        }
+
+        // Ищем существующего игрока
+        Node2D existingPlayer = FindPlayer();
+
+        if (existingPlayer != null && TeleportExistingPlayer)
+        {
+            // Перемещаем существующего игрока
+            _currentPlayer = existingPlayer;
+            _currentPlayer.Position = _currentSpawnPosition;
+            Logger.Debug($"Teleported existing player to spawn position: {_currentSpawnPosition}", true);
+        }
+        else if (PlayerScene != null)
+        {
+            // Создаем нового игрока
+            SpawnNewPlayer();
+        }
+        else
+        {
+            Logger.Error("Cannot spawn player: PlayerScene is not set and no existing player found");
+        }
+
+        // Центрируем камеру на игроке
+        CenterCameraOnPlayer();
+    }
+
+    // Поиск существующего игрока
+    private Node2D FindPlayer()
+    {
+        var players = GetTree().GetNodesInGroup(PlayerGroup);
+        if (players.Count > 0 && players[0] is Node2D player)
+        {
+            return player;
+        }
+        return null;
+    }
+
+    // Создание нового игрока
+    private void SpawnNewPlayer()
+    {
+        try
+        {
+            // Если текущий игрок существует, удаляем его
+            if (_currentPlayer != null && IsInstanceValid(_currentPlayer))
+            {
+                _currentPlayer.QueueFree();
+            }
+
+            // Создаем нового игрока
+            _currentPlayer = PlayerScene.Instantiate<Node2D>();
+            _currentPlayer.Position = _currentSpawnPosition;
+
+            // Добавляем игрока в группу, если он еще не в ней
+            if (!_currentPlayer.IsInGroup(PlayerGroup))
+            {
+                _currentPlayer.AddToGroup(PlayerGroup);
+            }
+
+            // Добавляем игрока в сцену
+            GetParent().AddChild(_currentPlayer);
+
+            Logger.Debug($"Spawned new player at {_currentSpawnPosition}", true);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error spawning player: {e.Message}");
+        }
+    }
+
+    // Центрирование камеры на игроке
+    private void CenterCameraOnPlayer()
+    {
+        if (_currentPlayer == null)
+            return;
+
+        // Проверяем наличие CameraController
+        var cameraControllers = GetTree().GetNodesInGroup("Camera");
+        foreach (var cam in cameraControllers)
+        {
+            if (cam is CameraController cameraController)
+            {
+                cameraController.CenterOnPlayer();
+                Logger.Debug("Camera centered on player using CameraController", false);
+                return;
+            }
+        }
+
+        // Если не нашли контроллер, пробуем найти обычную камеру
+        var camera = GetViewport().GetCamera2D();
+        if (camera != null)
+        {
+            camera.Position = _currentPlayer.Position;
+            Logger.Debug("Camera centered on player using GetCamera2D", false);
         }
     }
 
@@ -551,9 +710,6 @@ public partial class LevelGenerator : Node
     // Метод для добавления стен вокруг проходимых областей
     private void AddWalls()
     {
-        // Выбор тайла стены в зависимости от биома
-        Vector2I wallTile = GetWallTileForBiome();
-
         // Создаем временный список для хранения позиций, где нужно разместить стены
         List<Vector2I> wallPositions = new List<Vector2I>();
 
@@ -612,41 +768,101 @@ public partial class LevelGenerator : Node
         {
             try
             {
+                // Получаем тайл стены соответствующий биому
+                Vector2I primaryWallTile = GetWallTileForBiome(pos);
+                Vector2I secondaryWallTile = GetSecondaryWallTileForBiome(pos);
+
                 // Первый уровень стены на DecorationLayer
-                TileMap.SetCell(DecorationLayerIndex, pos, SourceID, wallTile);
+                TileMap.SetCell(DecorationLayerIndex, pos, SourceID, primaryWallTile);
 
                 // Второй уровень стены на WallLayer (для некоторых стен)
                 if (_random.Next(0, 100) < 70) // 70% шанс добавить второй уровень
                 {
-                    TileMap.SetCell(WallLayerIndex, pos, SourceID, wallTile);
+                    TileMap.SetCell(WallLayerIndex, pos, SourceID, secondaryWallTile);
                 }
             }
-            catch
+            catch (Exception e)
             {
-                // Игнорируем ошибки при установке тайлов
+                Logger.Debug($"Error placing wall at {pos}: {e.Message}", false);
             }
         }
 
-        Logger.Debug($"Added {wallPositions.Count} wall tiles", true);
+        Logger.Debug($"Added {wallPositions.Count} wall tiles specific to biome {GetBiomeName(BiomeType)}", true);
     }
 
     // Получение тайла стены в зависимости от биома
-    private Vector2I GetWallTileForBiome()
+    private Vector2I GetWallTileForBiome(Vector2I position)
     {
+        // Если включена вариативность и это не опорная стена, добавляем вариации
+        bool useVariation = UseVariedWalls && _random.Next(0, 100) < 30; // 30% шанс вариации
+
         switch (BiomeType)
         {
             case 1: // Forest
-                return Stone; // (1, 0)
+                if (useVariation && _random.Next(0, 100) < 50)
+                    return ForestFloor; // Камни с мхом для вариации
+                return Stone;
+
             case 2: // Desert
-                return Stone; // (1, 0)
+                if (useVariation && _random.Next(0, 100) < 70)
+                    return Sand; // Песчаные стены
+                return Stone;
+
             case 3: // Ice
-                return Ice; // (0, 1)
+                if (useVariation && _random.Next(0, 100) < 80)
+                    return Ice; // Ледяные стены
+                return Snow;
+
             case 4: // Techno
-                return Stone; // (1, 0)
+                if (useVariation && _random.Next(0, 100) < 60)
+                    return Techno; // Технологические стены
+                return Stone;
+
             case 5: // Anomal
-                return Stone; // (1, 0)
-            default:
-                return Stone; // (1, 0)
+                if (useVariation)
+                {
+                    int variationType = _random.Next(0, 100);
+                    if (variationType < 50)
+                        return Anomal; // Аномальные стены
+                    else if (variationType < 80)
+                        return Lava; // Редко используем лаву для стен
+                    else
+                        return Stone;
+                }
+                return Anomal;
+
+            default: // Grassland
+                if (useVariation && _random.Next(0, 100) < 40)
+                    return Grass; // Иногда используем траву для стен
+                return Stone;
+        }
+    }
+
+    // Получение тайла второго уровня стены
+    private Vector2I GetSecondaryWallTileForBiome(Vector2I position)
+    {
+        // Второй уровень стены может отличаться от первого для более интересного вида
+        switch (BiomeType)
+        {
+            case 1: // Forest
+                return _random.Next(0, 100) < 30 ? ForestFloor : Stone;
+            case 2: // Desert
+                return _random.Next(0, 100) < 20 ? Stone : Sand;
+            case 3: // Ice
+                return _random.Next(0, 100) < 70 ? Ice : Snow;
+            case 4: // Techno
+                return _random.Next(0, 100) < 80 ? Techno : Stone;
+            case 5: // Anomal
+                // Для аномального биома делаем более случайные стены
+                int choice = _random.Next(0, 100);
+                if (choice < 50)
+                    return Anomal;
+                else if (choice < 70)
+                    return Lava;
+                else
+                    return Stone;
+            default: // Grassland
+                return _random.Next(0, 100) < 20 ? Grass : Stone;
         }
     }
 
@@ -747,17 +963,24 @@ public partial class LevelGenerator : Node
         switch (BiomeType)
         {
             case 1: // Forest
-                return Stone; // Камни в лесу
+                return _random.Next(0, 100) < 70 ? ForestFloor : Stone; // Камни с мхом в лесу
             case 2: // Desert
-                return Stone; // Камни в пустыне
+                return _random.Next(0, 100) < 70 ? Sand : Stone; // Песчаные камни в пустыне
             case 3: // Ice
-                return Stone; // Камни во льду
+                return _random.Next(0, 100) < 70 ? Ice : Snow; // Ледяные глыбы во льду
             case 4: // Techno
-                return Stone; // Технические блоки
+                return _random.Next(0, 100) < 80 ? Techno : Stone; // Технические блоки
             case 5: // Anomal
-                return Stone; // Аномальные объекты
+                // Для аномального биома делаем более случайные декорации
+                int choice = _random.Next(0, 100);
+                if (choice < 60)
+                    return Anomal; // Аномальные объекты
+                else if (choice < 80)
+                    return Stone; // Обычные камни
+                else
+                    return Lava; // Редко - лавовые декорации
             default:
-                return Stone; // Обычные камни
+                return _random.Next(0, 100) < 60 ? Stone : Grass; // Обычные камни или трава
         }
     }
 
@@ -832,6 +1055,57 @@ public partial class LevelGenerator : Node
         catch (Exception e)
         {
             Logger.Debug($"Error adding hazards: {e.Message}", false);
+        }
+    }
+
+    // Вспомогательный метод для преобразования координат тайла в мировые координаты
+    private Vector2 MapTileToIsometricWorld(Vector2I tilePos)
+    {
+        // Получаем размер ячейки из TileMap, если возможно
+        Vector2I tileSize = TileMap.TileSet?.TileSize ?? new Vector2I(64, 32);
+
+        // Для изометрии 2:1 (обычное соотношение в изометрических играх)
+        float x = (tilePos.X - tilePos.Y) * tileSize.X / 2.0f;
+        float y = (tilePos.X + tilePos.Y) * tileSize.Y / 2.0f;
+
+        return new Vector2(x, y);
+    }
+
+    // Получить текущую позицию спавна
+    public Vector2 GetCurrentSpawnPosition()
+    {
+        return _currentSpawnPosition;
+    }
+
+    // Публичный метод для телепортации игрока в указанную комнату
+    public void TeleportPlayerToRoom(int roomIndex)
+    {
+        if (roomIndex < 0 || roomIndex >= _rooms.Count)
+        {
+            Logger.Error($"Invalid room index: {roomIndex}. Valid range: 0-{_rooms.Count - 1}");
+            return;
+        }
+
+        // Получаем центр комнаты
+        Rect2I room = _rooms[roomIndex];
+        Vector2I center = room.Position + room.Size / 2;
+
+        // Преобразуем в мировые координаты
+        Vector2 worldPos = MapTileToIsometricWorld(center);
+
+        // Находим игрока и телепортируем
+        Node2D player = FindPlayer();
+        if (player != null)
+        {
+            player.Position = worldPos;
+            Logger.Debug($"Player teleported to room {roomIndex} at position {worldPos}", true);
+
+            // Центрируем камеру
+            CenterCameraOnPlayer();
+        }
+        else
+        {
+            Logger.Error("Cannot teleport player: Player not found");
         }
     }
 }

@@ -72,9 +72,6 @@ sources/0 = SubResource("TileSetAtlasSource_iu6qj")
 
 [node name="Node2D" type="Node2D"]
 
-[node name="Player" parent="." instance=ExtResource("7_jlsqs")]
-position = Vector2(-1, -1)
-
 [node name="UIManager" parent="." instance=ExtResource("5_vcsgt")]
 layer = 0
 InteractionSystemPath = NodePath("../InteractionSystem")
@@ -84,11 +81,12 @@ z_index = 6
 
 [node name="InteractionSystem" type="Node" parent="."]
 script = ExtResource("6_c01mt")
-PlayerPath = NodePath("../Player")
+PlayerPath = NodePath("")
 
 [node name="LevelGenerator" type="Node" parent="." node_paths=PackedStringArray("TileMap")]
 script = ExtResource("5_c01mt")
 TileMap = NodePath("../TileMap")
+PlayerScene = ExtResource("7_jlsqs")
 WallLayerIndex = 1
 
 [node name="TileMap" parent="." instance=ExtResource("6_q8u5g")]

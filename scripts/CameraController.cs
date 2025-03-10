@@ -32,6 +32,7 @@ public partial class CameraController : Camera2D
 
     public override void _Ready()
     {
+        AddToGroup("Camera");
         // Активируем камеру
         Enabled = true;
 
