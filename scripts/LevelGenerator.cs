@@ -322,6 +322,7 @@ public partial class LevelGenerator : Node
             _currentPlayer = existingPlayer;
             _currentPlayer.Position = _currentSpawnPosition;
             Logger.Debug($"Teleported existing player to spawn position: {_currentSpawnPosition}", true);
+
         }
         else if (PlayerScene != null)
         {
@@ -363,7 +364,7 @@ public partial class LevelGenerator : Node
             _currentPlayer = PlayerScene.Instantiate<Node2D>();
             _currentPlayer.Position = _currentSpawnPosition;
 
-            // Добавляем игрока в группу, если он еще не в ней
+            // Добавляем игрока в группу для быстрого поиска
             if (!_currentPlayer.IsInGroup(PlayerGroup))
             {
                 _currentPlayer.AddToGroup(PlayerGroup);
@@ -1108,4 +1109,5 @@ public partial class LevelGenerator : Node
             Logger.Error("Cannot teleport player: Player not found");
         }
     }
+
 }

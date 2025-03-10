@@ -109,7 +109,6 @@ public partial class PlayerSpawner : Node
             }
 
             // Добавляем игрока в сцену
-            // Решаем, куда добавить игрока - обычно на уровень выше LevelGenerator
             Node parent = GetParent();
             parent.AddChild(_player);
 
@@ -136,6 +135,7 @@ public partial class PlayerSpawner : Node
         {
             _player = player;
             _player.Position = position;
+
             _playerSpawned = true;
 
             // Центрируем камеру на игроке

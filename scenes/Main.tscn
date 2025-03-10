@@ -90,6 +90,7 @@ PlayerScene = ExtResource("7_jlsqs")
 WallLayerIndex = 1
 
 [node name="TileMap" parent="." instance=ExtResource("6_q8u5g")]
+position = Vector2(0, -1)
 
 [node name="Level3" type="TileMapLayer" parent="TileMap"]
 y_sort_enabled = true
