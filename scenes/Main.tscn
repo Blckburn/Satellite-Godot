@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://dgp0p1mfdb25l"]
+[gd_scene load_steps=9 format=3 uid="uid://dgp0p1mfdb25l"]
 
 [ext_resource type="Script" uid="uid://iyb7fjxu7j21" path="res://scripts/LevelGenerator.cs" id="5_c01mt"]
 [ext_resource type="PackedScene" uid="uid://df1fsrm24trwj" path="res://scenes/ui/ui_manager.tscn" id="5_vcsgt"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://cdpklt0cb7nbq" path="res://scenes/ui/inventory_ui.tscn" id="6_jlsqs"]
 [ext_resource type="PackedScene" uid="uid://bu3h56rpjxyms" path="res://scenes/player/Player.tscn" id="7_jlsqs"]
 [ext_resource type="PackedScene" uid="uid://cycm7sv72virf" path="res://scenes/isometric_tileset.tscn" id="7_nxtc6"]
+[ext_resource type="Script" uid="uid://cvxdy5vru4b3i" path="res://scripts/IsometricSorter.cs" id="8_jlsqs"]
 [ext_resource type="Script" uid="uid://b27sqnopxnkvx" path="res://scripts/BiomeInfoUI.cs" id="8_wp0k4"]
 
 [node name="Node2D" type="Node2D"]
@@ -30,7 +31,9 @@ WallLayerIndex = 1
 script = ExtResource("8_wp0k4")
 LevelGeneratorPath = NodePath("../LevelGenerator")
 
-[node name="YSortContainer" type="Node2D" parent="."]
-y_sort_enabled = true
+[node name="IsometricSorter" type="Node" parent="."]
+script = ExtResource("8_jlsqs")
+TileMapPath = NodePath("../isometric_tileset")
+DebugMode = true
 
-[node name="isometric_tileset" parent="YSortContainer" instance=ExtResource("7_nxtc6")]
+[node name="isometric_tileset" parent="." instance=ExtResource("7_nxtc6")]

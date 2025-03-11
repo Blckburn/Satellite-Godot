@@ -10,7 +10,7 @@ size = Vector2(20.125, 9.5)
 [sub_resource type="CircleShape2D" id="CircleShape2D_lvxji"]
 radius = 90.0222
 
-[node name="Player" type="CharacterBody2D"]
+[node name="Player" type="CharacterBody2D" groups=["DynamicObjects", "Player"]]
 y_sort_enabled = true
 script = ExtResource("1_gfjak")
 BaseZIndex = 0
@@ -22,7 +22,7 @@ y_sort_enabled = true
 position = Vector2(0, 1)
 scale = Vector2(0.484375, 0.460938)
 texture = ExtResource("2_4kuee")
-offset = Vector2(0, -70)
+offset = Vector2(0, -66.15)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 position = Vector2(0, -6)

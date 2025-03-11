@@ -1,5 +1,7 @@
 using Godot;
 using System;
+using System.Text;
+using System.Collections.Generic;
 
 public partial class Player : Character
 {
@@ -11,24 +13,32 @@ public partial class Player : Character
     private CollisionShape2D _collisionShape;
     private Area2D _interactionArea;
     private CollisionShape2D _interactionCollisionShape;
-    private TileMap _tileMap; 
+    private TileMap _tileMap;
 
     // Система взаимодействия
     private IInteractable _currentInteractable;
 
+    // Ссылка на систему сортировки
+    private IsometricSorter _isometricSorter;
 
+    // Отладочные компоненты
+    private Label _wallInfoLabel;
+
+    // Счетчик для обновления отладки
+    private int _debugUpdateCounter = 0;
+    private const int DEBUG_UPDATE_INTERVAL = 30; // Обновление каждые 30 кадров (0.5 сек при 60 FPS)
 
     public override void _Ready()
     {
         AddToGroup("Player");
-        GD.Print("Player added to 'Player' group");
-        InitializeInventory();
+        AddToGroup("DynamicObjects"); // Важно: добавляем в группу для сортировки
 
+        // Инициализация инвентаря
+        InitializeInventory();
 
         // Подписка на события инвентаря
         Connect("PlayerInventoryChanged", Callable.From(() =>
         {
-            // Здесь можно добавить обновление UI или другие действия
             Logger.Debug("Player inventory updated!", false);
         }));
 
@@ -39,46 +49,41 @@ public partial class Player : Character
         _collisionShape = GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
         _interactionArea = GetNodeOrNull<Area2D>("InteractionArea");
 
-        // Находим изометрическую карту в сцене
-        _tileMap = GetTree().Root.GetNode<TileMap>("Node2D/TileMap");
-
-        if (_tileMap == null)
+        // Проверяем, существует ли интерактивная область, если нет - создаем
+        if (_interactionArea == null)
         {
-            // Если путь не точный, попробуем найти через GetTree()
-            var tileMaps = GetTree().GetNodesInGroup("TileMap");
-            if (tileMaps.Count > 0 && tileMaps[0] is TileMap map)
-            {
-                _tileMap = map;
-                GD.Print("Found TileMap through GetNodesInGroup");
-            }
-            else
-            {
-                // Последняя попытка - попробовать найти через GetChildren
-                foreach (var node in GetTree().Root.GetChildren())
-                {
-                    _tileMap = FindTileMapInChildren(node);
-                    if (_tileMap != null)
-                    {
-                        GD.Print("Found TileMap through FindTileMapInChildren");
-                        break;
-                    }
-                }
-            }
+            CreateInteractionArea();
         }
 
+        // Находим изометрическую карту
+        _tileMap = FindTileMap();
         if (_tileMap != null)
         {
-            GD.Print($"TileMap found at path: {_tileMap.GetPath()}");
-            // Не забудьте добавить вашу TileMap в группу для быстрого доступа
+            Logger.Debug($"TileMap found at path: {_tileMap.GetPath()}", true);
             _tileMap.AddToGroup("TileMap");
         }
         else
         {
-            GD.Print("WARNING: TileMap not found in scene");
+            Logger.Debug("WARNING: TileMap not found in scene", true);
+        }
+
+        // Находим IsometricSorter
+        _isometricSorter = FindIsometricSorter();
+        if (_isometricSorter != null)
+        {
+            Logger.Debug("IsometricSorter found", true);
+        }
+
+        // Создаем отладочные элементы
+        if (ShowDebugInfo)
+        {
+            CreateDebugLabels();
         }
 
         // Отправляем сигнал о состоянии здоровья
         EmitSignal(SignalName.HealthChanged, _currentHealth, MaxHealth);
+
+        Logger.Debug("Player initialization complete", true);
     }
 
     public override void _Process(double delta)
@@ -86,25 +91,131 @@ public partial class Player : Character
         HandleInput();
         base._Process(delta);
 
-        // Изометрическая формула глубины - чем "глубже" объект (больше X+Y), тем выше Z-индекс
-        // Базовый Z-индекс: 0 - средний уровень между полом и потолком
+        // Счетчик для отладки
+        _debugUpdateCounter++;
 
-        // Расчет смещения Z-индекса на основе позиции
-        float depth = (Position.X + Position.Y) / 64.0f;
-
-        // Инвертируем значение, чтобы объекты "глубже" (с большим X+Y) имели меньший Z-индекс
-        int zOffset = (int)(-depth);
-
-        // Установка Z-индекса
-        ZIndex = 5 + zOffset; // 5 - базовый Z-индекс между полом (-10) и верхними стенами (10)
-
-        // Отладочная информация
-        if (Engine.GetFramesDrawn() % 60 == 0) // Выводить раз в секунду
+        // Обновление отладочной информации с интервалом
+        if (ShowDebugInfo && _debugUpdateCounter % DEBUG_UPDATE_INTERVAL == 0)
         {
-            GD.Print($"Player Position: ({Position.X}, {Position.Y}), Z-Index: {ZIndex}");
+            UpdateDebugInfo();
         }
     }
 
+    // Создание области взаимодействия
+    private void CreateInteractionArea()
+    {
+        _interactionArea = new Area2D();
+        _interactionArea.Name = "InteractionArea";
+
+        // Создаем коллизию для области взаимодействия
+        _interactionCollisionShape = new CollisionShape2D();
+        var circle = new CircleShape2D();
+        circle.Radius = INTERACTION_RADIUS;
+        _interactionCollisionShape.Shape = circle;
+
+        _interactionArea.AddChild(_interactionCollisionShape);
+        AddChild(_interactionArea);
+
+        // Подключаем сигналы
+        _interactionArea.BodyEntered += OnBodyEnteredInteractionArea;
+        _interactionArea.BodyExited += OnBodyExitedInteractionArea;
+        _interactionArea.AreaEntered += OnAreaEnteredInteractionArea;
+        _interactionArea.AreaExited += OnAreaExitedInteractionArea;
+
+        Logger.Debug("InteractionArea created with radius: " + INTERACTION_RADIUS, true);
+    }
+
+    // Создание отладочных меток
+    private void CreateDebugLabels()
+    {
+        // Создаем главный отладочный лейбл если он еще не существует
+        if (_debugLabel == null)
+        {
+            _debugLabel = new Label();
+            _debugLabel.Position = new Vector2(0, -70);
+            _debugLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            _debugLabel.ZIndex = 1000; // Поверх всего
+
+            // Стилизация
+            _debugLabel.AddThemeColorOverride("font_color", Colors.Yellow);
+            _debugLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
+            _debugLabel.AddThemeConstantOverride("outline_size", 2);
+
+            AddChild(_debugLabel);
+        }
+
+        // Создаем метку для информации о стенах
+        _wallInfoLabel = new Label();
+        _wallInfoLabel.Position = new Vector2(0, -30);
+        _wallInfoLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _wallInfoLabel.ZIndex = 1000;
+
+        // Стилизация
+        _wallInfoLabel.AddThemeColorOverride("font_color", Colors.Cyan);
+        _wallInfoLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
+        _wallInfoLabel.AddThemeConstantOverride("outline_size", 2);
+
+        AddChild(_wallInfoLabel);
+
+        Logger.Debug("Debug labels created", true);
+    }
+
+    // Обновление отладочной информации
+    private void UpdateDebugInfo()
+    {
+        // Обновляем основную информацию о персонаже
+        if (_debugLabel != null)
+        {
+            _debugLabel.Text = $"Pos: ({Position.X:F1}, {Position.Y:F1})\nZ-Index: {ZIndex}";
+        }
+
+        // Обновляем информацию о стенах в радиусе взаимодействия
+        UpdateWallsInfo();
+    }
+
+    // Обновление информации о стенах
+    private void UpdateWallsInfo()
+    {
+        if (_wallInfoLabel == null || _isometricSorter == null)
+            return;
+
+        // Получаем стены в радиусе взаимодействия
+        var wallsInRadius = _isometricSorter.GetWallsInRadius(GlobalPosition, INTERACTION_RADIUS);
+
+        if (wallsInRadius.Count == 0)
+        {
+            _wallInfoLabel.Text = "No walls nearby";
+            return;
+        }
+
+        // Ограничиваем количество отображаемых стен
+        int maxWallsToShow = 3;
+        int wallsToShow = Math.Min(wallsInRadius.Count, maxWallsToShow);
+
+        // Формируем текст для отображения
+        StringBuilder sb = new StringBuilder();
+        sb.AppendLine($"Nearby walls ({wallsInRadius.Count}):");
+
+        for (int i = 0; i < wallsToShow; i++)
+        {
+            var wall = wallsInRadius[i];
+            sb.AppendLine($"- Wall at {wall.Position}, Z: {wall.ZIndex}, D: {wall.Distance:F1}");
+        }
+
+        // Если есть еще стены, показываем количество
+        if (wallsInRadius.Count > maxWallsToShow)
+        {
+            sb.AppendLine($"(+{wallsInRadius.Count - maxWallsToShow} more)");
+        }
+
+        _wallInfoLabel.Text = sb.ToString();
+
+        // Также выводим в лог, но редко
+        if (_debugUpdateCounter % (DEBUG_UPDATE_INTERVAL * 4) == 0) // Каждые 2 секунды
+        {
+            Logger.Debug($"Player at {GlobalPosition:F1} with Z-index {ZIndex}, nearby {wallsInRadius.Count} walls", false);
+        }
+    }
 
     private void HandleInput()
     {
@@ -118,12 +229,12 @@ public partial class Player : Character
             TryInteract();
         }
     }
-    
+
     // Метод для получения вектора направления с учетом изометрической проекции
     private Vector2 GetIsometricInput()
     {
         Vector2 input = Vector2.Zero;
-        
+
         // Получаем стандартный ввод
         if (Input.IsActionPressed("move_right"))
             input.X += 1;
@@ -133,18 +244,18 @@ public partial class Player : Character
             input.Y += 1;
         if (Input.IsActionPressed("move_up"))
             input.Y -= 1;
-            
+
         // Если ввод отсутствует, возвращаем нулевой вектор
         if (input == Vector2.Zero)
             return Vector2.Zero;
-            
+
         // Преобразуем ввод в изометрический
         // Для стандартной изометрии (2:1)
         Vector2 isoInput = new Vector2(
             input.X - input.Y,  // X-компонент
             (input.X + input.Y) / 2  // Y-компонент
         );
-        
+
         // Нормализуем вектор, чтобы диагональное движение не было быстрее
         return isoInput.Normalized();
     }
@@ -156,7 +267,11 @@ public partial class Player : Character
             bool success = _currentInteractable.Interact(this);
             if (!success)
             {
-                GD.Print("Interaction failed");
+                Logger.Debug("Interaction failed", false);
+            }
+            else
+            {
+                Logger.Debug($"Interaction successful with {_currentInteractable}", false);
             }
         }
         else
@@ -168,13 +283,12 @@ public partial class Player : Character
                 bool success = nearestInteractable.Interact(this);
                 if (!success)
                 {
-                    GD.Print("Interaction with nearest object failed");
+                    Logger.Debug("Interaction with nearest object failed", false);
                 }
-            }
-            else
-            {
-                // Тихий вывод - не засоряем лог
-                // GD.Print("No interactable object found");
+                else
+                {
+                    Logger.Debug($"Interaction successful with {nearestInteractable}", false);
+                }
             }
         }
     }
@@ -207,7 +321,7 @@ public partial class Player : Character
         if (body is IInteractable interactable)
         {
             _currentInteractable = interactable;
-            GD.Print($"Can interact with: {body.Name}");
+            Logger.Debug($"Can interact with: {body.Name}", false);
         }
     }
 
@@ -225,7 +339,7 @@ public partial class Player : Character
         if (area is IInteractable areaInteractable)
         {
             _currentInteractable = areaInteractable;
-            GD.Print($"Can interact with area: {area.Name}");
+            Logger.Debug($"Can interact with area: {area.Name}", false);
             return;
         }
 
@@ -233,7 +347,7 @@ public partial class Player : Character
         if (area.Owner is IInteractable ownerInteractable)
         {
             _currentInteractable = ownerInteractable;
-            GD.Print($"Can interact with area owner: {area.Owner.Name}");
+            Logger.Debug($"Can interact with area owner: {area.Owner.Name}", false);
         }
     }
 
@@ -252,19 +366,58 @@ public partial class Player : Character
             _currentInteractable = null;
         }
     }
-    private TileMap FindTileMapInChildren(Node node)
-    {
-        if (node is TileMap tileMap)
-            return tileMap;
 
-        foreach (var child in node.GetChildren())
+    // Вспомогательные методы для поиска узлов
+    private TileMap FindTileMap()
+    {
+        // Попробуем найти через группу
+        var tileMaps = GetTree().GetNodesInGroup("TileMap");
+        if (tileMaps.Count > 0 && tileMaps[0] is TileMap map)
         {
-            var result = FindTileMapInChildren(child);
-            if (result != null)
+            return map;
+        }
+
+        // Поиск в корне сцены через рекурсию
+        var tileMap = FindNodeRecursive<TileMap>(GetTree().Root);
+        if (tileMap != null)
+        {
+            return tileMap;
+        }
+
+        return null;
+    }
+
+    private IsometricSorter FindIsometricSorter()
+    {
+        // Попробуем найти через группу
+        var sorters = GetTree().GetNodesInGroup("IsometricSorter");
+        if (sorters.Count > 0 && sorters[0] is IsometricSorter sorter)
+        {
+            return sorter;
+        }
+
+        // Поиск в корне сцены через рекурсию
+        var isometricSorter = FindNodeRecursive<IsometricSorter>(GetTree().Root);
+        return isometricSorter;
+    }
+
+    // Рекурсивный поиск узла заданного типа
+    private T FindNodeRecursive<T>(Node root) where T : class
+    {
+        foreach (var child in root.GetChildren())
+        {
+            if (child is T result)
+            {
                 return result;
+            }
+
+            var childResult = FindNodeRecursive<T>(child);
+            if (childResult != null)
+            {
+                return childResult;
+            }
         }
 
         return null;
     }
 }
-
