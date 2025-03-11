@@ -33,7 +33,7 @@ public partial class LevelGenerator : Node
 
     // Настройки биомов
     [Export] public int BiomeType { get; set; } = 0;
-    [Export] public int MaxBiomeTypes { get; set; } = 6;
+    [Export] public int MaxBiomeTypes { get; set; } = 7; // Увеличено до 7 для Lava Springs
 
     // ID источника тайлов в тайлсете
     [Export] public int SourceID { get; set; } = 0;
@@ -177,6 +177,9 @@ public partial class LevelGenerator : Node
             int randomBiome = new Random().Next(0, MaxBiomeTypes);
             BiomeType = randomBiome;
 
+            // Добавляем отладочную информацию
+            Logger.Debug($"ВЫБРАН БИОМ: {GetBiomeName(BiomeType)} (Тип {BiomeType})", true);
+
             // Генерируем уровень
             GenerateLevel();
 
@@ -206,6 +209,7 @@ public partial class LevelGenerator : Node
             case 3: return "Ice";
             case 4: return "Techno";
             case 5: return "Anomal";
+            case 6: return "Lava Springs";
             default: return "Grassland";
         }
     }
@@ -251,8 +255,8 @@ public partial class LevelGenerator : Node
             // Добавляем стены вокруг комнат и коридоров
             AddWalls();
 
-            // Добавляем декорации и препятствия
-            AddDecorationsAndObstacles();
+            // Комментируем вызов декораций (как было запрошено)
+            // AddDecorationsAndObstacles();
 
             // Добавляем опасные зоны (вода/лава)
             AddHazards();
@@ -442,36 +446,60 @@ public partial class LevelGenerator : Node
     {
         switch (BiomeType)
         {
-            case 1: return Stone; // Forest с каменным фоном
-            case 2: return Stone; // Desert с каменным фоном
-            case 3: return Stone; // Ice с каменным фоном
-            case 4: return Stone; // Techno с каменным фоном
-            case 5: return Stone; // Anomal с каменным фоном
-            default: return Stone; // Default с каменным фоном
+            case 1: // Forest
+                return ForestFloor;
+            case 2: // Desert
+                return Stone;
+            case 3: // Ice
+                return Ice;
+            case 4: // Techno
+                return Techno;
+            case 5: // Anomal
+                return Anomal;
+            case 6: // Lava Springs
+                return Lava;
+            default: // Grassland
+                return Grass;
         }
     }
 
     // Метод для заполнения карты фоновыми тайлами
     private void FillMapWithBackgroundTiles()
     {
+        Vector2I backgroundTile = GetBackgroundTileForBiome();
+        int tilesAdded = 0;
+
         for (int x = 0; x < MapWidth; x++)
         {
             for (int y = 0; y < MapHeight; y++)
             {
-                try
+                // Добавляем фоновый тайл только если клетка имеет тип None или Background
+                // и на ней нет никаких тайлов на этом слое
+                if (_mapMask[x, y] == TileType.None || _mapMask[x, y] == TileType.Background)
                 {
-                    TileMap.SetCell(BaseLayerIndex, new Vector2I(x, y), SourceID, _backgroundTile);
-                    _mapMask[x, y] = TileType.Background;
-                }
-                catch (Exception e)
-                {
-                    Logger.Debug($"Error setting tile at ({x}, {y}): {e.Message}", false);
+                    // Проверяем, есть ли уже тайлы на этих координатах в DecorationLayerIndex
+                    if (TileMap.GetCellSourceId(DecorationLayerIndex, new Vector2I(x, y)) == -1)
+                    {
+                        try
+                        {
+                            // Размещаем фоновый тайл на DecorationLayerIndex (Level1)
+                            TileMap.SetCell(DecorationLayerIndex, new Vector2I(x, y), SourceID, backgroundTile);
+                            _mapMask[x, y] = TileType.Background;
+
+                            tilesAdded++;
+                        }
+                        catch (Exception e)
+                        {
+                            Logger.Debug($"Error setting tile at ({x}, {y}): {e.Message}", false);
+                        }
+                    }
                 }
             }
         }
 
-        Logger.Debug($"Map filled with background tiles for biome type: {BiomeType}", true);
+        Logger.Debug($"Map filled with {tilesAdded} background tiles for biome type: {BiomeType}", true);
     }
+
 
     // Метод для генерации комнат
     private void GenerateRooms()
@@ -539,8 +567,12 @@ public partial class LevelGenerator : Node
             {
                 try
                 {
+                    // Размещаем тайл пола
                     TileMap.SetCell(BaseLayerIndex, new Vector2I(x, y), SourceID, floorTile);
                     _mapMask[x, y] = TileType.Room;
+
+                    // Для пола удаляем коллизию, чтобы сделать его проходимым
+                    TileMap.EraseCell(WallLayerIndex, new Vector2I(x, y));
                 }
                 catch (Exception e)
                 {
@@ -641,6 +673,9 @@ public partial class LevelGenerator : Node
                         {
                             _mapMask[x, yPos] = TileType.Corridor;
                         }
+
+                        // Удаляем коллизию для коридоров
+                        TileMap.EraseCell(WallLayerIndex, new Vector2I(x, yPos));
                     }
                     catch (Exception)
                     {
@@ -650,6 +685,7 @@ public partial class LevelGenerator : Node
             }
         }
     }
+
 
     // Метод для создания вертикального тоннеля
     private void CreateVerticalTunnel(int y1, int y2, int x)
@@ -678,6 +714,9 @@ public partial class LevelGenerator : Node
                         {
                             _mapMask[xPos, y] = TileType.Corridor;
                         }
+
+                        // Удаляем коллизию для коридоров
+                        TileMap.EraseCell(WallLayerIndex, new Vector2I(xPos, y));
                     }
                     catch (Exception)
                     {
@@ -688,23 +727,26 @@ public partial class LevelGenerator : Node
         }
     }
 
+
     // Метод для получения тайла пола в зависимости от биома
     private Vector2I GetFloorTileForBiome()
     {
         switch (BiomeType)
         {
             case 1: // Forest
-                return ForestFloor; // (2, 1)
+                return Grass; // Изменено с ForestFloor на Grass
             case 2: // Desert
-                return Sand; // (4, 0)
+                return Sand; // Без изменений 
             case 3: // Ice
-                return Snow; // (3, 0)
+                return Snow; // Без изменений
             case 4: // Techno
-                return Techno; // (3, 1)
+                return Stone; // Изменено с Techno на Stone
             case 5: // Anomal
-                return Anomal; // (4, 1)
-            default: // Default
-                return Grass; // (0, 0)
+                return Ground; // Изменено с Anomal на Ground
+            case 6: // Lava Springs
+                return Ground;
+            default: // Grassland
+                return ForestFloor; // Изменено с Grass на ForestFloor
         }
     }
 
@@ -779,6 +821,7 @@ public partial class LevelGenerator : Node
                 // Второй уровень стены на WallLayer (для некоторых стен)
                 if (_random.Next(0, 100) < 70) // 70% шанс добавить второй уровень
                 {
+                    // Ключевое изменение: добавляем тайл на WallLayer чтобы создать коллизию
                     TileMap.SetCell(WallLayerIndex, pos, SourceID, secondaryWallTile);
                 }
             }
@@ -791,6 +834,7 @@ public partial class LevelGenerator : Node
         Logger.Debug($"Added {wallPositions.Count} wall tiles specific to biome {GetBiomeName(BiomeType)}", true);
     }
 
+
     // Получение тайла стены в зависимости от биома
     private Vector2I GetWallTileForBiome(Vector2I position)
     {
@@ -801,41 +845,43 @@ public partial class LevelGenerator : Node
         {
             case 1: // Forest
                 if (useVariation && _random.Next(0, 100) < 50)
-                    return ForestFloor; // Камни с мхом для вариации
-                return Stone;
+                    return Snow; // Вкрапления Snow
+                return ForestFloor; // Основная стена ForestFloor
 
             case 2: // Desert
-                if (useVariation && _random.Next(0, 100) < 70)
-                    return Sand; // Песчаные стены
-                return Stone;
+                if (useVariation && _random.Next(0, 100) < 40)
+                    return Ground; // Вкрапления Ground
+                return Stone; // Основная стена Stone
 
             case 3: // Ice
-                if (useVariation && _random.Next(0, 100) < 80)
-                    return Ice; // Ледяные стены
-                return Snow;
+                if (useVariation && _random.Next(0, 100) < 40)
+                    return Stone; // Вкрапления Stone
+                return Ice; // Основная стена Ice
 
             case 4: // Techno
-                if (useVariation && _random.Next(0, 100) < 60)
-                    return Techno; // Технологические стены
-                return Stone;
+                if (useVariation && _random.Next(0, 100) < 40)
+                    return Anomal; // Вкрапления Anomal
+                return Techno; // Основная стена Techno
 
             case 5: // Anomal
                 if (useVariation)
                 {
                     int variationType = _random.Next(0, 100);
-                    if (variationType < 50)
-                        return Anomal; // Аномальные стены
-                    else if (variationType < 80)
-                        return Lava; // Редко используем лаву для стен
-                    else
-                        return Stone;
+                    if (variationType < 40)
+                        return Lava; // Вкрапления Lava
+                    return Anomal;
                 }
-                return Anomal;
+                return Anomal; // Основная стена Anomal
+
+            case 6: // Lava Springs
+                if (useVariation && _random.Next(0, 100) < 40)
+                    return Stone; // Вкрапления Stone
+                return Lava; // Основная стена Lava
 
             default: // Grassland
                 if (useVariation && _random.Next(0, 100) < 40)
-                    return Grass; // Иногда используем траву для стен
-                return Stone;
+                    return Ground; // Вкрапления Ground
+                return Grass; // Основная стена Grass
         }
     }
 
@@ -846,28 +892,24 @@ public partial class LevelGenerator : Node
         switch (BiomeType)
         {
             case 1: // Forest
-                return _random.Next(0, 100) < 30 ? ForestFloor : Stone;
+                return _random.Next(0, 100) < 30 ? Snow : ForestFloor;
             case 2: // Desert
-                return _random.Next(0, 100) < 20 ? Stone : Sand;
+                return _random.Next(0, 100) < 30 ? Ground : Stone;
             case 3: // Ice
-                return _random.Next(0, 100) < 70 ? Ice : Snow;
+                return _random.Next(0, 100) < 30 ? Stone : Ice;
             case 4: // Techno
-                return _random.Next(0, 100) < 80 ? Techno : Stone;
+                return _random.Next(0, 100) < 30 ? Anomal : Techno;
             case 5: // Anomal
-                // Для аномального биома делаем более случайные стены
-                int choice = _random.Next(0, 100);
-                if (choice < 50)
-                    return Anomal;
-                else if (choice < 70)
-                    return Lava;
-                else
-                    return Stone;
+                return _random.Next(0, 100) < 40 ? Lava : Anomal;
+            case 6: // Lava Springs
+                return _random.Next(0, 100) < 30 ? Stone : Lava;
             default: // Grassland
-                return _random.Next(0, 100) < 20 ? Grass : Stone;
+                return _random.Next(0, 100) < 30 ? Ground : Grass;
         }
     }
 
-    // Метод для добавления декораций и препятствий в комнаты и коридоры
+    // Метод для добавления декораций и препятствий (закомментирован)
+    /*
     private void AddDecorationsAndObstacles()
     {
         // Выбор тайла декорации в зависимости от биома
@@ -957,33 +999,7 @@ public partial class LevelGenerator : Node
             }
         }
     }
-
-    // Получение тайла декорации в зависимости от биома
-    private Vector2I GetDecorationTileForBiome()
-    {
-        switch (BiomeType)
-        {
-            case 1: // Forest
-                return _random.Next(0, 100) < 70 ? ForestFloor : Stone; // Камни с мхом в лесу
-            case 2: // Desert
-                return _random.Next(0, 100) < 70 ? Sand : Stone; // Песчаные камни в пустыне
-            case 3: // Ice
-                return _random.Next(0, 100) < 70 ? Ice : Snow; // Ледяные глыбы во льду
-            case 4: // Techno
-                return _random.Next(0, 100) < 80 ? Techno : Stone; // Технические блоки
-            case 5: // Anomal
-                // Для аномального биома делаем более случайные декорации
-                int choice = _random.Next(0, 100);
-                if (choice < 60)
-                    return Anomal; // Аномальные объекты
-                else if (choice < 80)
-                    return Stone; // Обычные камни
-                else
-                    return Lava; // Редко - лавовые декорации
-            default:
-                return _random.Next(0, 100) < 60 ? Stone : Grass; // Обычные камни или трава
-        }
-    }
+    */
 
     // Метод для добавления опасных участков (вода/лава и т.д.)
     private void AddHazards()
@@ -1007,6 +1023,9 @@ public partial class LevelGenerator : Node
                 break;
             case 5: // Anomal
                 hazardTile = Lava; // (1, 1) - Аномальные зоны
+                break;
+            case 6: // Lava Springs
+                hazardTile = Lava; // (1, 1) - Лавовые источники
                 break;
             default:
                 hazardTile = Water; // (5, 0)
@@ -1048,6 +1067,18 @@ public partial class LevelGenerator : Node
                 {
                     // Размещаем опасный тайл на базовом слое
                     TileMap.SetCell(BaseLayerIndex, new Vector2I(x, y), SourceID, hazardTile);
+
+                    // Опасные зоны (лава) непроходимы, а вода проходима
+                    if (hazardTile == Lava)
+                    {
+                        // Для лавы создаем коллизию
+                        TileMap.SetCell(WallLayerIndex, new Vector2I(x, y), SourceID, hazardTile);
+                    }
+                    else
+                    {
+                        // Для воды удаляем коллизию, чтобы сделать ее проходимой
+                        TileMap.EraseCell(WallLayerIndex, new Vector2I(x, y));
+                    }
                 }
             }
 
@@ -1056,6 +1087,28 @@ public partial class LevelGenerator : Node
         catch (Exception e)
         {
             Logger.Debug($"Error adding hazards: {e.Message}", false);
+        }
+    }
+
+    // Вспомогательный метод для установки проходимости тайла
+    private void SetTileWalkable(int x, int y, bool isWalkable)
+    {
+        try
+        {
+            // Получаем данные тайла
+            TileData tileData = TileMap.GetCellTileData(BaseLayerIndex, new Vector2I(x, y));
+            if (tileData != null)
+            {
+                // Устанавливаем пользовательские данные
+                tileData.SetCustomData("is_walkable", isWalkable);
+
+                // Здесь можно добавить код для настройки физики (если требуется)
+                // TileMap.UpdateCellPhysics(BaseLayerIndex, new Vector2I(x, y));
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Debug($"Error setting tile walkability at ({x}, {y}): {e.Message}", false);
         }
     }
 
@@ -1109,5 +1162,4 @@ public partial class LevelGenerator : Node
             Logger.Error("Cannot teleport player: Player not found");
         }
     }
-
 }

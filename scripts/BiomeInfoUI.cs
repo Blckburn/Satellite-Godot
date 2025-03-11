@@ -158,6 +158,7 @@ public partial class BiomeInfoUI : CanvasLayer
             case 3: return "Ice";
             case 4: return "Techno";
             case 5: return "Anomal";
+            case 6: return "Lava Springs";
             default: return "Grassland";
         }
     }
