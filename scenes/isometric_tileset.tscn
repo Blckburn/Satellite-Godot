@@ -1,0 +1,69 @@
+[gd_scene load_steps=4 format=3 uid="uid://cycm7sv72virf"]
+
+[ext_resource type="Texture2D" uid="uid://c038qcuyhgg0" path="res://resources/textures/isometric_tiles.png" id="1_qlghb"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_qlghb"]
+texture = ExtResource("1_qlghb")
+texture_region_size = Vector2i(64, 64)
+0:0/0 = 0
+0:0/0/texture_origin = Vector2i(0, -16)
+1:0/0 = 0
+1:0/0/texture_origin = Vector2i(0, -16)
+2:0/0 = 0
+2:0/0/texture_origin = Vector2i(0, -16)
+3:0/0 = 0
+3:0/0/texture_origin = Vector2i(0, -16)
+4:0/0 = 0
+4:0/0/texture_origin = Vector2i(0, -16)
+5:0/0 = 0
+5:0/0/texture_origin = Vector2i(0, -16)
+0:1/0 = 0
+0:1/0/texture_origin = Vector2i(0, -16)
+1:1/0 = 0
+1:1/0/texture_origin = Vector2i(0, -16)
+2:1/0 = 0
+2:1/0/texture_origin = Vector2i(0, -16)
+3:1/0 = 0
+3:1/0/texture_origin = Vector2i(0, -16)
+4:1/0 = 0
+4:1/0/texture_origin = Vector2i(0, -16)
+5:1/0 = 0
+5:1/0/texture_origin = Vector2i(0, -16)
+5:1/0/physics_layer_0/polygon_0/points = PackedVector2Array(0, 16, -32.0335, 32.9665, -0.622009, 48.8278, 30.4785, 34.2105)
+0:2/0 = 0
+1:2/0 = 0
+2:2/0 = 0
+3:2/0 = 0
+4:2/0 = 0
+5:2/0 = 0
+0:3/0 = 0
+1:3/0 = 0
+2:3/0 = 0
+3:3/0 = 0
+4:3/0 = 0
+5:3/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_vodvx"]
+tile_shape = 1
+tile_layout = 5
+tile_offset_axis = 1
+tile_size = Vector2i(64, 32)
+physics_layer_0/collision_layer = 1
+sources/0 = SubResource("TileSetAtlasSource_qlghb")
+
+[node name="isometric_tileset" type="Node2D"]
+
+[node name="TileMap" type="TileMap" parent="."]
+y_sort_enabled = true
+tile_set = SubResource("TileSet_vodvx")
+rendering_quadrant_size = 32
+format = 2
+layer_0/name = "Level0"
+layer_0/y_sort_enabled = true
+layer_0/z_index = -10
+layer_1/name = "Level1"
+layer_1/y_sort_enabled = true
+layer_1/z_index = 5
+layer_2/name = "Level2"
+layer_2/y_sort_enabled = true
+layer_2/z_index = 10

@@ -83,9 +83,28 @@ public partial class Player : Character
 
     public override void _Process(double delta)
     {
-        // Обработка ввода
         HandleInput();
+        base._Process(delta);
+
+        // Изометрическая формула глубины - чем "глубже" объект (больше X+Y), тем выше Z-индекс
+        // Базовый Z-индекс: 0 - средний уровень между полом и потолком
+
+        // Расчет смещения Z-индекса на основе позиции
+        float depth = (Position.X + Position.Y) / 64.0f;
+
+        // Инвертируем значение, чтобы объекты "глубже" (с большим X+Y) имели меньший Z-индекс
+        int zOffset = (int)(-depth);
+
+        // Установка Z-индекса
+        ZIndex = 5 + zOffset; // 5 - базовый Z-индекс между полом (-10) и верхними стенами (10)
+
+        // Отладочная информация
+        if (Engine.GetFramesDrawn() % 60 == 0) // Выводить раз в секунду
+        {
+            GD.Print($"Player Position: ({Position.X}, {Position.Y}), Z-Index: {ZIndex}");
+        }
     }
+
 
     private void HandleInput()
     {

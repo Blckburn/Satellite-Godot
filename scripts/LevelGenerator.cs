@@ -109,16 +109,29 @@ public partial class LevelGenerator : Node
         // Поиск TileMap, если не указан
         if (TileMap == null)
         {
-            TileMap = GetNode<Godot.TileMap>("../TileMap");
+            // Сначала ищем узел isometric_tileset
+            var isometricTileset = GetNode<Node2D>("../isometric_tileset");
 
+            if (isometricTileset != null)
+            {
+                // Ищем TileMap внутри isometric_tileset
+                TileMap = isometricTileset.GetNode<Godot.TileMap>("TileMap");
+
+                if (TileMap != null)
+                {
+                    Logger.Debug("TileMap найден внутри isometric_tileset!", true);
+                }
+            }
+
+            // Если не нашли TileMap через прямой путь, применяем рекурсивный поиск
             if (TileMap == null)
             {
-                Logger.Debug("LevelGenerator: TileMap not found in parent, searching in whole scene...", true);
+                Logger.Debug("TileMap не найден через прямой путь, выполняется полный поиск...", true);
                 TileMap = FindTileMapInScene();
 
                 if (TileMap == null)
                 {
-                    Logger.Error("LevelGenerator: TileMap not found!");
+                    Logger.Error("LevelGenerator: TileMap не найден нигде в сцене!");
                     return;
                 }
             }
@@ -127,11 +140,11 @@ public partial class LevelGenerator : Node
         // Проверка тайлсета
         if (TileMap.TileSet == null)
         {
-            Logger.Error("TileMap does not have a TileSet assigned!");
+            Logger.Error("TileMap не имеет назначенного TileSet!");
             return;
         }
 
-        Logger.Debug($"TileMap found: {TileMap.Name}, TileSet OK", true);
+        Logger.Debug($"TileMap найден: {TileMap.Name}, TileSet OK", true);
 
         // Генерируем начальный уровень с задержкой
         GetTree().CreateTimer(0.5).Timeout += () => GenerateRandomLevel();
@@ -155,11 +168,31 @@ public partial class LevelGenerator : Node
     // Рекурсивный поиск TileMap в узле
     private Godot.TileMap FindTileMapInNode(Node node)
     {
+        // Выводим отладочную информацию о каждом проверяемом узле
+        Logger.Debug($"Проверяем узел: {node.Name} (Тип: {node.GetType().Name})", false);
+
+        // Перебираем все дочерние узлы
         foreach (var child in node.GetChildren())
         {
+            // Если узел - TileMap, возвращаем его
             if (child is Godot.TileMap tileMap)
+            {
+                Logger.Debug($"Найден TileMap в узле: {node.Name}/{child.Name}", true);
                 return tileMap;
+            }
 
+            // Если узел - isometric_tileset, проверяем его напрямую на наличие TileMap
+            if (child.Name == "isometric_tileset")
+            {
+                var possibleTileMap = child.GetNodeOrNull<Godot.TileMap>("TileMap");
+                if (possibleTileMap != null)
+                {
+                    Logger.Debug($"Найден TileMap внутри isometric_tileset!", true);
+                    return possibleTileMap;
+                }
+            }
+
+            // Рекурсивно проверяем дочерние узлы
             var result = FindTileMapInNode(child);
             if (result != null)
                 return result;
@@ -255,8 +288,8 @@ public partial class LevelGenerator : Node
             // Добавляем стены вокруг комнат и коридоров
             AddWalls();
 
-            // Комментируем вызов декораций (как было запрошено)
-            // AddDecorationsAndObstacles();
+            // Добавляем декорации и препятствия
+            AddDecorationsAndObstacles();
 
             // Добавляем опасные зоны (вода/лава)
             AddHazards();
@@ -326,7 +359,6 @@ public partial class LevelGenerator : Node
             _currentPlayer = existingPlayer;
             _currentPlayer.Position = _currentSpawnPosition;
             Logger.Debug($"Teleported existing player to spawn position: {_currentSpawnPosition}", true);
-
         }
         else if (PlayerScene != null)
         {
@@ -374,10 +406,21 @@ public partial class LevelGenerator : Node
                 _currentPlayer.AddToGroup(PlayerGroup);
             }
 
-            // Добавляем игрока в сцену
-            GetParent().AddChild(_currentPlayer);
+            // Найти контейнер с Y-сортировкой
+            var ySortContainer = GetParent().GetNodeOrNull<Node2D>("YSortContainer");
 
-            Logger.Debug($"Spawned new player at {_currentSpawnPosition}", true);
+            if (ySortContainer != null)
+            {
+                // Добавляем игрока в YSortContainer вместо корневого узла
+                ySortContainer.AddChild(_currentPlayer);
+                Logger.Debug($"Spawned new player at {_currentSpawnPosition} in YSortContainer", true);
+            }
+            else
+            {
+                // Запасной вариант - добавляем как обычно к родителю
+                GetParent().AddChild(_currentPlayer);
+                Logger.Debug($"YSortContainer not found. Spawned player at {_currentSpawnPosition} in parent node", true);
+            }
         }
         catch (Exception e)
         {
@@ -908,8 +951,29 @@ public partial class LevelGenerator : Node
         }
     }
 
-    // Метод для добавления декораций и препятствий (закомментирован)
-    /*
+    // Метод для выбора тайла декорации в зависимости от биома
+    private Vector2I GetDecorationTileForBiome()
+    {
+        switch (BiomeType)
+        {
+            case 1: // Forest
+                return _random.Next(0, 100) < 50 ? Snow : ForestFloor;
+            case 2: // Desert
+                return _random.Next(0, 100) < 60 ? Sand : Stone;
+            case 3: // Ice
+                return _random.Next(0, 100) < 70 ? Snow : Ice;
+            case 4: // Techno
+                return _random.Next(0, 100) < 50 ? Stone : Techno;
+            case 5: // Anomal
+                return _random.Next(0, 100) < 50 ? Anomal : Lava;
+            case 6: // Lava Springs
+                return _random.Next(0, 100) < 60 ? Lava : Stone;
+            default: // Grassland
+                return _random.Next(0, 100) < 70 ? Grass : Ground;
+        }
+    }
+
+    // Метод для добавления декораций и препятствий
     private void AddDecorationsAndObstacles()
     {
         // Выбор тайла декорации в зависимости от биома
@@ -971,9 +1035,9 @@ public partial class LevelGenerator : Node
                         }
                     }
                 }
-                catch
+                catch (Exception e)
                 {
-                    // Игнорируем ошибки при размещении декораций
+                    Logger.Debug($"Error placing decoration: {e.Message}", false);
                 }
             }
         }
@@ -991,15 +1055,16 @@ public partial class LevelGenerator : Node
                         TileMap.SetCell(DecorationLayerIndex, new Vector2I(x, y), SourceID, decorationTile);
                         _mapMask[x, y] = TileType.Decoration;
                     }
-                    catch
+                    catch (Exception e)
                     {
-                        // Игнорируем ошибки
+                        Logger.Debug($"Error placing corridor decoration: {e.Message}", false);
                     }
                 }
             }
         }
+
+        Logger.Debug($"Added decorations for biome {GetBiomeName(BiomeType)}", true);
     }
-    */
 
     // Метод для добавления опасных участков (вода/лава и т.д.)
     private void AddHazards()
@@ -1102,8 +1167,11 @@ public partial class LevelGenerator : Node
                 // Устанавливаем пользовательские данные
                 tileData.SetCustomData("is_walkable", isWalkable);
 
-                // Здесь можно добавить код для настройки физики (если требуется)
-                // TileMap.UpdateCellPhysics(BaseLayerIndex, new Vector2I(x, y));
+                // Обновляем физическую коллизию на основе проходимости
+                if (isWalkable)
+                    TileMap.EraseCell(WallLayerIndex, new Vector2I(x, y));
+                else
+                    TileMap.SetCell(WallLayerIndex, new Vector2I(x, y), SourceID, Empty);
             }
         }
         catch (Exception e)
