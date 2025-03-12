@@ -314,14 +314,17 @@ public partial class LevelGenerator : Node
             // Выбираем фоновый тайл для данного биома
             _backgroundTile = GetBackgroundTileForBiome();
 
-            // Заполняем всю карту фоновыми тайлами
-            FillMapWithBackgroundTiles();
+            // Заполняем базовый пол по всей карте
+            FillBaseFloor();
 
             // Генерируем комнаты
             GenerateRooms();
 
             // Соединяем комнаты коридорами
             ConnectRooms();
+
+            // Заполняем всю карту фоновыми тайлами
+            FillMapWithBackgroundTiles();
 
             // Добавляем стены вокруг комнат и коридоров
             AddWalls();
@@ -571,7 +574,35 @@ public partial class LevelGenerator : Node
         }
     }
 
-    // Метод для заполнения карты фоновыми тайлами
+    // Метод для заполнения базового пола (вся карта)
+    // Обновленный метод для базового пола
+    private void FillBaseFloor()
+    {
+        Vector2I backgroundTile = GetBackgroundTileForBiome();
+        int tilesAdded = 0;
+
+        for (int x = 0; x < MapWidth; x++)
+        {
+            for (int y = 0; y < MapHeight; y++)
+            {
+                try
+                {
+                    // Размещаем базовый тайл пола на ВСЕЙ карте 
+                    FloorsTileMap.SetCell(MAP_LAYER, new Vector2I(x, y), FloorsSourceID, backgroundTile);
+                    _mapMask[x, y] = TileType.Background;
+                    tilesAdded++;
+                }
+                catch (Exception e)
+                {
+                    Logger.Debug($"Error setting base floor at ({x}, {y}): {e.Message}", false);
+                }
+            }
+        }
+
+        Logger.Debug($"Base floor filled with {tilesAdded} tiles", true);
+    }
+
+    // Метод для добавления декоративных фоновых тайлов только в пустых областях
     private void FillMapWithBackgroundTiles()
     {
         Vector2I backgroundTile = GetBackgroundTileForBiome();
@@ -581,20 +612,22 @@ public partial class LevelGenerator : Node
         {
             for (int y = 0; y < MapHeight; y++)
             {
-                // Добавляем фоновый тайл только если клетка имеет тип None или Background
-                if (_mapMask[x, y] == TileType.None || _mapMask[x, y] == TileType.Background)
+                // Добавляем декоративный фоновый тайл ТОЛЬКО если клетка НЕ является комнатой или коридором
+                if (_mapMask[x, y] != TileType.Room && _mapMask[x, y] != TileType.Corridor)
                 {
                     try
                     {
-                        // Размещаем фоновый тайл на FloorsTileMap
-                        FloorsTileMap.SetCell(MAP_LAYER, new Vector2I(x, y), FloorsSourceID, backgroundTile);
-                        _mapMask[x, y] = TileType.Background;
-
+                        // Размещаем декоративный фоновый тайл на WallsTileMap
+                        WallsTileMap.SetCell(MAP_LAYER, new Vector2I(x, y), WallsSourceID, backgroundTile);
+                        if (_mapMask[x, y] == TileType.None)
+                        {
+                            _mapMask[x, y] = TileType.Background;
+                        }
                         tilesAdded++;
                     }
                     catch (Exception e)
                     {
-                        Logger.Debug($"Error setting tile at ({x}, {y}): {e.Message}", false);
+                        Logger.Debug($"Error setting background tile at ({x}, {y}): {e.Message}", false);
                     }
                 }
             }
@@ -602,7 +635,6 @@ public partial class LevelGenerator : Node
 
         Logger.Debug($"Map filled with {tilesAdded} background tiles for biome type: {BiomeType}", true);
     }
-
 
     // Метод для генерации комнат
     private void GenerateRooms()
@@ -670,7 +702,7 @@ public partial class LevelGenerator : Node
             {
                 try
                 {
-                    // Размещаем тайл пола на FloorsTileMap
+                    // Проверяем, что используем FloorsTileMap (а не WallsTileMap)
                     FloorsTileMap.SetCell(MAP_LAYER, new Vector2I(x, y), FloorsSourceID, floorTile);
                     _mapMask[x, y] = TileType.Room;
                 }
