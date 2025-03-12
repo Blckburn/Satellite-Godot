@@ -7,16 +7,20 @@ public partial class LevelGenerator : Node
     // Сигнал о завершении генерации уровня с передачей точки спавна
     [Signal] public delegate void LevelGeneratedEventHandler(Vector2 spawnPosition);
 
-    // Ссылка на TileMap для размещения тайлов
-    [Export] public Godot.TileMap TileMap { get; set; }
+    // Ссылки на раздельные TileMap и контейнеры
+    [Export] public Godot.TileMap FloorsTileMap { get; set; } // Для пола
+    [Export] public Godot.TileMap WallsTileMap { get; set; }  // Для стен и декораций
+    [Export] public Node2D YSortContainer { get; set; }       // Контейнер для игрока и сортировки
+
+    // Ссылка на родительский узел, содержащий все тайлмапы
+    [Export] public Node2D IsometricTileset { get; set; }
 
     // Сцена игрока для спавна
     [Export] public PackedScene PlayerScene { get; set; }
 
-    // Индексы слоев
-    [Export] public int BaseLayerIndex { get; set; } = 0;  // Для пола
-    [Export] public int DecorationLayerIndex { get; set; } = 1;  // Для первого уровня стен/декораций
-    [Export] public int WallLayerIndex { get; set; } = 2;  // Для высоких стен/препятствий
+    // Индексы слоев - используем только слой 0 для всех TileMap
+    // В Godot индексация слоев начинается с 0
+    private const int MAP_LAYER = 0;  // Константа для всех операций с TileMap
 
     // Настройки размера карты
     [Export] public int MapWidth { get; set; } = 50;
@@ -35,8 +39,9 @@ public partial class LevelGenerator : Node
     [Export] public int BiomeType { get; set; } = 0;
     [Export] public int MaxBiomeTypes { get; set; } = 7; // Увеличено до 7 для Lava Springs
 
-    // ID источника тайлов в тайлсете
-    [Export] public int SourceID { get; set; } = 0;
+    // ID источников тайлов в тайлсете
+    [Export] public int WallsSourceID { get; set; } = 2;  // Source ID для тайлсета стен (walls.png)
+    [Export] public int FloorsSourceID { get; set; } = 3;  // Source ID для тайлсета пола (floors.png)
 
     // Клавиша для генерации нового уровня
     [Export] public Key GenerationKey { get; set; } = Key.G;
@@ -106,45 +111,17 @@ public partial class LevelGenerator : Node
         // Инициализируем маску карты
         _mapMask = new TileType[MapWidth, MapHeight];
 
-        // Поиск TileMap, если не указан
-        if (TileMap == null)
+        // Поиск необходимых сцен компонентов, если они не указаны
+        FindRequiredNodes();
+
+        // Проверка, что необходимые компоненты найдены
+       /* if (!CheckRequiredComponents())
         {
-            // Сначала ищем узел isometric_tileset
-            var isometricTileset = GetNode<Node2D>("../isometric_tileset");
-
-            if (isometricTileset != null)
-            {
-                // Ищем TileMap внутри isometric_tileset
-                TileMap = isometricTileset.GetNode<Godot.TileMap>("TileMap");
-
-                if (TileMap != null)
-                {
-                    Logger.Debug("TileMap найден внутри isometric_tileset!", true);
-                }
-            }
-
-            // Если не нашли TileMap через прямой путь, применяем рекурсивный поиск
-            if (TileMap == null)
-            {
-                Logger.Debug("TileMap не найден через прямой путь, выполняется полный поиск...", true);
-                TileMap = FindTileMapInScene();
-
-                if (TileMap == null)
-                {
-                    Logger.Error("LevelGenerator: TileMap не найден нигде в сцене!");
-                    return;
-                }
-            }
-        }
-
-        // Проверка тайлсета
-        if (TileMap.TileSet == null)
-        {
-            Logger.Error("TileMap не имеет назначенного TileSet!");
+            Logger.Error("LevelGenerator: Не все необходимые компоненты найдены!");
             return;
-        }
+        }*/
 
-        Logger.Debug($"TileMap найден: {TileMap.Name}, TileSet OK", true);
+        Logger.Debug($"TileMap найдены: Floors: {FloorsTileMap.Name}, Walls: {WallsTileMap.Name}, YSort: {YSortContainer.Name}", true);
 
         // Генерируем начальный уровень с задержкой
         GetTree().CreateTimer(0.5).Timeout += () => GenerateRandomLevel();
@@ -159,43 +136,104 @@ public partial class LevelGenerator : Node
         }
     }
 
-    // Метод для поиска TileMap в сцене
-    private Godot.TileMap FindTileMapInScene()
+    // Метод для поиска всех необходимых узлов
+    private void FindRequiredNodes()
     {
-        return FindTileMapInNode(GetTree().Root);
-    }
-
-    // Рекурсивный поиск TileMap в узле
-    private Godot.TileMap FindTileMapInNode(Node node)
-    {
-        // Выводим отладочную информацию о каждом проверяемом узле
-        Logger.Debug($"Проверяем узел: {node.Name} (Тип: {node.GetType().Name})", false);
-
-        // Перебираем все дочерние узлы
-        foreach (var child in node.GetChildren())
+        // Сначала ищем родительский IsometricTileset, если он не указан
+        if (IsometricTileset == null)
         {
-            // Если узел - TileMap, возвращаем его
-            if (child is Godot.TileMap tileMap)
+            IsometricTileset = GetNodeOrNull<Node2D>("../isometric_tileset");
+
+            if (IsometricTileset == null)
             {
-                Logger.Debug($"Найден TileMap в узле: {node.Name}/{child.Name}", true);
-                return tileMap;
+                IsometricTileset = FindNodeRecursive<Node2D>(GetTree().Root, "isometric_tileset");
+                Logger.Debug($"Поиск IsometricTileset: {(IsometricTileset != null ? "Найден" : "Не найден")}", true);
+            }
+        }
+
+        // Если нашли IsometricTileset, используем его для поиска дочерних узлов
+        if (IsometricTileset != null)
+        {
+            // Ищем FloorsTileMap внутри IsometricTileset
+            if (FloorsTileMap == null)
+            {
+                FloorsTileMap = IsometricTileset.GetNodeOrNull<Godot.TileMap>("Floors");
+                Logger.Debug($"Поиск FloorsTileMap внутри IsometricTileset: {(FloorsTileMap != null ? "Найден" : "Не найден")}", true);
             }
 
-            // Если узел - isometric_tileset, проверяем его напрямую на наличие TileMap
-            if (child.Name == "isometric_tileset")
+            // Ищем WallsTileMap внутри IsometricTileset
+            if (WallsTileMap == null)
             {
-                var possibleTileMap = child.GetNodeOrNull<Godot.TileMap>("TileMap");
-                if (possibleTileMap != null)
-                {
-                    Logger.Debug($"Найден TileMap внутри isometric_tileset!", true);
-                    return possibleTileMap;
-                }
+                WallsTileMap = IsometricTileset.GetNodeOrNull<Godot.TileMap>("Walls");
+                Logger.Debug($"Поиск WallsTileMap внутри IsometricTileset: {(WallsTileMap != null ? "Найден" : "Не найден")}", true);
+            }
+
+            // Ищем YSortContainer внутри IsometricTileset
+            if (YSortContainer == null)
+            {
+                YSortContainer = IsometricTileset.GetNodeOrNull<Node2D>("YSortContainer");
+                Logger.Debug($"Поиск YSortContainer внутри IsometricTileset: {(YSortContainer != null ? "Найден" : "Не найден")}", true);
+            }
+        }
+        else
+        {
+            // Если не нашли IsometricTileset, попробуем найти компоненты напрямую
+            if (FloorsTileMap == null)
+            {
+                FloorsTileMap = FindNodeRecursive<Godot.TileMap>(GetTree().Root, "Floors");
+            }
+
+            if (WallsTileMap == null)
+            {
+                WallsTileMap = FindNodeRecursive<Godot.TileMap>(GetTree().Root, "Walls");
+            }
+
+            if (YSortContainer == null)
+            {
+                YSortContainer = FindNodeRecursive<Node2D>(GetTree().Root, "YSortContainer");
+            }
+        }
+    }
+
+    // Проверяем, что YSortContainer найден и его настройки
+    private void EnsureSortingWorks()
+    {
+        if (YSortContainer is Node2D ysortNode2D)
+        {
+            // Явно включаем Y-сортировку для контейнера (только если это Node2D)
+            ysortNode2D.YSortEnabled = true;
+            Logger.Debug($"YSortContainer found, YSortEnabled set to: {ysortNode2D.YSortEnabled}", true);
+        }
+        else
+        {
+            Logger.Error("YSortContainer is not a Node2D or is not found!");
+        }
+
+        if (IsometricTileset is Node2D isometricNode)
+        {
+            // Устанавливаем YSortEnabled для IsometricTileset (только если это Node2D)
+            isometricNode.YSortEnabled = true;
+            Logger.Debug($"IsometricTileset found, YSortEnabled set to: {isometricNode.YSortEnabled}", true);
+        }
+    }
+
+    // Рекурсивный поиск узла по типу и имени
+    private T FindNodeRecursive<T>(Node node, string nodeName = null) where T : class
+    {
+        foreach (var child in node.GetChildren())
+        {
+            // Проверяем совпадение типа и, если указано, имени
+            if (child is T result && (string.IsNullOrEmpty(nodeName) || child.Name == nodeName))
+            {
+                return result;
             }
 
             // Рекурсивно проверяем дочерние узлы
-            var result = FindTileMapInNode(child);
-            if (result != null)
-                return result;
+            var found = FindNodeRecursive<T>(child, nodeName);
+            if (found != null)
+            {
+                return found;
+            }
         }
 
         return null;
@@ -398,6 +436,20 @@ public partial class LevelGenerator : Node
 
             // Создаем нового игрока
             _currentPlayer = PlayerScene.Instantiate<Node2D>();
+
+            // Убедимся, что у игрока нет фиксированного Z-индекса
+            if (_currentPlayer is Node2D playerNode)
+            {
+                // Для отладки
+                Logger.Debug($"Created player node: {playerNode.Name}, ZIndex before: {playerNode.ZIndex}", true);
+
+                // Сбрасываем Z-индекс для сортировки
+                playerNode.ZIndex = 0;
+
+                // Для отладки
+                Logger.Debug($"Reset player ZIndex to 0", true);
+            }
+
             _currentPlayer.Position = _currentSpawnPosition;
 
             // Добавляем игрока в группу для быстрого поиска
@@ -406,20 +458,27 @@ public partial class LevelGenerator : Node
                 _currentPlayer.AddToGroup(PlayerGroup);
             }
 
-            // Найти контейнер с Y-сортировкой
-            var ySortContainer = GetParent().GetNodeOrNull<Node2D>("YSortContainer");
-
-            if (ySortContainer != null)
+            // Проверяем, что YSortContainer найден и включена Y сортировка
+            if (YSortContainer != null)
             {
-                // Добавляем игрока в YSortContainer вместо корневого узла
-                ySortContainer.AddChild(_currentPlayer);
+                // Убедимся, что Y-сортировка включена (если это Node2D)
+                if (YSortContainer is Node2D ysortNode)
+                {
+                    ysortNode.YSortEnabled = true;
+
+                    // Для отладки
+                    Logger.Debug($"YSortContainer is Node2D, YSortEnabled set to: {ysortNode.YSortEnabled}", true);
+                }
+
+                // Добавляем игрока в YSortContainer для правильной сортировки по глубине
+                YSortContainer.AddChild(_currentPlayer);
                 Logger.Debug($"Spawned new player at {_currentSpawnPosition} in YSortContainer", true);
             }
             else
             {
                 // Запасной вариант - добавляем как обычно к родителю
                 GetParent().AddChild(_currentPlayer);
-                Logger.Debug($"YSortContainer not found. Spawned player at {_currentSpawnPosition} in parent node", true);
+                Logger.Error($"YSortContainer not found. Spawned player at {_currentSpawnPosition} in parent node");
             }
         }
         catch (Exception e)
@@ -470,17 +529,23 @@ public partial class LevelGenerator : Node
     // Метод для очистки всех слоев карты
     private void ClearAllLayers()
     {
-        if (TileMap != null)
+        try
         {
-            try
+            if (FloorsTileMap != null)
             {
-                TileMap.Clear();
-                Logger.Debug("TileMap cleared successfully", false);
+                FloorsTileMap.Clear();
+                Logger.Debug("FloorsTileMap cleared successfully", false);
             }
-            catch (Exception e)
+
+            if (WallsTileMap != null)
             {
-                Logger.Error($"Error clearing TileMap: {e.Message}");
+                WallsTileMap.Clear();
+                Logger.Debug("WallsTileMap cleared successfully", false);
             }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error clearing TileMaps: {e.Message}");
         }
     }
 
@@ -517,24 +582,19 @@ public partial class LevelGenerator : Node
             for (int y = 0; y < MapHeight; y++)
             {
                 // Добавляем фоновый тайл только если клетка имеет тип None или Background
-                // и на ней нет никаких тайлов на этом слое
                 if (_mapMask[x, y] == TileType.None || _mapMask[x, y] == TileType.Background)
                 {
-                    // Проверяем, есть ли уже тайлы на этих координатах в DecorationLayerIndex
-                    if (TileMap.GetCellSourceId(DecorationLayerIndex, new Vector2I(x, y)) == -1)
+                    try
                     {
-                        try
-                        {
-                            // Размещаем фоновый тайл на DecorationLayerIndex (Level1)
-                            TileMap.SetCell(DecorationLayerIndex, new Vector2I(x, y), SourceID, backgroundTile);
-                            _mapMask[x, y] = TileType.Background;
+                        // Размещаем фоновый тайл на FloorsTileMap
+                        FloorsTileMap.SetCell(MAP_LAYER, new Vector2I(x, y), FloorsSourceID, backgroundTile);
+                        _mapMask[x, y] = TileType.Background;
 
-                            tilesAdded++;
-                        }
-                        catch (Exception e)
-                        {
-                            Logger.Debug($"Error setting tile at ({x}, {y}): {e.Message}", false);
-                        }
+                        tilesAdded++;
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Debug($"Error setting tile at ({x}, {y}): {e.Message}", false);
                     }
                 }
             }
@@ -610,12 +670,9 @@ public partial class LevelGenerator : Node
             {
                 try
                 {
-                    // Размещаем тайл пола
-                    TileMap.SetCell(BaseLayerIndex, new Vector2I(x, y), SourceID, floorTile);
+                    // Размещаем тайл пола на FloorsTileMap
+                    FloorsTileMap.SetCell(MAP_LAYER, new Vector2I(x, y), FloorsSourceID, floorTile);
                     _mapMask[x, y] = TileType.Room;
-
-                    // Для пола удаляем коллизию, чтобы сделать его проходимым
-                    TileMap.EraseCell(WallLayerIndex, new Vector2I(x, y));
                 }
                 catch (Exception e)
                 {
@@ -711,14 +768,12 @@ public partial class LevelGenerator : Node
                 {
                     try
                     {
-                        TileMap.SetCell(BaseLayerIndex, new Vector2I(x, yPos), SourceID, floorTile);
+                        // Размещаем тайл коридора на FloorsTileMap
+                        FloorsTileMap.SetCell(MAP_LAYER, new Vector2I(x, yPos), FloorsSourceID, floorTile);
                         if (_mapMask[x, yPos] != TileType.Room)  // Не перезаписываем комнаты
                         {
                             _mapMask[x, yPos] = TileType.Corridor;
                         }
-
-                        // Удаляем коллизию для коридоров
-                        TileMap.EraseCell(WallLayerIndex, new Vector2I(x, yPos));
                     }
                     catch (Exception)
                     {
@@ -752,14 +807,12 @@ public partial class LevelGenerator : Node
                 {
                     try
                     {
-                        TileMap.SetCell(BaseLayerIndex, new Vector2I(xPos, y), SourceID, floorTile);
+                        // Размещаем тайл коридора на FloorsTileMap
+                        FloorsTileMap.SetCell(MAP_LAYER, new Vector2I(xPos, y), FloorsSourceID, floorTile);
                         if (_mapMask[xPos, y] != TileType.Room)  // Не перезаписываем комнаты
                         {
                             _mapMask[xPos, y] = TileType.Corridor;
                         }
-
-                        // Удаляем коллизию для коридоров
-                        TileMap.EraseCell(WallLayerIndex, new Vector2I(xPos, y));
                     }
                     catch (Exception)
                     {
@@ -856,16 +909,15 @@ public partial class LevelGenerator : Node
             {
                 // Получаем тайл стены соответствующий биому
                 Vector2I primaryWallTile = GetWallTileForBiome(pos);
-                Vector2I secondaryWallTile = GetSecondaryWallTileForBiome(pos);
 
-                // Первый уровень стены на DecorationLayer
-                TileMap.SetCell(DecorationLayerIndex, pos, SourceID, primaryWallTile);
+                // Визуальная часть стены на WallsTileMap
+                WallsTileMap.SetCell(MAP_LAYER, pos, WallsSourceID, primaryWallTile);
 
-                // Второй уровень стены на WallLayer (для некоторых стен)
-                if (_random.Next(0, 100) < 70) // 70% шанс добавить второй уровень
+                // Добавляем коллизию для стен
+                if (_random.Next(0, 100) < 70) // 70% шанс сделать стену непроходимой
                 {
-                    // Ключевое изменение: добавляем тайл на WallLayer чтобы создать коллизию
-                    TileMap.SetCell(WallLayerIndex, pos, SourceID, secondaryWallTile);
+                    // В данном случае коллизия создается автоматически,
+                    // так как WallsTileMap имеет настроенные коллизии
                 }
             }
             catch (Exception e)
@@ -1024,15 +1076,12 @@ public partial class LevelGenerator : Node
 
                     if (canPlaceDecoration)
                     {
-                        // Размещаем декорацию
-                        TileMap.SetCell(DecorationLayerIndex, new Vector2I(x, y), SourceID, decorationTile);
+                        // Размещаем декорацию на WallsTileMap
+                        WallsTileMap.SetCell(MAP_LAYER, new Vector2I(x, y), WallsSourceID, decorationTile);
                         _mapMask[x, y] = TileType.Decoration;
 
-                        // Некоторые декорации добавляем и на верхний слой для объемности
-                        if (_random.Next(0, 100) < 40) // 40% шанс 
-                        {
-                            TileMap.SetCell(WallLayerIndex, new Vector2I(x, y), SourceID, decorationTile);
-                        }
+                        // Некоторые декорации делаем непроходимыми через коллизии
+                        // Они будут непроходимыми автоматически благодаря настройкам WallsTileMap
                     }
                 }
                 catch (Exception e)
@@ -1052,7 +1101,7 @@ public partial class LevelGenerator : Node
                 {
                     try
                     {
-                        TileMap.SetCell(DecorationLayerIndex, new Vector2I(x, y), SourceID, decorationTile);
+                        WallsTileMap.SetCell(MAP_LAYER, new Vector2I(x, y), WallsSourceID, decorationTile);
                         _mapMask[x, y] = TileType.Decoration;
                     }
                     catch (Exception e)
@@ -1130,19 +1179,14 @@ public partial class LevelGenerator : Node
             {
                 for (int y = startY; y < startY + hazardHeight; y++)
                 {
-                    // Размещаем опасный тайл на базовом слое
-                    TileMap.SetCell(BaseLayerIndex, new Vector2I(x, y), SourceID, hazardTile);
+                    // Размещаем опасный тайл на пол (FloorsTileMap)
+                    FloorsTileMap.SetCell(MAP_LAYER, new Vector2I(x, y), FloorsSourceID, hazardTile);
 
                     // Опасные зоны (лава) непроходимы, а вода проходима
                     if (hazardTile == Lava)
                     {
-                        // Для лавы создаем коллизию
-                        TileMap.SetCell(WallLayerIndex, new Vector2I(x, y), SourceID, hazardTile);
-                    }
-                    else
-                    {
-                        // Для воды удаляем коллизию, чтобы сделать ее проходимой
-                        TileMap.EraseCell(WallLayerIndex, new Vector2I(x, y));
+                        // Для лавы создаем визуальное представление на WallsTileMap для отображения эффекта
+                        WallsTileMap.SetCell(MAP_LAYER, new Vector2I(x, y), WallsSourceID, hazardTile);
                     }
                 }
             }
@@ -1161,17 +1205,23 @@ public partial class LevelGenerator : Node
         try
         {
             // Получаем данные тайла
-            TileData tileData = TileMap.GetCellTileData(BaseLayerIndex, new Vector2I(x, y));
+            TileData tileData = FloorsTileMap.GetCellTileData(MAP_LAYER, new Vector2I(x, y));
             if (tileData != null)
             {
                 // Устанавливаем пользовательские данные
                 tileData.SetCustomData("is_walkable", isWalkable);
 
-                // Обновляем физическую коллизию на основе проходимости
+                // Обновляем физическую коллизию через WallsTileMap
                 if (isWalkable)
-                    TileMap.EraseCell(WallLayerIndex, new Vector2I(x, y));
+                {
+                    // Убираем тайл из WallsTileMap, чтобы сделать проходимым
+                    WallsTileMap.EraseCell(MAP_LAYER, new Vector2I(x, y));
+                }
                 else
-                    TileMap.SetCell(WallLayerIndex, new Vector2I(x, y), SourceID, Empty);
+                {
+                    // Добавляем блокирующий тайл в WallsTileMap
+                    WallsTileMap.SetCell(MAP_LAYER, new Vector2I(x, y), WallsSourceID, Empty);
+                }
             }
         }
         catch (Exception e)
@@ -1184,7 +1234,7 @@ public partial class LevelGenerator : Node
     private Vector2 MapTileToIsometricWorld(Vector2I tilePos)
     {
         // Получаем размер ячейки из TileMap, если возможно
-        Vector2I tileSize = TileMap.TileSet?.TileSize ?? new Vector2I(64, 32);
+        Vector2I tileSize = FloorsTileMap?.TileSet?.TileSize ?? new Vector2I(64, 32);
 
         // Для изометрии 2:1 (обычное соотношение в изометрических играх)
         float x = (tilePos.X - tilePos.Y) * tileSize.X / 2.0f;

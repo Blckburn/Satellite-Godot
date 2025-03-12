@@ -9,9 +9,9 @@ public partial class Character : CharacterBody2D, IDamageable
     [Export] public float MoveSpeed { get; set; } = 200f;
 
     // Новые поля для управления Z-индексом
-    [Export] public bool EnableDynamicZIndex { get; set; } = true;
-    [Export] public int BaseZIndex { get; set; } = 1; // Базовый Z-индекс = 1
-    [Export] public int ZIndexPerGridUnit { get; set; } = 1;
+
+
+
     [Export] public bool ShowDebugInfo { get; set; } = false;
     [Export] public NodePath TileMapPath { get; set; }
     [Export] public Vector2 TileSize { get; set; } = new Vector2(64, 32);
@@ -25,6 +25,7 @@ public partial class Character : CharacterBody2D, IDamageable
     protected Label _debugLabel;
     protected Node2D _spriteNode; // Ссылка на узел спрайта
 
+
     [Signal] public delegate void HealthChangedEventHandler(float currentHealth, float maxHealth);
     [Signal] public delegate void CharacterDiedEventHandler();
 
@@ -36,6 +37,8 @@ public partial class Character : CharacterBody2D, IDamageable
 
         // Добавляем персонажа в группу "Player" для легкого поиска
         AddToGroup("Player");
+
+
     }
 
     public override void _PhysicsProcess(double delta)
@@ -48,41 +51,11 @@ public partial class Character : CharacterBody2D, IDamageable
 
     public override void _Process(double delta)
     {
-        // Обновляем Z-индекс если он включен
-        if (EnableDynamicZIndex && _isActive)
-        {
-            // Самая простая формула для z-сортировки в изометрии
-            // Z-индекс должен быть пропорционален сумме X+Y в мировых координатах
-
-            // Базовый z-индекс = 1 (между полом (0) и высокими стенами (2))
-            int baseZ = 1;
-
-            // Нормализованный модификатор на основе позиции
-            // Делим на большое число, чтобы получить значение в диапазоне от 0 до 1
-            float xySum = Position.X + Position.Y;
-            float zModifier = xySum / 1000.0f;
-
-            // Итоговый Z-индекс будет между 1 и 2
-            float finalZ = baseZ + zModifier;
-
-            // Применяем Z-индекс к спрайту или к самому узлу
-            if (_spriteNode != null)
-            {
-                _spriteNode.ZIndex = (int)finalZ;
-            }
-            else
-            {
-                ZIndex = (int)finalZ;
-            }
-
-            // Обновляем отладочный текст, если включено
-            if (ShowDebugInfo && _debugLabel != null)
-            {
-                _debugLabel.Text = $"Pos: ({Position.X:F1}, {Position.Y:F1})\nZ-Index: {(int)finalZ}";
-            }
-        }
 
     }
+
+    // Новый метод для обновления Z-индекса
+   
 
     protected virtual void ProcessMovement(double delta)
     {
@@ -184,7 +157,6 @@ public partial class Character : CharacterBody2D, IDamageable
         return true;
     }
 
-
     // Находим узел спрайта
     protected virtual void FindSpriteNode()
     {
@@ -233,4 +205,25 @@ public partial class Character : CharacterBody2D, IDamageable
     }
 
 
+
+
+    // Рекурсивный поиск узла заданного типа
+    protected T FindNodeRecursive<T>(Node root) where T : class
+    {
+        foreach (var child in root.GetChildren())
+        {
+            if (child is T result)
+            {
+                return result;
+            }
+
+            var childResult = FindNodeRecursive<T>(child);
+            if (childResult != null)
+            {
+                return childResult;
+            }
+        }
+
+        return null;
+    }
 }
