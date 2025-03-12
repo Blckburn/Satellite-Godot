@@ -7,6 +7,9 @@ public partial class LevelGenerator : Node
     // Сигнал о завершении генерации уровня с передачей точки спавна
     [Signal] public delegate void LevelGeneratedEventHandler(Vector2 spawnPosition);
 
+    // Сигнал о завершении генерации всей мульти-секционной карты
+    [Signal] public delegate void MultiSectionMapGeneratedEventHandler();
+
     // Ссылки на раздельные TileMap и контейнеры
     [Export] public Godot.TileMap FloorsTileMap { get; set; } // Для пола
     [Export] public Godot.TileMap WallsTileMap { get; set; }  // Для стен и декораций
@@ -57,6 +60,19 @@ public partial class LevelGenerator : Node
     // Настройки стен
     [Export] public bool UseVariedWalls { get; set; } = true;  // Включить вариативность стен
 
+    // Настройки мульти-секционной карты
+    [Export] public bool UseMultiSectionMap { get; set; } = false;  // Включить/выключить мульти-секционную карту
+    [Export] public int GridWidth { get; set; } = 2;  // Количество секций по горизонтали
+    [Export] public int GridHeight { get; set; } = 2;  // Количество секций по вертикали
+    [Export] public int SectionSpacing { get; set; } = 10;  // Расстояние между секциями в тайлах
+
+    // НОВОЕ: Настройка для соединения секций проходами
+    [Export] public bool ConnectSections { get; set; } = true;  // Соединять ли секции проходами
+    [Export] public int ConnectorWidth { get; set; } = 3;  // Ширина проходов между секциями
+
+    // Клавиша для генерации мульти-секционной карты
+    [Export] public Key MultiSectionGenerationKey { get; set; } = Key.M;
+
     // Псевдослучайный генератор
     private Random _random;
 
@@ -80,8 +96,8 @@ public partial class LevelGenerator : Node
     private static readonly Vector2I Anomal = new Vector2I(4, 1);
     private static readonly Vector2I Empty = new Vector2I(5, 1);
 
-    // Типы тайлов для маски карты
-    private enum TileType
+    // Типы тайлов для маски карты (публичное для доступа из MapSection)
+    public enum TileType
     {
         None,
         Background,
@@ -90,6 +106,32 @@ public partial class LevelGenerator : Node
         Wall,
         Decoration
     }
+
+    // Класс для представления секции карты
+    public class MapSection
+    {
+        public int BiomeType { get; set; }
+        public int GridX { get; set; }
+        public int GridY { get; set; }
+        public Vector2 WorldOffset { get; set; }
+        public List<Rect2I> Rooms { get; set; } = new List<Rect2I>();
+        public TileType[,] SectionMask { get; set; }
+        public Vector2? SpawnPosition { get; set; } = null;
+
+        public MapSection(int biomeType, int gridX, int gridY, int mapWidth, int mapHeight)
+        {
+            BiomeType = biomeType;
+            GridX = gridX;
+            GridY = gridY;
+            SectionMask = new TileType[mapWidth, mapHeight];
+        }
+    }
+
+    // Список секций карты
+    private List<MapSection> _mapSections = new List<MapSection>();
+
+    // Текущая секция, с которой мы работаем
+    private MapSection _currentSection;
 
     // Маска карты
     private TileType[,] _mapMask;
@@ -114,13 +156,6 @@ public partial class LevelGenerator : Node
         // Поиск необходимых сцен компонентов, если они не указаны
         FindRequiredNodes();
 
-        // Проверка, что необходимые компоненты найдены
-       /* if (!CheckRequiredComponents())
-        {
-            Logger.Error("LevelGenerator: Не все необходимые компоненты найдены!");
-            return;
-        }*/
-
         Logger.Debug($"TileMap найдены: Floors: {FloorsTileMap.Name}, Walls: {WallsTileMap.Name}, YSort: {YSortContainer.Name}", true);
 
         // Генерируем начальный уровень с задержкой
@@ -130,9 +165,369 @@ public partial class LevelGenerator : Node
     // Обработка ввода для генерации нового уровня
     public override void _Input(InputEvent @event)
     {
-        if (@event is InputEventKey keyEvent && keyEvent.Pressed && keyEvent.Keycode == GenerationKey)
+        if (@event is InputEventKey keyEvent && keyEvent.Pressed)
         {
-            GenerateRandomLevel();
+            if (keyEvent.Keycode == GenerationKey)
+            {
+                GenerateRandomLevel();
+            }
+            else if (keyEvent.Keycode == MultiSectionGenerationKey)
+            {
+                GenerateMultiSectionMap();
+            }
+        }
+    }
+
+    // Метод для генерации мульти-секционной карты
+    public void GenerateMultiSectionMap()
+    {
+        try
+        {
+            Logger.Debug("Starting generation of multi-section map", true);
+
+            // Включаем мульти-секционный режим
+            UseMultiSectionMap = true;
+
+            // Очищаем предыдущие секции
+            _mapSections.Clear();
+
+            // Очищаем карту
+            ClearAllLayers();
+
+            // Создаем секции в сетке
+            CreateMapSections();
+
+            // НОВОЕ: Генерируем все секции карты
+            GenerateAllSections();
+
+            // НОВОЕ: Соединяем соседние секции проходами
+            if (ConnectSections)
+            {
+                ConnectAdjacentSections();
+            }
+
+            // НОВОЕ: Выбираем секцию для спавна игрока
+            SelectSpawnSection();
+
+            Logger.Debug($"Multi-section map generated with {_mapSections.Count} sections", true);
+
+            // Эмитим сигнал о завершении генерации мульти-секции
+            EmitSignal("MultiSectionMapGenerated");
+
+            // Спавним или перемещаем игрока
+            if (CreatePlayerOnGeneration)
+            {
+                HandlePlayerSpawn();
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error generating multi-section map: {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    // НОВОЕ: Метод для генерации всех секций
+    private void GenerateAllSections()
+    {
+        Logger.Debug("Generating all map sections", true);
+
+        // Проходим по всем секциям и генерируем для каждой уровень
+        foreach (var section in _mapSections)
+        {
+            // Устанавливаем текущую секцию
+            _currentSection = section;
+
+            // Устанавливаем тип биома для генерации
+            BiomeType = section.BiomeType;
+
+            // Генерируем уровень для этой секции
+            GenerateSectionLevel(section);
+
+            Logger.Debug($"Generated section at ({section.GridX},{section.GridY}) with biome {GetBiomeName(section.BiomeType)}", false);
+        }
+    }
+
+    // НОВОЕ: Метод для генерации уровня для конкретной секции
+    private void GenerateSectionLevel(MapSection section)
+    {
+        try
+        {
+            // Сохраняем ссылку на текущую секцию
+            _currentSection = section;
+
+            // Сбрасываем список комнат секции
+            section.Rooms.Clear();
+
+            // Сбрасываем маску секции
+            ResetSectionMask(section);
+
+            // Устанавливаем фоновый тайл в зависимости от биома секции
+            _backgroundTile = GetBackgroundTileForBiome(section.BiomeType);
+
+            // Заполняем базовый пол секции
+            FillSectionBaseFloor(section);
+
+            // Генерируем комнаты в секции
+            GenerateSectionRooms(section);
+
+            // Соединяем комнаты в секции коридорами
+            ConnectSectionRooms(section);
+
+            // Заполняем фоновыми тайлами пустые области
+            FillSectionWithBackgroundTiles(section);
+
+            // Добавляем стены вокруг комнат и коридоров
+            AddSectionWalls(section);
+
+            // Добавляем декорации и препятствия
+            AddSectionDecorationsAndObstacles(section);
+
+            // Добавляем опасные зоны (вода/лава)
+            AddSectionHazards(section);
+
+            // Выбираем точку спавна для секции
+            section.SpawnPosition = GetSectionSpawnPosition(section);
+
+            Logger.Debug($"Section level generated at ({section.GridX}, {section.GridY}) with {section.Rooms.Count} rooms", false);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error generating section level: {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    // НОВОЕ: Метод для соединения соседних секций проходами
+    private void ConnectAdjacentSections()
+    {
+        Logger.Debug("Connecting adjacent sections", true);
+
+        // Соединяем секции по горизонтали (слева направо)
+        for (int y = 0; y < GridHeight; y++)
+        {
+            for (int x = 0; x < GridWidth - 1; x++)
+            {
+                // Находим секции для соединения
+                MapSection leftSection = _mapSections.Find(s => s.GridX == x && s.GridY == y);
+                MapSection rightSection = _mapSections.Find(s => s.GridX == x + 1 && s.GridY == y);
+
+                if (leftSection != null && rightSection != null)
+                {
+                    // Соединяем секции по оси X
+                    ConnectSectionsHorizontally(leftSection, rightSection);
+                }
+            }
+        }
+
+        // Соединяем секции по вертикали (сверху вниз)
+        for (int x = 0; x < GridWidth; x++)
+        {
+            for (int y = 0; y < GridHeight - 1; y++)
+            {
+                // Находим секции для соединения
+                MapSection topSection = _mapSections.Find(s => s.GridX == x && s.GridY == y);
+                MapSection bottomSection = _mapSections.Find(s => s.GridX == x && s.GridY == y + 1);
+
+                if (topSection != null && bottomSection != null)
+                {
+                    // Соединяем секции по оси Y
+                    ConnectSectionsVertically(topSection, bottomSection);
+                }
+            }
+        }
+    }
+
+    // НОВОЕ: Метод для соединения двух секций по горизонтали
+    private void ConnectSectionsHorizontally(MapSection leftSection, MapSection rightSection)
+    {
+        try
+        {
+            // Определяем позицию прохода по вертикали (Y) - примерно посередине секции
+            int passageY = MapHeight / 2 + _random.Next(-MapHeight / 4, MapHeight / 4);
+
+            // Определяем тайлы пола для обеих секций
+            Vector2I leftFloorTile = GetFloorTileForBiome(leftSection.BiomeType);
+            Vector2I rightFloorTile = GetFloorTileForBiome(rightSection.BiomeType);
+
+            // Создаем проход из левой секции в правую
+            for (int offsetY = -ConnectorWidth / 2; offsetY <= ConnectorWidth / 2; offsetY++)
+            {
+                int y = passageY + offsetY;
+
+                if (y < 0 || y >= MapHeight)
+                    continue;
+
+                // Устанавливаем проход из левой секции (правый край)
+                for (int x = MapWidth - 5; x < MapWidth; x++)
+                {
+                    // Рассчитываем смещенные координаты
+                    Vector2I leftPos = new Vector2I(x, y);
+                    Vector2 leftWorldOffset = leftSection.WorldOffset;
+                    Vector2I leftWorldPos = new Vector2I((int)leftWorldOffset.X + leftPos.X, (int)leftWorldOffset.Y + leftPos.Y);
+
+                    // Размещаем тайл пола
+                    FloorsTileMap.SetCell(MAP_LAYER, leftWorldPos, FloorsSourceID, leftFloorTile);
+
+                    // Обновляем маску секции
+                    if (x < MapWidth && y < MapHeight)
+                    {
+                        leftSection.SectionMask[x, y] = TileType.Corridor;
+                    }
+                }
+
+                // Устанавливаем проход из правой секции (левый край)
+                for (int x = 0; x < 5; x++)
+                {
+                    // Рассчитываем смещенные координаты
+                    Vector2I rightPos = new Vector2I(x, y);
+                    Vector2 rightWorldOffset = rightSection.WorldOffset;
+                    Vector2I rightWorldPos = new Vector2I((int)rightWorldOffset.X + rightPos.X, (int)rightWorldOffset.Y + rightPos.Y);
+
+                    // Размещаем тайл пола
+                    FloorsTileMap.SetCell(MAP_LAYER, rightWorldPos, FloorsSourceID, rightFloorTile);
+
+                    // Обновляем маску секции
+                    if (x < MapWidth && y < MapHeight)
+                    {
+                        rightSection.SectionMask[x, y] = TileType.Corridor;
+                    }
+                }
+            }
+
+            Logger.Debug($"Connected sections horizontally at Y={passageY}", false);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error connecting sections horizontally: {e.Message}");
+        }
+    }
+
+    // НОВОЕ: Метод для соединения двух секций по вертикали
+    private void ConnectSectionsVertically(MapSection topSection, MapSection bottomSection)
+    {
+        try
+        {
+            // Определяем позицию прохода по горизонтали (X) - примерно посередине секции
+            int passageX = MapWidth / 2 + _random.Next(-MapWidth / 4, MapWidth / 4);
+
+            // Определяем тайлы пола для обеих секций
+            Vector2I topFloorTile = GetFloorTileForBiome(topSection.BiomeType);
+            Vector2I bottomFloorTile = GetFloorTileForBiome(bottomSection.BiomeType);
+
+            // Создаем проход из верхней секции в нижнюю
+            for (int offsetX = -ConnectorWidth / 2; offsetX <= ConnectorWidth / 2; offsetX++)
+            {
+                int x = passageX + offsetX;
+
+                if (x < 0 || x >= MapWidth)
+                    continue;
+
+                // Устанавливаем проход из верхней секции (нижний край)
+                for (int y = MapHeight - 5; y < MapHeight; y++)
+                {
+                    // Рассчитываем смещенные координаты
+                    Vector2I topPos = new Vector2I(x, y);
+                    Vector2 topWorldOffset = topSection.WorldOffset;
+                    Vector2I topWorldPos = new Vector2I((int)topWorldOffset.X + topPos.X, (int)topWorldOffset.Y + topPos.Y);
+
+                    // Размещаем тайл пола
+                    FloorsTileMap.SetCell(MAP_LAYER, topWorldPos, FloorsSourceID, topFloorTile);
+
+                    // Обновляем маску секции
+                    if (x < MapWidth && y < MapHeight)
+                    {
+                        topSection.SectionMask[x, y] = TileType.Corridor;
+                    }
+                }
+
+                // Устанавливаем проход из нижней секции (верхний край)
+                for (int y = 0; y < 5; y++)
+                {
+                    // Рассчитываем смещенные координаты
+                    Vector2I bottomPos = new Vector2I(x, y);
+                    Vector2 bottomWorldOffset = bottomSection.WorldOffset;
+                    Vector2I bottomWorldPos = new Vector2I((int)bottomWorldOffset.X + bottomPos.X, (int)bottomWorldOffset.Y + bottomPos.Y);
+
+                    // Размещаем тайл пола
+                    FloorsTileMap.SetCell(MAP_LAYER, bottomWorldPos, FloorsSourceID, bottomFloorTile);
+
+                    // Обновляем маску секции
+                    if (x < MapWidth && y < MapHeight)
+                    {
+                        bottomSection.SectionMask[x, y] = TileType.Corridor;
+                    }
+                }
+            }
+
+            Logger.Debug($"Connected sections vertically at X={passageX}", false);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error connecting sections vertically: {e.Message}");
+        }
+    }
+
+    // НОВОЕ: Метод для выбора секции для спавна игрока
+    private void SelectSpawnSection()
+    {
+        if (_mapSections.Count == 0)
+        {
+            Logger.Error("No sections available for player spawn!");
+            return;
+        }
+
+        // Выбираем случайную секцию для спавна игрока
+        int sectionIndex = _random.Next(0, _mapSections.Count);
+        MapSection spawnSection = _mapSections[sectionIndex];
+
+        // Проверяем, есть ли у секции точка спавна
+        if (spawnSection.SpawnPosition.HasValue)
+        {
+            // Рассчитываем мировые координаты точки спавна
+            Vector2 localSpawnPos = spawnSection.SpawnPosition.Value;
+            Vector2 worldOffset = spawnSection.WorldOffset;
+
+            // Устанавливаем глобальную точку спавна
+            _currentSpawnPosition = new Vector2(
+                localSpawnPos.X + worldOffset.X,
+                localSpawnPos.Y + worldOffset.Y
+            );
+
+            Logger.Debug($"Selected spawn position in section ({spawnSection.GridX}, {spawnSection.GridY})", true);
+            Logger.Debug($"Local spawn position: {localSpawnPos}, World spawn position: {_currentSpawnPosition}", false);
+        }
+        else
+        {
+            Logger.Error($"Selected section at ({spawnSection.GridX}, {spawnSection.GridY}) has no spawn position!");
+        }
+    }
+
+    // Метод для создания структуры секций
+    private void CreateMapSections()
+    {
+        // Создаем секции по сетке
+        for (int y = 0; y < GridHeight; y++)
+        {
+            for (int x = 0; x < GridWidth; x++)
+            {
+                // Выбираем случайный биом для секции
+                int biomeType = _random.Next(0, MaxBiomeTypes);
+
+                // Создаем новую секцию
+                MapSection section = new MapSection(biomeType, x, y, MapWidth, MapHeight);
+
+                // Рассчитываем смещение в мировых координатах для каждой секции
+                // Это смещение будет использоваться при размещении тайлов
+                float offsetX = x * (MapWidth + SectionSpacing);
+                float offsetY = y * (MapHeight + SectionSpacing);
+
+                // Сохраняем смещение
+                section.WorldOffset = new Vector2(offsetX, offsetY);
+
+                // Добавляем секцию в список
+                _mapSections.Add(section);
+
+                Logger.Debug($"Created section at grid ({x},{y}) with biome {GetBiomeName(biomeType)}", false);
+            }
         }
     }
 
@@ -244,6 +639,9 @@ public partial class LevelGenerator : Node
     {
         try
         {
+            // Выключаем мульти-секционный режим для обычной генерации
+            UseMultiSectionMap = false;
+
             // Выбираем случайный биом
             int randomBiome = new Random().Next(0, MaxBiomeTypes);
             BiomeType = randomBiome;
@@ -344,7 +742,7 @@ public partial class LevelGenerator : Node
             Logger.Debug($"Level generated with {_rooms.Count} rooms", true);
 
             // Вызываем сигнал о завершении генерации
-            EmitSignal(SignalName.LevelGenerated, _currentSpawnPosition);
+            EmitSignal("LevelGenerated", _currentSpawnPosition);
 
             // Спавним или перемещаем игрока
             if (CreatePlayerOnGeneration)
@@ -356,6 +754,587 @@ public partial class LevelGenerator : Node
         {
             Logger.Error($"Error during level generation: {e.Message}\n{e.StackTrace}");
         }
+    }
+
+    // НОВОЕ: Метод для сброса маски секции
+    private void ResetSectionMask(MapSection section)
+    {
+        for (int x = 0; x < MapWidth; x++)
+        {
+            for (int y = 0; y < MapHeight; y++)
+            {
+                section.SectionMask[x, y] = TileType.None;
+            }
+        }
+    }
+
+    // НОВОЕ: Метод для заполнения базового пола секции
+    private void FillSectionBaseFloor(MapSection section)
+    {
+        Vector2I backgroundTile = GetBackgroundTileForBiome(section.BiomeType);
+        int tilesAdded = 0;
+        Vector2 worldOffset = section.WorldOffset;
+
+        for (int x = 0; x < MapWidth; x++)
+        {
+            for (int y = 0; y < MapHeight; y++)
+            {
+                try
+                {
+                    // Рассчитываем мировые координаты тайла
+                    Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
+
+                    // Размещаем базовый тайл пола на всей секции
+                    FloorsTileMap.SetCell(MAP_LAYER, worldPos, FloorsSourceID, backgroundTile);
+                    section.SectionMask[x, y] = TileType.Background;
+                    tilesAdded++;
+                }
+                catch (Exception e)
+                {
+                    Logger.Debug($"Error setting base floor at section ({section.GridX},{section.GridY}), pos ({x}, {y}): {e.Message}", false);
+                }
+            }
+        }
+
+        Logger.Debug($"Section base floor filled with {tilesAdded} tiles for biome {GetBiomeName(section.BiomeType)}", false);
+    }
+
+    // НОВОЕ: Метод для генерации комнат в секции
+    private void GenerateSectionRooms(MapSection section)
+    {
+        // Создаем комнаты
+        int attempts = 0;
+        int createdRooms = 0;
+        Vector2 worldOffset = section.WorldOffset;
+
+        while (createdRooms < MaxRooms && attempts < MaxRooms * 5)
+        {
+            attempts++;
+
+            // Определяем случайный размер комнаты
+            int width = _random.Next(MinRoomSize, MaxRoomSize + 1);
+            int height = _random.Next(MinRoomSize, MaxRoomSize + 1);
+
+            // Определяем случайную позицию комнаты (с отступом от краев)
+            int x = _random.Next(2, MapWidth - width - 2);
+            int y = _random.Next(2, MapHeight - height - 2);
+
+            // Создаем прямоугольник комнаты
+            Rect2I newRoom = new Rect2I(x, y, width, height);
+
+            // Проверяем, пересекается ли новая комната с существующими
+            bool roomOverlaps = false;
+            foreach (var room in section.Rooms)
+            {
+                // Добавляем буфер в MinRoomDistance тайлов для избежания слишком близких комнат
+                Rect2I expandedRoom = new Rect2I(
+                    room.Position - new Vector2I(MinRoomDistance, MinRoomDistance),
+                    room.Size + new Vector2I(MinRoomDistance * 2, MinRoomDistance * 2)
+                );
+
+                if (expandedRoom.Intersects(newRoom))
+                {
+                    roomOverlaps = true;
+                    break;
+                }
+            }
+
+            // Если комната не пересекается, добавляем её
+            if (!roomOverlaps)
+            {
+                CreateSectionRoom(section, newRoom);
+                section.Rooms.Add(newRoom);
+                createdRooms++;
+
+                Logger.Debug($"Created room in section ({section.GridX},{section.GridY}) at ({x},{y}) with size {width}x{height}", false);
+            }
+        }
+
+        Logger.Debug($"Generated {section.Rooms.Count} rooms in section ({section.GridX},{section.GridY}) after {attempts} attempts", false);
+    }
+
+    // НОВОЕ: Метод для создания комнаты в секции
+    private void CreateSectionRoom(MapSection section, Rect2I room)
+    {
+        // Выбор тайла пола в зависимости от биома
+        Vector2I floorTile = GetFloorTileForBiome(section.BiomeType);
+        Vector2 worldOffset = section.WorldOffset;
+
+        // Размещаем тайлы пола внутри комнаты
+        for (int x = room.Position.X; x < room.Position.X + room.Size.X; x++)
+        {
+            for (int y = room.Position.Y; y < room.Position.Y + room.Size.Y; y++)
+            {
+                try
+                {
+                    // Рассчитываем мировые координаты тайла
+                    Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
+
+                    // Размещаем тайл пола
+                    FloorsTileMap.SetCell(MAP_LAYER, worldPos, FloorsSourceID, floorTile);
+                    section.SectionMask[x, y] = TileType.Room;
+                }
+                catch (Exception e)
+                {
+                    Logger.Debug($"Error creating room tile at section ({section.GridX},{section.GridY}), pos ({x},{y}): {e.Message}", false);
+                }
+            }
+        }
+    }
+
+    // НОВОЕ: Метод для соединения комнат в секции коридорами
+    private void ConnectSectionRooms(MapSection section)
+    {
+        if (section.Rooms.Count < 2)
+        {
+            Logger.Debug($"Not enough rooms to connect in section ({section.GridX},{section.GridY})", false);
+            return;
+        }
+
+        // Сначала сортируем комнаты по положению (слева направо, сверху вниз)
+        section.Rooms.Sort((a, b) => {
+            return (a.Position.X + a.Position.Y).CompareTo(b.Position.X + b.Position.Y);
+        });
+
+        // Соединяем каждую комнату с следующей и с одной случайной
+        for (int i = 0; i < section.Rooms.Count; i++)
+        {
+            // Соединяем с следующей комнатой (по кругу)
+            int nextIndex = (i + 1) % section.Rooms.Count;
+            ConnectSectionTwoRooms(section, section.Rooms[i], section.Rooms[nextIndex]);
+
+            // С небольшой вероятностью соединяем с еще одной случайной комнатой
+            if (_random.Next(0, 100) < 30)  // 30% шанс дополнительного соединения
+            {
+                int randomIndex = _random.Next(0, section.Rooms.Count);
+                // Избегаем соединения с самой собой или с той, с которой уже соединены
+                if (randomIndex != i && randomIndex != nextIndex)
+                {
+                    ConnectSectionTwoRooms(section, section.Rooms[i], section.Rooms[randomIndex]);
+                }
+            }
+        }
+    }
+
+    // НОВОЕ: Метод для соединения двух комнат в секции
+    private void ConnectSectionTwoRooms(MapSection section, Rect2I roomA, Rect2I roomB)
+    {
+        try
+        {
+            // Получаем центры комнат
+            Vector2I centerA = roomA.Position + roomA.Size / 2;
+            Vector2I centerB = roomB.Position + roomB.Size / 2;
+
+            // С вероятностью 50% сначала идем по горизонтали, потом по вертикали
+            // Иначе - сначала по вертикали, потом по горизонтали
+            if (_random.Next(0, 2) == 0)
+            {
+                CreateSectionHorizontalTunnel(section, centerA.X, centerB.X, centerA.Y);
+                CreateSectionVerticalTunnel(section, centerA.Y, centerB.Y, centerB.X);
+            }
+            else
+            {
+                CreateSectionVerticalTunnel(section, centerA.Y, centerB.Y, centerA.X);
+                CreateSectionHorizontalTunnel(section, centerA.X, centerB.X, centerB.Y);
+            }
+
+            Logger.Debug($"Connected rooms in section ({section.GridX},{section.GridY}) at ({roomA.Position.X},{roomA.Position.Y}) and ({roomB.Position.X},{roomB.Position.Y})", false);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error connecting rooms in section ({section.GridX},{section.GridY}): {e.Message}");
+        }
+    }
+
+    // НОВОЕ: Метод для создания горизонтального тоннеля в секции
+    private void CreateSectionHorizontalTunnel(MapSection section, int x1, int x2, int y)
+    {
+        // Выбор тайла пола в зависимости от биома
+        Vector2I floorTile = GetFloorTileForBiome(section.BiomeType);
+        Vector2 worldOffset = section.WorldOffset;
+
+        // Определяем начальную и конечную точку тоннеля
+        int start = Math.Min(x1, x2);
+        int end = Math.Max(x1, x2);
+
+        // Создаем тоннель с шириной CorridorWidth
+        for (int x = start; x <= end; x++)
+        {
+            for (int offset = 0; offset < CorridorWidth; offset++)
+            {
+                int yPos = y - (CorridorWidth / 2) + offset;
+
+                // Проверяем, находится ли позиция в пределах секции
+                if (yPos >= 0 && yPos < MapHeight && x >= 0 && x < MapWidth)
+                {
+                    try
+                    {
+                        // Рассчитываем мировые координаты тайла
+                        Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + yPos);
+
+                        // Размещаем тайл коридора
+                        FloorsTileMap.SetCell(MAP_LAYER, worldPos, FloorsSourceID, floorTile);
+                        if (section.SectionMask[x, yPos] != TileType.Room)  // Не перезаписываем комнаты
+                        {
+                            section.SectionMask[x, yPos] = TileType.Corridor;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Игнорируем ошибки при установке тайлов
+                    }
+                }
+            }
+        }
+    }
+
+    // НОВОЕ: Метод для создания вертикального тоннеля в секции
+    private void CreateSectionVerticalTunnel(MapSection section, int y1, int y2, int x)
+    {
+        // Выбор тайла пола в зависимости от биома
+        Vector2I floorTile = GetFloorTileForBiome(section.BiomeType);
+        Vector2 worldOffset = section.WorldOffset;
+
+        // Определяем начальную и конечную точку тоннеля
+        int start = Math.Min(y1, y2);
+        int end = Math.Max(y1, y2);
+
+        // Создаем тоннель с шириной CorridorWidth
+        for (int y = start; y <= end; y++)
+        {
+            for (int offset = 0; offset < CorridorWidth; offset++)
+            {
+                int xPos = x - (CorridorWidth / 2) + offset;
+
+                // Проверяем, находится ли позиция в пределах секции
+                if (xPos >= 0 && xPos < MapWidth && y >= 0 && y < MapHeight)
+                {
+                    try
+                    {
+                        // Рассчитываем мировые координаты тайла
+                        Vector2I worldPos = new Vector2I((int)worldOffset.X + xPos, (int)worldOffset.Y + y);
+
+                        // Размещаем тайл коридора
+                        FloorsTileMap.SetCell(MAP_LAYER, worldPos, FloorsSourceID, floorTile);
+                        if (section.SectionMask[xPos, y] != TileType.Room)  // Не перезаписываем комнаты
+                        {
+                            section.SectionMask[xPos, y] = TileType.Corridor;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Игнорируем ошибки при установке тайлов
+                    }
+                }
+            }
+        }
+    }
+
+    // НОВОЕ: Метод для добавления фоновых тайлов в секции
+    private void FillSectionWithBackgroundTiles(MapSection section)
+    {
+        Vector2I backgroundTile = GetBackgroundTileForBiome(section.BiomeType);
+        int tilesAdded = 0;
+        Vector2 worldOffset = section.WorldOffset;
+
+        for (int x = 0; x < MapWidth; x++)
+        {
+            for (int y = 0; y < MapHeight; y++)
+            {
+                // Добавляем декоративный фоновый тайл только если клетка не является комнатой или коридором
+                if (section.SectionMask[x, y] != TileType.Room && section.SectionMask[x, y] != TileType.Corridor)
+                {
+                    try
+                    {
+                        // Рассчитываем мировые координаты тайла
+                        Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
+
+                        // Размещаем фоновый тайл
+                        WallsTileMap.SetCell(MAP_LAYER, worldPos, WallsSourceID, backgroundTile);
+                        if (section.SectionMask[x, y] == TileType.None)
+                        {
+                            section.SectionMask[x, y] = TileType.Background;
+                        }
+                        tilesAdded++;
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Debug($"Error setting background tile in section ({section.GridX},{section.GridY}) at ({x}, {y}): {e.Message}", false);
+                    }
+                }
+            }
+        }
+
+        Logger.Debug($"Section filled with {tilesAdded} background tiles for biome {GetBiomeName(section.BiomeType)}", false);
+    }
+
+    // НОВОЕ: Метод для добавления стен в секции
+    private void AddSectionWalls(MapSection section)
+    {
+        // Создаем временный список для хранения позиций, где нужно разместить стены
+        List<Vector2I> wallPositions = new List<Vector2I>();
+        Vector2 worldOffset = section.WorldOffset;
+
+        // Проверяем каждую ячейку секции для добавления стен
+        for (int x = 0; x < MapWidth; x++)
+        {
+            for (int y = 0; y < MapHeight; y++)
+            {
+                // Если текущая клетка - фон (не комната и не коридор)
+                if (section.SectionMask[x, y] == TileType.Background)
+                {
+                    // Проверяем все соседние клетки
+                    bool shouldBeWall = false;
+
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        for (int dy = -1; dy <= 1; dy++)
+                        {
+                            // Пропускаем диагональные и текущую клетку
+                            if ((dx == 0 && dy == 0) || (dx != 0 && dy != 0))
+                                continue;
+
+                            int neighborX = x + dx;
+                            int neighborY = y + dy;
+
+                            // Проверяем, находится ли соседняя клетка на карте
+                            if (neighborX >= 0 && neighborX < MapWidth &&
+                                neighborY >= 0 && neighborY < MapHeight)
+                            {
+                                // Если сосед - комната или коридор, текущая клетка становится стеной
+                                if (section.SectionMask[neighborX, neighborY] == TileType.Room ||
+                                    section.SectionMask[neighborX, neighborY] == TileType.Corridor)
+                                {
+                                    shouldBeWall = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (shouldBeWall)
+                            break;
+                    }
+
+                    // Если клетка должна быть стеной, добавляем ее в список
+                    if (shouldBeWall)
+                    {
+                        // Локальная позиция внутри секции
+                        Vector2I localPos = new Vector2I(x, y);
+
+                        // Глобальная позиция с учетом смещения секции
+                        Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
+
+                        // Добавляем позиции в список
+                        wallPositions.Add(new Vector2I(x, y));
+                        section.SectionMask[x, y] = TileType.Wall;
+                    }
+                }
+            }
+        }
+
+        // Размещаем стены в собранных позициях
+        foreach (var localPos in wallPositions)
+        {
+            try
+            {
+                // Рассчитываем мировые координаты тайла
+                Vector2I worldPos = new Vector2I((int)worldOffset.X + localPos.X, (int)worldOffset.Y + localPos.Y);
+
+                // Получаем тайл стены соответствующий биому
+                Vector2I primaryWallTile = GetWallTileForBiome(section.BiomeType, localPos);
+
+                // Размещаем стену
+                WallsTileMap.SetCell(MAP_LAYER, worldPos, WallsSourceID, primaryWallTile);
+            }
+            catch (Exception e)
+            {
+                Logger.Debug($"Error placing wall in section ({section.GridX},{section.GridY}) at {localPos}: {e.Message}", false);
+            }
+        }
+
+        Logger.Debug($"Added {wallPositions.Count} wall tiles in section ({section.GridX},{section.GridY})", false);
+    }
+
+    // НОВОЕ: Метод для добавления декораций в секции
+    private void AddSectionDecorationsAndObstacles(MapSection section)
+    {
+        // Выбор тайла декорации в зависимости от биома
+        Vector2I decorationTile = GetDecorationTileForBiome(section.BiomeType);
+        Vector2 worldOffset = section.WorldOffset;
+
+        // Добавляем декорации в комнаты секции
+        foreach (var room in section.Rooms)
+        {
+            // Пропускаем маленькие комнаты
+            if (room.Size.X <= 5 || room.Size.Y <= 5)
+                continue;
+
+            // Определяем количество декораций для этой комнаты
+            int roomArea = room.Size.X * room.Size.Y;
+            int maxDecorations = roomArea / 16; // Примерно 1 декорация на каждые 16 клеток
+            int numDecorations = _random.Next(1, maxDecorations + 1);
+
+            for (int i = 0; i < numDecorations; i++)
+            {
+                try
+                {
+                    // Выбираем случайную позицию внутри комнаты, но не у самых краев
+                    int x = _random.Next(room.Position.X + 1, room.Position.X + room.Size.X - 1);
+                    int y = _random.Next(room.Position.Y + 1, room.Position.Y + room.Size.Y - 1);
+
+                    // Чтобы не ставить декорации слишком плотно, проверяем соседние клетки
+                    bool canPlaceDecoration = true;
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        for (int dy = -1; dy <= 1; dy++)
+                        {
+                            int checkX = x + dx;
+                            int checkY = y + dy;
+
+                            if (checkX >= 0 && checkX < MapWidth && checkY >= 0 && checkY < MapHeight)
+                            {
+                                if (section.SectionMask[checkX, checkY] == TileType.Decoration)
+                                {
+                                    canPlaceDecoration = false;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!canPlaceDecoration)
+                            break;
+                    }
+
+                    if (canPlaceDecoration)
+                    {
+                        // Рассчитываем мировые координаты тайла
+                        Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
+
+                        // Размещаем декорацию
+                        WallsTileMap.SetCell(MAP_LAYER, worldPos, WallsSourceID, decorationTile);
+                        section.SectionMask[x, y] = TileType.Decoration;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logger.Debug($"Error placing decoration in section ({section.GridX},{section.GridY}): {e.Message}", false);
+                }
+            }
+        }
+
+        Logger.Debug($"Added decorations for section ({section.GridX},{section.GridY}) with biome {GetBiomeName(section.BiomeType)}", false);
+    }
+
+    // НОВОЕ: Метод для добавления опасных зон в секции
+    private void AddSectionHazards(MapSection section)
+    {
+        // Определяем тип опасности в зависимости от биома
+        Vector2I hazardTile;
+        Vector2 worldOffset = section.WorldOffset;
+
+        switch (section.BiomeType)
+        {
+            case 1: // Forest
+                hazardTile = Water; // (5, 0)
+                break;
+            case 2: // Desert
+                hazardTile = Water; // (5, 0) - Оазисы
+                break;
+            case 3: // Ice
+                hazardTile = Water; // (5, 0) - Проломы во льду
+                break;
+            case 4: // Techno
+                hazardTile = Lava; // (1, 1) - Энергетические поля
+                break;
+            case 5: // Anomal
+                hazardTile = Lava; // (1, 1) - Аномальные зоны
+                break;
+            case 6: // Lava Springs
+                hazardTile = Lava; // (1, 1) - Лавовые источники
+                break;
+            default:
+                hazardTile = Water; // (5, 0)
+                break;
+        }
+
+        // Решаем, добавлять ли опасные зоны в этот биом (шанс 20-70% в зависимости от биома)
+        int hazardChance = 20 + (section.BiomeType * 10);
+
+        // Если случайное число не попадает в диапазон или нет комнат, выходим
+        if (_random.Next(0, 100) >= hazardChance || section.Rooms.Count == 0)
+            return;
+
+        try
+        {
+            // Выбираем случайную комнату для размещения опасности    
+            int roomIndex = _random.Next(0, section.Rooms.Count);
+            Rect2I room = section.Rooms[roomIndex];
+
+            // Не размещаем опасности в слишком маленьких комнатах
+            if (room.Size.X <= 5 || room.Size.Y <= 5)
+                return;
+
+            // Определяем размер опасной зоны (меньше чем раньше)
+            int hazardWidth = _random.Next(2, Math.Min(room.Size.X - 3, 4));
+            int hazardHeight = _random.Next(2, Math.Min(room.Size.Y - 3, 4));
+
+            // Оставляем место для прохода в комнате
+            int maxStartX = room.Position.X + room.Size.X - hazardWidth - 2;
+            int maxStartY = room.Position.Y + room.Size.Y - hazardHeight - 2;
+
+            int startX = _random.Next(room.Position.X + 2, maxStartX);
+            int startY = _random.Next(room.Position.Y + 2, maxStartY);
+
+            // Размещаем опасную зону
+            for (int x = startX; x < startX + hazardWidth; x++)
+            {
+                for (int y = startY; y < startY + hazardHeight; y++)
+                {
+                    // Рассчитываем мировые координаты тайла
+                    Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
+
+                    // Размещаем опасный тайл
+                    FloorsTileMap.SetCell(MAP_LAYER, worldPos, FloorsSourceID, hazardTile);
+
+                    // Опасные зоны (лава) непроходимы, а вода проходима
+                    if (hazardTile == Lava)
+                    {
+                        // Для лавы создаем визуальное представление для отображения эффекта
+                        WallsTileMap.SetCell(MAP_LAYER, worldPos, WallsSourceID, hazardTile);
+                    }
+                }
+            }
+
+            Logger.Debug($"Added {hazardWidth}x{hazardHeight} hazard area in section ({section.GridX},{section.GridY})", false);
+        }
+        catch (Exception e)
+        {
+            Logger.Debug($"Error adding hazards in section ({section.GridX},{section.GridY}): {e.Message}", false);
+        }
+    }
+
+    // НОВОЕ: Метод для получения точки спавна в секции
+    private Vector2 GetSectionSpawnPosition(MapSection section)
+    {
+        if (section.Rooms.Count == 0)
+        {
+            Logger.Error($"No rooms available for spawn in section ({section.GridX},{section.GridY})!");
+            return Vector2.Zero;
+        }
+
+        // Выбираем случайную комнату
+        int roomIndex = _random.Next(0, section.Rooms.Count);
+        Rect2I spawnRoom = section.Rooms[roomIndex];
+
+        // Получаем центр комнаты
+        Vector2I center = spawnRoom.Position + spawnRoom.Size / 2;
+
+        // Преобразуем координаты тайла в мировые координаты
+        Vector2 worldPos = MapTileToIsometricWorld(center);
+
+        Logger.Debug($"Selected spawn position in section ({section.GridX},{section.GridY}) at room {roomIndex}, tile ({center.X}, {center.Y}), world pos: {worldPos}", false);
+
+        return worldPos;
     }
 
     // Метод для получения позиции спавна игрока
@@ -385,7 +1364,7 @@ public partial class LevelGenerator : Node
     // Обработка спавна игрока
     private void HandlePlayerSpawn()
     {
-        if (!_levelGenerated)
+        if (!_levelGenerated && _mapSections.Count == 0)
         {
             Logger.Debug("Level not generated yet, cannot spawn player", true);
             return;
@@ -552,10 +1531,10 @@ public partial class LevelGenerator : Node
         }
     }
 
-    // Выбор фонового тайла в зависимости от биома
-    private Vector2I GetBackgroundTileForBiome()
+    // НОВОЕ: Перегруженный метод для получения фонового тайла в зависимости от типа биома
+    private Vector2I GetBackgroundTileForBiome(int biomeType)
     {
-        switch (BiomeType)
+        switch (biomeType)
         {
             case 1: // Forest
                 return ForestFloor;
@@ -572,6 +1551,12 @@ public partial class LevelGenerator : Node
             default: // Grassland
                 return Grass;
         }
+    }
+
+    // Выбор фонового тайла в зависимости от биома
+    private Vector2I GetBackgroundTileForBiome()
+    {
+        return GetBackgroundTileForBiome(BiomeType);
     }
 
     // Метод для заполнения базового пола (вся карта)
@@ -856,10 +1841,10 @@ public partial class LevelGenerator : Node
     }
 
 
-    // Метод для получения тайла пола в зависимости от биома
-    private Vector2I GetFloorTileForBiome()
+    // НОВОЕ: Перегруженный метод для получения тайла пола на основе типа биома
+    private Vector2I GetFloorTileForBiome(int biomeType)
     {
-        switch (BiomeType)
+        switch (biomeType)
         {
             case 1: // Forest
                 return Grass; // Изменено с ForestFloor на Grass
@@ -876,6 +1861,12 @@ public partial class LevelGenerator : Node
             default: // Grassland
                 return ForestFloor; // Изменено с Grass на ForestFloor
         }
+    }
+
+    // Метод для получения тайла пола в зависимости от биома
+    private Vector2I GetFloorTileForBiome()
+    {
+        return GetFloorTileForBiome(BiomeType);
     }
 
     // Метод для добавления стен вокруг проходимых областей
@@ -940,7 +1931,7 @@ public partial class LevelGenerator : Node
             try
             {
                 // Получаем тайл стены соответствующий биому
-                Vector2I primaryWallTile = GetWallTileForBiome(pos);
+                Vector2I primaryWallTile = GetWallTileForBiome(BiomeType, pos);
 
                 // Визуальная часть стены на WallsTileMap
                 WallsTileMap.SetCell(MAP_LAYER, pos, WallsSourceID, primaryWallTile);
@@ -962,13 +1953,13 @@ public partial class LevelGenerator : Node
     }
 
 
-    // Получение тайла стены в зависимости от биома
-    private Vector2I GetWallTileForBiome(Vector2I position)
+    // НОВОЕ: Перегруженный метод для получения тайла стены в зависимости от типа биома
+    private Vector2I GetWallTileForBiome(int biomeType, Vector2I position)
     {
         // Если включена вариативность и это не опорная стена, добавляем вариации
         bool useVariation = UseVariedWalls && _random.Next(0, 100) < 30; // 30% шанс вариации
 
-        switch (BiomeType)
+        switch (biomeType)
         {
             case 1: // Forest
                 if (useVariation && _random.Next(0, 100) < 50)
@@ -1012,6 +2003,34 @@ public partial class LevelGenerator : Node
         }
     }
 
+    // Получение тайла стены в зависимости от биома
+    private Vector2I GetWallTileForBiome(Vector2I position)
+    {
+        return GetWallTileForBiome(BiomeType, position);
+    }
+
+    // НОВОЕ: Перегруженный метод для получения тайла декорации в зависимости от типа биома
+    private Vector2I GetDecorationTileForBiome(int biomeType)
+    {
+        switch (biomeType)
+        {
+            case 1: // Forest
+                return _random.Next(0, 100) < 50 ? Snow : ForestFloor;
+            case 2: // Desert
+                return _random.Next(0, 100) < 60 ? Sand : Stone;
+            case 3: // Ice
+                return _random.Next(0, 100) < 70 ? Snow : Ice;
+            case 4: // Techno
+                return _random.Next(0, 100) < 50 ? Stone : Techno;
+            case 5: // Anomal
+                return _random.Next(0, 100) < 50 ? Anomal : Lava;
+            case 6: // Lava Springs
+                return _random.Next(0, 100) < 60 ? Lava : Stone;
+            default: // Grassland
+                return _random.Next(0, 100) < 70 ? Grass : Ground;
+        }
+    }
+
     // Получение тайла второго уровня стены
     private Vector2I GetSecondaryWallTileForBiome(Vector2I position)
     {
@@ -1038,23 +2057,7 @@ public partial class LevelGenerator : Node
     // Метод для выбора тайла декорации в зависимости от биома
     private Vector2I GetDecorationTileForBiome()
     {
-        switch (BiomeType)
-        {
-            case 1: // Forest
-                return _random.Next(0, 100) < 50 ? Snow : ForestFloor;
-            case 2: // Desert
-                return _random.Next(0, 100) < 60 ? Sand : Stone;
-            case 3: // Ice
-                return _random.Next(0, 100) < 70 ? Snow : Ice;
-            case 4: // Techno
-                return _random.Next(0, 100) < 50 ? Stone : Techno;
-            case 5: // Anomal
-                return _random.Next(0, 100) < 50 ? Anomal : Lava;
-            case 6: // Lava Springs
-                return _random.Next(0, 100) < 60 ? Lava : Stone;
-            default: // Grassland
-                return _random.Next(0, 100) < 70 ? Grass : Ground;
-        }
+        return GetDecorationTileForBiome(BiomeType);
     }
 
     // Метод для добавления декораций и препятствий
@@ -1311,5 +2314,61 @@ public partial class LevelGenerator : Node
         {
             Logger.Error("Cannot teleport player: Player not found");
         }
+    }
+
+    // НОВОЕ: Метод телепортации игрока в указанную секцию
+    public void TeleportPlayerToSection(int sectionX, int sectionY)
+    {
+        // Находим секцию по координатам сетки
+        MapSection section = _mapSections.Find(s => s.GridX == sectionX && s.GridY == sectionY);
+
+        if (section == null)
+        {
+            Logger.Error($"Cannot find section at grid coordinates ({sectionX}, {sectionY})");
+            return;
+        }
+
+        if (!section.SpawnPosition.HasValue)
+        {
+            Logger.Error($"Section at ({sectionX}, {sectionY}) has no spawn position");
+            return;
+        }
+
+        // Рассчитываем мировые координаты точки спавна
+        Vector2 localSpawnPos = section.SpawnPosition.Value;
+        Vector2 worldOffset = section.WorldOffset;
+        Vector2 worldSpawnPos = new Vector2(localSpawnPos.X + worldOffset.X, localSpawnPos.Y + worldOffset.Y);
+
+        // Находим игрока и телепортируем
+        Node2D player = FindPlayer();
+        if (player != null)
+        {
+            player.Position = worldSpawnPos;
+            Logger.Debug($"Player teleported to section ({sectionX}, {sectionY}) at position {worldSpawnPos}", true);
+
+            // Центрируем камеру
+            CenterCameraOnPlayer();
+        }
+        else
+        {
+            Logger.Error("Cannot teleport player: Player not found");
+        }
+    }
+
+    // НОВОЕ: Получить информацию о всех секциях для дебага
+    public string GetSectionsInfo()
+    {
+        string info = $"Multi-section map: {_mapSections.Count} sections in {GridWidth}x{GridHeight} grid\n";
+
+        foreach (var section in _mapSections)
+        {
+            info += $"Section ({section.GridX}, {section.GridY}): Biome {GetBiomeName(section.BiomeType)}, " +
+                   $"Rooms: {section.Rooms.Count}, " +
+                   $"Offset: {section.WorldOffset}\n";
+        }
+
+        info += $"Current spawn position: {_currentSpawnPosition}";
+
+        return info;
     }
 }

@@ -28,6 +28,9 @@ WallsTileMap = NodePath("../isometric_tileset/Walls")
 YSortContainer = NodePath("../isometric_tileset/YSortContainer")
 IsometricTileset = NodePath("../isometric_tileset")
 PlayerScene = ExtResource("7_jlsqs")
+UseMultiSectionMap = true
+GridWidth = 1
+SectionSpacing = 0
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 script = ExtResource("8_wp0k4")
