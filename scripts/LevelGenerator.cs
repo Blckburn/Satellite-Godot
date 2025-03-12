@@ -158,9 +158,13 @@ public partial class LevelGenerator : Node
 
         Logger.Debug($"TileMap найдены: Floors: {FloorsTileMap.Name}, Walls: {WallsTileMap.Name}, YSort: {YSortContainer.Name}", true);
 
-        // Генерируем начальный уровень с задержкой
-        GetTree().CreateTimer(0.5).Timeout += () => GenerateRandomLevel();
+        // Генерируем мульти-секционную карту сразу с задержкой 0.5 секунды
+        GetTree().CreateTimer(0.5).Timeout += () => {
+            Logger.Debug("Automatically generating multi-section map on startup", true);
+            GenerateMultiSectionMap();
+        };
     }
+
 
     // Обработка ввода для генерации нового уровня
     public override void _Input(InputEvent @event)
@@ -197,16 +201,17 @@ public partial class LevelGenerator : Node
             // Создаем секции в сетке
             CreateMapSections();
 
-            // НОВОЕ: Генерируем все секции карты
+            // Генерируем все секции карты
             GenerateAllSections();
 
-            // НОВОЕ: Соединяем соседние секции проходами
+            // ИСПРАВЛЕНИЕ: Явно указываем, что нужно соединить секции
             if (ConnectSections)
             {
                 ConnectAdjacentSections();
+                Logger.Debug("Connected adjacent sections with passages", true);
             }
 
-            // НОВОЕ: Выбираем секцию для спавна игрока
+            // Выбираем секцию для спавна игрока
             SelectSpawnSection();
 
             Logger.Debug($"Multi-section map generated with {_mapSections.Count} sections", true);
@@ -297,172 +302,1122 @@ public partial class LevelGenerator : Node
     }
 
     // НОВОЕ: Метод для соединения соседних секций проходами
+    // МОДИФИКАЦИЯ метода для соединения соседних секций
     private void ConnectAdjacentSections()
     {
-        Logger.Debug("Connecting adjacent sections", true);
-
-        // Соединяем секции по горизонтали (слева направо)
-        for (int y = 0; y < GridHeight; y++)
+        try
         {
-            for (int x = 0; x < GridWidth - 1; x++)
-            {
-                // Находим секции для соединения
-                MapSection leftSection = _mapSections.Find(s => s.GridX == x && s.GridY == y);
-                MapSection rightSection = _mapSections.Find(s => s.GridX == x + 1 && s.GridY == y);
+            Logger.Debug("Connecting adjacent sections", true);
 
-                if (leftSection != null && rightSection != null)
+            // Соединяем секции по горизонтали (слева направо)
+            for (int y = 0; y < GridHeight; y++)
+            {
+                for (int x = 0; x < GridWidth - 1; x++)
                 {
-                    // Соединяем секции по оси X
-                    ConnectSectionsHorizontally(leftSection, rightSection);
+                    MapSection leftSection = _mapSections.Find(s => s.GridX == x && s.GridY == y);
+                    MapSection rightSection = _mapSections.Find(s => s.GridX == x + 1 && s.GridY == y);
+
+                    if (leftSection != null && rightSection != null)
+                    {
+                        Logger.Debug($"Connecting sections horizontally: ({leftSection.GridX},{leftSection.GridY}) to ({rightSection.GridX},{rightSection.GridY})", false);
+                        ConnectSectionsHorizontally(leftSection, rightSection);
+                    }
                 }
             }
+
+            // Соединяем секции по вертикали (сверху вниз)
+            for (int x = 0; x < GridWidth; x++)
+            {
+                for (int y = 0; y < GridHeight - 1; y++)
+                {
+                    MapSection topSection = _mapSections.Find(s => s.GridX == x && s.GridY == y);
+                    MapSection bottomSection = _mapSections.Find(s => s.GridX == x && s.GridY == y + 1);
+
+                    if (topSection != null && bottomSection != null)
+                    {
+                        Logger.Debug($"Connecting sections vertically: ({topSection.GridX},{topSection.GridY}) to ({bottomSection.GridX},{bottomSection.GridY})", false);
+                        ConnectSectionsVertically(topSection, bottomSection);
+                    }
+                }
+            }
+
+            Logger.Debug("All adjacent sections connected successfully", true);
         }
-
-        // Соединяем секции по вертикали (сверху вниз)
-        for (int x = 0; x < GridWidth; x++)
+        catch (Exception e)
         {
-            for (int y = 0; y < GridHeight - 1; y++)
-            {
-                // Находим секции для соединения
-                MapSection topSection = _mapSections.Find(s => s.GridX == x && s.GridY == y);
-                MapSection bottomSection = _mapSections.Find(s => s.GridX == x && s.GridY == y + 1);
-
-                if (topSection != null && bottomSection != null)
-                {
-                    // Соединяем секции по оси Y
-                    ConnectSectionsVertically(topSection, bottomSection);
-                }
-            }
+            Logger.Error($"Error connecting adjacent sections: {e.Message}\n{e.StackTrace}");
         }
     }
 
-    // НОВОЕ: Метод для соединения двух секций по горизонтали
+
+    // Метод для соединения двух секций по горизонтали
+    // УЛУЧШЕННЫЙ метод для соединения секций по горизонтали
     private void ConnectSectionsHorizontally(MapSection leftSection, MapSection rightSection)
     {
         try
         {
+            Logger.Debug($"Creating horizontal connection between sections ({leftSection.GridX},{leftSection.GridY}) and ({rightSection.GridX},{rightSection.GridY})", true);
+
             // Определяем позицию прохода по вертикали (Y) - примерно посередине секции
-            int passageY = MapHeight / 2 + _random.Next(-MapHeight / 4, MapHeight / 4);
+            // ИЗМЕНЕНИЕ: Используем более предсказуемую позицию коридора
+            int passageY = MapHeight / 2;
 
             // Определяем тайлы пола для обеих секций
             Vector2I leftFloorTile = GetFloorTileForBiome(leftSection.BiomeType);
             Vector2I rightFloorTile = GetFloorTileForBiome(rightSection.BiomeType);
 
-            // Создаем проход из левой секции в правую
-            for (int offsetY = -ConnectorWidth / 2; offsetY <= ConnectorWidth / 2; offsetY++)
+            // Ширина прохода
+            int tunnelWidth = ConnectorWidth;
+
+            // ИЗМЕНЕНИЕ: Расширим коридоры для лучшей видимости
+            if (tunnelWidth < 3) tunnelWidth = 3;
+
+            // Создаем коридор с левой стороны
+            CreateHorizontalCorridorPart(leftSection, MapWidth - 10, MapWidth, passageY, tunnelWidth, leftFloorTile);
+
+            // Создаем коридор с правой стороны
+            CreateHorizontalCorridorPart(rightSection, 0, 10, passageY, tunnelWidth, rightFloorTile);
+
+            // Если есть промежуток между секциями
+            if (SectionSpacing > 0)
             {
-                int y = passageY + offsetY;
-
-                if (y < 0 || y >= MapHeight)
-                    continue;
-
-                // Устанавливаем проход из левой секции (правый край)
-                for (int x = MapWidth - 5; x < MapWidth; x++)
-                {
-                    // Рассчитываем смещенные координаты
-                    Vector2I leftPos = new Vector2I(x, y);
-                    Vector2 leftWorldOffset = leftSection.WorldOffset;
-                    Vector2I leftWorldPos = new Vector2I((int)leftWorldOffset.X + leftPos.X, (int)leftWorldOffset.Y + leftPos.Y);
-
-                    // Размещаем тайл пола
-                    FloorsTileMap.SetCell(MAP_LAYER, leftWorldPos, FloorsSourceID, leftFloorTile);
-
-                    // Обновляем маску секции
-                    if (x < MapWidth && y < MapHeight)
-                    {
-                        leftSection.SectionMask[x, y] = TileType.Corridor;
-                    }
-                }
-
-                // Устанавливаем проход из правой секции (левый край)
-                for (int x = 0; x < 5; x++)
-                {
-                    // Рассчитываем смещенные координаты
-                    Vector2I rightPos = new Vector2I(x, y);
-                    Vector2 rightWorldOffset = rightSection.WorldOffset;
-                    Vector2I rightWorldPos = new Vector2I((int)rightWorldOffset.X + rightPos.X, (int)rightWorldOffset.Y + rightPos.Y);
-
-                    // Размещаем тайл пола
-                    FloorsTileMap.SetCell(MAP_LAYER, rightWorldPos, FloorsSourceID, rightFloorTile);
-
-                    // Обновляем маску секции
-                    if (x < MapWidth && y < MapHeight)
-                    {
-                        rightSection.SectionMask[x, y] = TileType.Corridor;
-                    }
-                }
+                // Заполняем пространство между секциями
+                FillHorizontalGap(leftSection, rightSection, passageY, tunnelWidth);
             }
 
-            Logger.Debug($"Connected sections horizontally at Y={passageY}", false);
+            // Добавляем декоративные стены по краям коридора
+            AddDecorativeHorizontalWalls(leftSection, rightSection, passageY, tunnelWidth);
+
+            Logger.Debug($"Horizontal connection created between sections at Y={passageY}", true);
         }
         catch (Exception e)
         {
-            Logger.Error($"Error connecting sections horizontally: {e.Message}");
+            Logger.Error($"Error connecting sections horizontally: {e.Message}\n{e.StackTrace}");
         }
     }
 
-    // НОВОЕ: Метод для соединения двух секций по вертикали
+    // Метод для соединения двух секций по вертикали
+    // УЛУЧШЕННЫЙ метод для соединения секций по вертикали
     private void ConnectSectionsVertically(MapSection topSection, MapSection bottomSection)
     {
         try
         {
+            Logger.Debug($"Creating vertical connection between sections ({topSection.GridX},{topSection.GridY}) and ({bottomSection.GridX},{bottomSection.GridY})", true);
+
             // Определяем позицию прохода по горизонтали (X) - примерно посередине секции
-            int passageX = MapWidth / 2 + _random.Next(-MapWidth / 4, MapWidth / 4);
+            // ИЗМЕНЕНИЕ: Используем более предсказуемую позицию коридора
+            int passageX = MapWidth / 2;
 
             // Определяем тайлы пола для обеих секций
             Vector2I topFloorTile = GetFloorTileForBiome(topSection.BiomeType);
             Vector2I bottomFloorTile = GetFloorTileForBiome(bottomSection.BiomeType);
 
-            // Создаем проход из верхней секции в нижнюю
-            for (int offsetX = -ConnectorWidth / 2; offsetX <= ConnectorWidth / 2; offsetX++)
+            // Ширина прохода
+            int tunnelWidth = ConnectorWidth;
+
+            // ИЗМЕНЕНИЕ: Расширим коридоры для лучшей видимости
+            if (tunnelWidth < 3) tunnelWidth = 3;
+
+            // Создаем коридор с верхней стороны
+            CreateVerticalCorridorPart(topSection, MapHeight - 10, MapHeight, passageX, tunnelWidth, topFloorTile);
+
+            // Создаем коридор с нижней стороны
+            CreateVerticalCorridorPart(bottomSection, 0, 10, passageX, tunnelWidth, bottomFloorTile);
+
+            // Если есть промежуток между секциями
+            if (SectionSpacing > 0)
             {
-                int x = passageX + offsetX;
+                // Заполняем пространство между секциями
+                FillVerticalGap(topSection, bottomSection, passageX, tunnelWidth);
+            }
 
-                if (x < 0 || x >= MapWidth)
-                    continue;
+            // Добавляем декоративные стены по краям коридора
+            AddDecorativeVerticalWalls(topSection, bottomSection, passageX, tunnelWidth);
 
-                // Устанавливаем проход из верхней секции (нижний край)
-                for (int y = MapHeight - 5; y < MapHeight; y++)
+            Logger.Debug($"Vertical connection created between sections at X={passageX}", true);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error connecting sections vertically: {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    // НОВЫЙ метод: Создает часть горизонтального коридора в секции
+    private void CreateHorizontalCorridorPart(MapSection section, int startX, int endX, int passageY, int tunnelWidth, Vector2I floorTile)
+    {
+        try
+        {
+            Vector2 worldOffset = section.WorldOffset;
+
+            for (int y = passageY - tunnelWidth / 2; y <= passageY + tunnelWidth / 2; y++)
+            {
+                if (y < 0 || y >= MapHeight) continue;
+
+                for (int x = startX; x < endX; x++)
                 {
-                    // Рассчитываем смещенные координаты
-                    Vector2I topPos = new Vector2I(x, y);
-                    Vector2 topWorldOffset = topSection.WorldOffset;
-                    Vector2I topWorldPos = new Vector2I((int)topWorldOffset.X + topPos.X, (int)topWorldOffset.Y + topPos.Y);
+                    if (x < 0 || x >= MapWidth) continue;
 
-                    // Размещаем тайл пола
-                    FloorsTileMap.SetCell(MAP_LAYER, topWorldPos, FloorsSourceID, topFloorTile);
+                    // Рассчитываем мировые координаты
+                    Vector2I worldPos = new Vector2I(
+                        (int)worldOffset.X + x,
+                        (int)worldOffset.Y + y
+                    );
+
+                    // Размещаем пол
+                    FloorsTileMap.SetCell(MAP_LAYER, worldPos, FloorsSourceID, floorTile);
+
+                    // ВАЖНО: Удаляем все стены и препятствия
+                    WallsTileMap.EraseCell(MAP_LAYER, worldPos);
 
                     // Обновляем маску секции
                     if (x < MapWidth && y < MapHeight)
                     {
-                        topSection.SectionMask[x, y] = TileType.Corridor;
-                    }
-                }
-
-                // Устанавливаем проход из нижней секции (верхний край)
-                for (int y = 0; y < 5; y++)
-                {
-                    // Рассчитываем смещенные координаты
-                    Vector2I bottomPos = new Vector2I(x, y);
-                    Vector2 bottomWorldOffset = bottomSection.WorldOffset;
-                    Vector2I bottomWorldPos = new Vector2I((int)bottomWorldOffset.X + bottomPos.X, (int)bottomWorldOffset.Y + bottomPos.Y);
-
-                    // Размещаем тайл пола
-                    FloorsTileMap.SetCell(MAP_LAYER, bottomWorldPos, FloorsSourceID, bottomFloorTile);
-
-                    // Обновляем маску секции
-                    if (x < MapWidth && y < MapHeight)
-                    {
-                        bottomSection.SectionMask[x, y] = TileType.Corridor;
+                        section.SectionMask[x, y] = TileType.Corridor;
                     }
                 }
             }
 
-            Logger.Debug($"Connected sections vertically at X={passageX}", false);
+            // НОВОЕ: Создаем небольшие боковые ответвления рядом с проходом
+            // Это поможет соединить коридор с ближайшими комнатами
+            FindAndConnectToNearbyRooms(section, startX, endX, passageY, tunnelWidth, floorTile);
         }
         catch (Exception e)
         {
-            Logger.Error($"Error connecting sections vertically: {e.Message}");
+            Logger.Error($"Error creating horizontal corridor part: {e.Message}");
+        }
+    }
+
+    // НОВЫЙ метод: Создает часть вертикального коридора в секции
+    private void CreateVerticalCorridorPart(MapSection section, int startY, int endY, int passageX, int tunnelWidth, Vector2I floorTile)
+    {
+        try
+        {
+            Vector2 worldOffset = section.WorldOffset;
+
+            for (int x = passageX - tunnelWidth / 2; x <= passageX + tunnelWidth / 2; x++)
+            {
+                if (x < 0 || x >= MapWidth) continue;
+
+                for (int y = startY; y < endY; y++)
+                {
+                    if (y < 0 || y >= MapHeight) continue;
+
+                    // Рассчитываем мировые координаты
+                    Vector2I worldPos = new Vector2I(
+                        (int)worldOffset.X + x,
+                        (int)worldOffset.Y + y
+                    );
+
+                    // Размещаем пол
+                    FloorsTileMap.SetCell(MAP_LAYER, worldPos, FloorsSourceID, floorTile);
+
+                    // ВАЖНО: Удаляем все стены и препятствия
+                    WallsTileMap.EraseCell(MAP_LAYER, worldPos);
+
+                    // Обновляем маску секции
+                    if (x < MapWidth && y < MapHeight)
+                    {
+                        section.SectionMask[x, y] = TileType.Corridor;
+                    }
+                }
+            }
+
+            // НОВОЕ: Создаем небольшие боковые ответвления рядом с проходом
+            // Это поможет соединить коридор с ближайшими комнатами
+            FindAndConnectToNearbyRooms(section, passageX, tunnelWidth, startY, endY, floorTile, false);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error creating vertical corridor part: {e.Message}");
+        }
+    }
+
+    // НОВЫЙ метод: Заполняет пространство между секциями по горизонтали 
+    private void FillHorizontalGap(MapSection leftSection, MapSection rightSection, int passageY, int tunnelWidth)
+    {
+        try
+        {
+            Vector2I leftFloorTile = GetFloorTileForBiome(leftSection.BiomeType);
+            Vector2I rightFloorTile = GetFloorTileForBiome(rightSection.BiomeType);
+
+            for (int y = passageY - tunnelWidth / 2; y <= passageY + tunnelWidth / 2; y++)
+            {
+                for (int bridgeX = 0; bridgeX < SectionSpacing; bridgeX++)
+                {
+                    // Вычисляем мировую позицию для моста
+                    Vector2I bridgeWorldPos = new Vector2I(
+                        (int)leftSection.WorldOffset.X + MapWidth + bridgeX,
+                        (int)leftSection.WorldOffset.Y + y
+                    );
+
+                    // Используем соответствующий тайл в зависимости от позиции
+                    Vector2I floorTile = (bridgeX < SectionSpacing / 2) ? leftFloorTile : rightFloorTile;
+
+                    // Размещаем пол
+                    FloorsTileMap.SetCell(MAP_LAYER, bridgeWorldPos, FloorsSourceID, floorTile);
+
+                    // Удаляем стены
+                    WallsTileMap.EraseCell(MAP_LAYER, bridgeWorldPos);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error filling horizontal gap: {e.Message}");
+        }
+    }
+
+    // НОВЫЙ метод: Заполняет пространство между секциями по вертикали
+    private void FillVerticalGap(MapSection topSection, MapSection bottomSection, int passageX, int tunnelWidth)
+    {
+        try
+        {
+            Vector2I topFloorTile = GetFloorTileForBiome(topSection.BiomeType);
+            Vector2I bottomFloorTile = GetFloorTileForBiome(bottomSection.BiomeType);
+
+            for (int x = passageX - tunnelWidth / 2; x <= passageX + tunnelWidth / 2; x++)
+            {
+                for (int bridgeY = 0; bridgeY < SectionSpacing; bridgeY++)
+                {
+                    // Вычисляем мировую позицию для моста
+                    Vector2I bridgeWorldPos = new Vector2I(
+                        (int)topSection.WorldOffset.X + x,
+                        (int)topSection.WorldOffset.Y + MapHeight + bridgeY
+                    );
+
+                    // Используем соответствующий тайл в зависимости от позиции
+                    Vector2I floorTile = (bridgeY < SectionSpacing / 2) ? topFloorTile : bottomFloorTile;
+
+                    // Размещаем пол
+                    FloorsTileMap.SetCell(MAP_LAYER, bridgeWorldPos, FloorsSourceID, floorTile);
+
+                    // Удаляем стены
+                    WallsTileMap.EraseCell(MAP_LAYER, bridgeWorldPos);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error filling vertical gap: {e.Message}");
+        }
+    }
+
+    // НОВЫЙ метод: Добавляет декоративные стены вдоль горизонтального коридора
+    private void AddDecorativeHorizontalWalls(MapSection leftSection, MapSection rightSection, int passageY, int tunnelWidth)
+    {
+        try
+        {
+            Vector2I leftWallTile = GetWallTileForBiome(leftSection.BiomeType, new Vector2I(0, 0));
+            Vector2I rightWallTile = GetWallTileForBiome(rightSection.BiomeType, new Vector2I(0, 0));
+
+            // Верхняя стена
+            int topWallY = passageY - tunnelWidth / 2 - 1;
+            // Нижняя стена
+            int bottomWallY = passageY + tunnelWidth / 2 + 1;
+
+            if (topWallY >= 0 && bottomWallY < MapHeight)
+            {
+                // Добавляем стены в левой секции
+                for (int x = MapWidth - 10; x < MapWidth; x++)
+                {
+                    // Верхняя стена
+                    Vector2I topPos = new Vector2I(
+                        (int)leftSection.WorldOffset.X + x,
+                        (int)leftSection.WorldOffset.Y + topWallY
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, topPos, WallsSourceID, leftWallTile);
+
+                    // Нижняя стена
+                    Vector2I bottomPos = new Vector2I(
+                        (int)leftSection.WorldOffset.X + x,
+                        (int)leftSection.WorldOffset.Y + bottomWallY
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, bottomPos, WallsSourceID, leftWallTile);
+                }
+
+                // Добавляем стены в правой секции
+                for (int x = 0; x < 10; x++)
+                {
+                    // Верхняя стена
+                    Vector2I topPos = new Vector2I(
+                        (int)rightSection.WorldOffset.X + x,
+                        (int)rightSection.WorldOffset.Y + topWallY
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, topPos, WallsSourceID, rightWallTile);
+
+                    // Нижняя стена
+                    Vector2I bottomPos = new Vector2I(
+                        (int)rightSection.WorldOffset.X + x,
+                        (int)rightSection.WorldOffset.Y + bottomWallY
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, bottomPos, WallsSourceID, rightWallTile);
+                }
+
+                // Добавляем стены в промежуток между секциями
+                if (SectionSpacing > 0)
+                {
+                    for (int bridgeX = 0; bridgeX < SectionSpacing; bridgeX++)
+                    {
+                        // Определяем тип стены
+                        Vector2I wallTile = (bridgeX < SectionSpacing / 2) ? leftWallTile : rightWallTile;
+
+                        // Верхняя стена
+                        Vector2I topPos = new Vector2I(
+                            (int)leftSection.WorldOffset.X + MapWidth + bridgeX,
+                            (int)leftSection.WorldOffset.Y + topWallY
+                        );
+                        WallsTileMap.SetCell(MAP_LAYER, topPos, WallsSourceID, wallTile);
+
+                        // Нижняя стена
+                        Vector2I bottomPos = new Vector2I(
+                            (int)leftSection.WorldOffset.X + MapWidth + bridgeX,
+                            (int)leftSection.WorldOffset.Y + bottomWallY
+                        );
+                        WallsTileMap.SetCell(MAP_LAYER, bottomPos, WallsSourceID, wallTile);
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error adding decorative horizontal walls: {e.Message}");
+        }
+    }
+
+    // НОВЫЙ метод: Добавляет декоративные стены вдоль вертикального коридора
+    private void AddDecorativeVerticalWalls(MapSection topSection, MapSection bottomSection, int passageX, int tunnelWidth)
+    {
+        try
+        {
+            Vector2I topWallTile = GetWallTileForBiome(topSection.BiomeType, new Vector2I(0, 0));
+            Vector2I bottomWallTile = GetWallTileForBiome(bottomSection.BiomeType, new Vector2I(0, 0));
+
+            // Левая стена
+            int leftWallX = passageX - tunnelWidth / 2 - 1;
+            // Правая стена
+            int rightWallX = passageX + tunnelWidth / 2 + 1;
+
+            if (leftWallX >= 0 && rightWallX < MapWidth)
+            {
+                // Добавляем стены в верхней секции
+                for (int y = MapHeight - 10; y < MapHeight; y++)
+                {
+                    // Левая стена
+                    Vector2I leftPos = new Vector2I(
+                        (int)topSection.WorldOffset.X + leftWallX,
+                        (int)topSection.WorldOffset.Y + y
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, leftPos, WallsSourceID, topWallTile);
+
+                    // Правая стена
+                    Vector2I rightPos = new Vector2I(
+                        (int)topSection.WorldOffset.X + rightWallX,
+                        (int)topSection.WorldOffset.Y + y
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, rightPos, WallsSourceID, topWallTile);
+                }
+
+                // Добавляем стены в нижней секции
+                for (int y = 0; y < 10; y++)
+                {
+                    // Левая стена
+                    Vector2I leftPos = new Vector2I(
+                        (int)bottomSection.WorldOffset.X + leftWallX,
+                        (int)bottomSection.WorldOffset.Y + y
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, leftPos, WallsSourceID, bottomWallTile);
+
+                    // Правая стена
+                    Vector2I rightPos = new Vector2I(
+                        (int)bottomSection.WorldOffset.X + rightWallX,
+                        (int)bottomSection.WorldOffset.Y + y
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, rightPos, WallsSourceID, bottomWallTile);
+                }
+
+                // Добавляем стены в промежуток между секциями
+                if (SectionSpacing > 0)
+                {
+                    for (int bridgeY = 0; bridgeY < SectionSpacing; bridgeY++)
+                    {
+                        // Определяем тип стены
+                        Vector2I wallTile = (bridgeY < SectionSpacing / 2) ? topWallTile : bottomWallTile;
+
+                        // Левая стена
+                        Vector2I leftPos = new Vector2I(
+                            (int)topSection.WorldOffset.X + leftWallX,
+                            (int)topSection.WorldOffset.Y + MapHeight + bridgeY
+                        );
+                        WallsTileMap.SetCell(MAP_LAYER, leftPos, WallsSourceID, wallTile);
+
+                        // Правая стена
+                        Vector2I rightPos = new Vector2I(
+                            (int)topSection.WorldOffset.X + rightWallX,
+                            (int)topSection.WorldOffset.Y + MapHeight + bridgeY
+                        );
+                        WallsTileMap.SetCell(MAP_LAYER, rightPos, WallsSourceID, wallTile);
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error adding decorative vertical walls: {e.Message}");
+        }
+    }
+
+    // НОВЫЙ метод: Находит и соединяет коридор с ближайшими комнатами
+    private void FindAndConnectToNearbyRooms(MapSection section, int x1, int x2, int y, int width, Vector2I floorTile, bool isHorizontal = true)
+    {
+        try
+        {
+            // Без комнат нечего соединять
+            if (section.Rooms.Count == 0)
+                return;
+
+            // ГОРИЗОНТАЛЬНЫЙ КОРИДОР
+            if (isHorizontal)
+            {
+                // Ищем комнаты, которые близки к коридору по вертикали
+                foreach (Rect2I room in section.Rooms)
+                {
+                    // Если комната полностью за пределами диапазона x1-x2, пропускаем
+                    if (room.Position.X > x2 || (room.Position.X + room.Size.X) < x1)
+                        continue;
+
+                    // Проверяем, насколько комната близка к y-координате коридора
+                    int roomTopY = room.Position.Y;
+                    int roomBottomY = room.Position.Y + room.Size.Y;
+
+                    // Если комната находится выше коридора и не слишком далеко
+                    if (roomBottomY < y - width / 2 && y - width / 2 - roomBottomY < 10)
+                    {
+                        // Создаем вертикальный проход от комнаты к коридору
+                        int passageX = Math.Max(room.Position.X + room.Size.X / 2, x1);
+                        passageX = Math.Min(passageX, Math.Min(x2, room.Position.X + room.Size.X));
+
+                        CreateVerticalConnectionToRoom(section, passageX, roomBottomY, y - width / 2, floorTile);
+                    }
+                    // Если комната находится ниже коридора и не слишком далеко
+                    else if (roomTopY > y + width / 2 && roomTopY - (y + width / 2) < 10)
+                    {
+                        // Создаем вертикальный проход от коридора к комнате
+                        int passageX = Math.Max(room.Position.X + room.Size.X / 2, x1);
+                        passageX = Math.Min(passageX, Math.Min(x2, room.Position.X + room.Size.X));
+
+                        CreateVerticalConnectionToRoom(section, passageX, y + width / 2, roomTopY, floorTile);
+                    }
+                }
+            }
+            // ВЕРТИКАЛЬНЫЙ КОРИДОР
+            else
+            {
+                // Переименуем параметры для ясности
+                int passageX = x1;
+                int tunnelWidth = x2;
+                int startY = y;
+                int endY = width;
+
+                // Ищем комнаты, которые близки к коридору по горизонтали
+                foreach (Rect2I room in section.Rooms)
+                {
+                    // Если комната полностью за пределами диапазона startY-endY, пропускаем
+                    if (room.Position.Y > endY || (room.Position.Y + room.Size.Y) < startY)
+                        continue;
+
+                    // Проверяем, насколько комната близка к x-координате коридора
+                    int roomLeftX = room.Position.X;
+                    int roomRightX = room.Position.X + room.Size.X;
+
+                    // Если комната находится левее коридора и не слишком далеко
+                    if (roomRightX < passageX - tunnelWidth / 2 && passageX - tunnelWidth / 2 - roomRightX < 10)
+                    {
+                        // Создаем горизонтальный проход от комнаты к коридору
+                        int passageY = Math.Max(room.Position.Y + room.Size.Y / 2, startY);
+                        passageY = Math.Min(passageY, Math.Min(endY, room.Position.Y + room.Size.Y));
+
+                        CreateHorizontalConnectionToRoom(section, roomRightX, passageX - tunnelWidth / 2, passageY, floorTile);
+                    }
+                    // Если комната находится правее коридора и не слишком далеко
+                    else if (roomLeftX > passageX + tunnelWidth / 2 && roomLeftX - (passageX + tunnelWidth / 2) < 10)
+                    {
+                        // Создаем горизонтальный проход от коридора к комнате
+                        int passageY = Math.Max(room.Position.Y + room.Size.Y / 2, startY);
+                        passageY = Math.Min(passageY, Math.Min(endY, room.Position.Y + room.Size.Y));
+
+                        CreateHorizontalConnectionToRoom(section, passageX + tunnelWidth / 2, roomLeftX, passageY, floorTile);
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error connecting corridor to nearby rooms: {e.Message}");
+        }
+    }
+
+    // НОВЫЙ метод: Создает вертикальное соединение между точками
+    private void CreateVerticalConnectionToRoom(MapSection section, int x, int startY, int endY, Vector2I floorTile)
+    {
+        try
+        {
+            Vector2 worldOffset = section.WorldOffset;
+
+            // Ширина прохода
+            int width = 3; // Можно изменить для более узких/широких проходов
+
+            for (int offsetX = -width / 2; offsetX <= width / 2; offsetX++)
+            {
+                int posX = x + offsetX;
+
+                if (posX < 0 || posX >= MapWidth)
+                    continue;
+
+                // Выбираем направление (сверху вниз или снизу вверх)
+                int yStart = Math.Min(startY, endY);
+                int yEnd = Math.Max(startY, endY);
+
+                for (int posY = yStart; posY <= yEnd; posY++)
+                {
+                    if (posY < 0 || posY >= MapHeight)
+                        continue;
+
+                    // Вычисляем мировую позицию
+                    Vector2I worldPos = new Vector2I(
+                        (int)worldOffset.X + posX,
+                        (int)worldOffset.Y + posY
+                    );
+
+                    // Размещаем пол
+                    FloorsTileMap.SetCell(MAP_LAYER, worldPos, FloorsSourceID, floorTile);
+
+                    // ВАЖНО: Удаляем все стены и препятствия
+                    WallsTileMap.EraseCell(MAP_LAYER, worldPos);
+
+                    // Обновляем маску секции
+                    if (posX < MapWidth && posY < MapHeight)
+                    {
+                        section.SectionMask[posX, posY] = TileType.Corridor;
+                    }
+                }
+            }
+
+            // Добавляем декоративные стены
+            AddDecorativeWallsForConnection(section, x, width, startY, endY, floorTile, false);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error creating vertical connection: {e.Message}");
+        }
+    }
+
+    // НОВЫЙ метод: Создает горизонтальное соединение между точками
+    private void CreateHorizontalConnectionToRoom(MapSection section, int startX, int endX, int y, Vector2I floorTile)
+    {
+        try
+        {
+            Vector2 worldOffset = section.WorldOffset;
+
+            // Ширина прохода
+            int width = 3; // Можно изменить для более узких/широких проходов
+
+            for (int offsetY = -width / 2; offsetY <= width / 2; offsetY++)
+            {
+                int posY = y + offsetY;
+
+                if (posY < 0 || posY >= MapHeight)
+                    continue;
+
+                // Выбираем направление (слева направо или справа налево)
+                int xStart = Math.Min(startX, endX);
+                int xEnd = Math.Max(startX, endX);
+
+                for (int posX = xStart; posX <= xEnd; posX++)
+                {
+                    if (posX < 0 || posX >= MapWidth)
+                        continue;
+
+                    // Вычисляем мировую позицию
+                    Vector2I worldPos = new Vector2I(
+                        (int)worldOffset.X + posX,
+                        (int)worldOffset.Y + posY
+                    );
+
+                    // Размещаем пол
+                    FloorsTileMap.SetCell(MAP_LAYER, worldPos, FloorsSourceID, floorTile);
+
+                    // ВАЖНО: Удаляем все стены и препятствия
+                    WallsTileMap.EraseCell(MAP_LAYER, worldPos);
+
+                    // Обновляем маску секции
+                    if (posX < MapWidth && posY < MapHeight)
+                    {
+                        section.SectionMask[posX, posY] = TileType.Corridor;
+                    }
+                }
+            }
+
+            // Добавляем декоративные стены
+            AddDecorativeWallsForConnection(section, y, width, startX, endX, floorTile, true);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error creating horizontal connection: {e.Message}");
+        }
+    }
+
+    // НОВЫЙ метод: Добавляет декоративные стены вокруг соединения
+    private void AddDecorativeWallsForConnection(MapSection section, int position, int width,
+                                                int start, int end, Vector2I floorTile, bool isHorizontal)
+    {
+        try
+        {
+            Vector2 worldOffset = section.WorldOffset;
+            Vector2I wallTile = GetWallTileForBiome(section.BiomeType, new Vector2I(0, 0));
+
+            if (isHorizontal)
+            {
+                // Верхняя и нижняя стены для горизонтального прохода
+                int topWallY = position - width / 2 - 1;
+                int bottomWallY = position + width / 2 + 1;
+
+                if (topWallY >= 0 && bottomWallY < MapHeight)
+                {
+                    for (int x = start; x <= end; x++)
+                    {
+                        if (x < 0 || x >= MapWidth) continue;
+
+                        // Верхняя стена
+                        Vector2I topWallPos = new Vector2I(
+                            (int)worldOffset.X + x,
+                            (int)worldOffset.Y + topWallY
+                        );
+                        WallsTileMap.SetCell(MAP_LAYER, topWallPos, WallsSourceID, wallTile);
+
+                        // Нижняя стена
+                        Vector2I bottomWallPos = new Vector2I(
+                            (int)worldOffset.X + x,
+                            (int)worldOffset.Y + bottomWallY
+                        );
+                        WallsTileMap.SetCell(MAP_LAYER, bottomWallPos, WallsSourceID, wallTile);
+                    }
+                }
+            }
+            else
+            {
+                // Левая и правая стены для вертикального прохода
+                int leftWallX = position - width / 2 - 1;
+                int rightWallX = position + width / 2 + 1;
+
+                if (leftWallX >= 0 && rightWallX < MapWidth)
+                {
+                    for (int y = start; y <= end; y++)
+                    {
+                        if (y < 0 || y >= MapHeight) continue;
+
+                        // Левая стена
+                        Vector2I leftWallPos = new Vector2I(
+                            (int)worldOffset.X + leftWallX,
+                            (int)worldOffset.Y + y
+                        );
+                        WallsTileMap.SetCell(MAP_LAYER, leftWallPos, WallsSourceID, wallTile);
+
+                        // Правая стена
+                        Vector2I rightWallPos = new Vector2I(
+                            (int)worldOffset.X + rightWallX,
+                            (int)worldOffset.Y + y
+                        );
+                        WallsTileMap.SetCell(MAP_LAYER, rightWallPos, WallsSourceID, wallTile);
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error adding decorative walls for connection: {e.Message}");
+        }
+    }
+
+
+
+    // 4. НОВЫЙ метод: Поиск комнаты около границы секции
+    private Rect2I FindRoomNearBorder(MapSection section, string borderSide)
+    {
+        if (section.Rooms.Count == 0)
+        {
+            // Если нет комнат, возвращаем пустую Rect2I
+            return new Rect2I(0, 0, 0, 0);
+        }
+
+        Rect2I bestRoom = new Rect2I(0, 0, 0, 0);
+        float closestDistance = float.MaxValue;
+
+        // Для каждой комнаты проверяем расстояние до нужной границы
+        foreach (var room in section.Rooms)
+        {
+            float distance = float.MaxValue;
+
+            switch (borderSide)
+            {
+                case "left":
+                    distance = room.Position.X; // Расстояние от левого края комнаты до левого края секции
+                    break;
+                case "right":
+                    distance = MapWidth - (room.Position.X + room.Size.X); // Расстояние от правого края комнаты до правого края секции
+                    break;
+                case "top":
+                    distance = room.Position.Y; // Расстояние от верхнего края комнаты до верхнего края секции
+                    break;
+                case "bottom":
+                    distance = MapHeight - (room.Position.Y + room.Size.Y); // Расстояние от нижнего края комнаты до нижнего края секции
+                    break;
+            }
+
+            // Если эта комната ближе к границе, запоминаем ее
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                bestRoom = room;
+            }
+        }
+
+        // Убедимся, что комната находится в разумных пределах от границы
+        bool isClose = false;
+
+        switch (borderSide)
+        {
+            case "left":
+                isClose = bestRoom.Position.X <= MapWidth / 3; // Комната находится в левой трети секции
+                break;
+            case "right":
+                isClose = (bestRoom.Position.X + bestRoom.Size.X) >= MapWidth * 2 / 3; // Комната находится в правой трети секции
+                break;
+            case "top":
+                isClose = bestRoom.Position.Y <= MapHeight / 3; // Комната находится в верхней трети секции
+                break;
+            case "bottom":
+                isClose = (bestRoom.Position.Y + bestRoom.Size.Y) >= MapHeight * 2 / 3; // Комната находится в нижней трети секции
+                break;
+        }
+
+        if (isClose)
+        {
+            Logger.Debug($"Found suitable room near {borderSide} border at ({bestRoom.Position.X}, {bestRoom.Position.Y}) size {bestRoom.Size}", false);
+            return bestRoom;
+        }
+        else
+        {
+            // Если нет подходящей комнаты, возвращаем пустую Rect2I
+            Logger.Debug($"No suitable room found near {borderSide} border", false);
+            return new Rect2I(0, 0, 0, 0);
+        }
+    }
+
+    // 5. НОВЫЙ метод: Обеспечивает путь от комнаты до края секции
+    private void EnsurePathToRoomEdge(MapSection section, Rect2I room, string exitSide, int passagePosition, int tunnelWidth)
+    {
+        Vector2 worldOffset = section.WorldOffset;
+        Vector2I floorTile = GetFloorTileForBiome(section.BiomeType);
+
+        try
+        {
+            // Определяем координаты в зависимости от стороны выхода
+            int startX, startY, endX, endY;
+
+            switch (exitSide)
+            {
+                case "right":
+                    // Проход идет справа от комнаты до правого края секции
+                    startX = room.Position.X + room.Size.X;
+                    endX = MapWidth;
+                    startY = passagePosition - tunnelWidth / 2;
+                    endY = passagePosition + tunnelWidth / 2 + 1;
+
+                    // Расчищаем внутреннюю часть комнаты, чтобы проход соединялся с ней
+                    for (int y = startY; y <= endY; y++)
+                    {
+                        // Убедимся, что координаты в пределах карты
+                        if (y < 0 || y >= MapHeight) continue;
+
+                        if (y < room.Position.Y || y >= room.Position.Y + room.Size.Y)
+                        {
+                            // Если мы за пределами комнаты по вертикали, пропускаем
+                            continue;
+                        }
+
+                        // Создаем путь через правую стену комнаты
+                        Vector2I roomWallPos = new Vector2I(
+                            (int)worldOffset.X + startX - 1,
+                            (int)worldOffset.Y + y
+                        );
+
+                        // Размещаем пол и удаляем стены
+                        FloorsTileMap.SetCell(MAP_LAYER, roomWallPos, FloorsSourceID, floorTile);
+                        WallsTileMap.EraseCell(MAP_LAYER, roomWallPos);
+                    }
+                    break;
+
+                case "left":
+                    // Проход идет слева от комнаты до левого края секции
+                    startX = 0;
+                    endX = room.Position.X;
+                    startY = passagePosition - tunnelWidth / 2;
+                    endY = passagePosition + tunnelWidth / 2 + 1;
+
+                    // Расчищаем внутреннюю часть комнаты, чтобы проход соединялся с ней
+                    for (int y = startY; y <= endY; y++)
+                    {
+                        // Убедимся, что координаты в пределах карты
+                        if (y < 0 || y >= MapHeight) continue;
+
+                        if (y < room.Position.Y || y >= room.Position.Y + room.Size.Y)
+                        {
+                            // Если мы за пределами комнаты по вертикали, пропускаем
+                            continue;
+                        }
+
+                        // Создаем путь через левую стену комнаты
+                        Vector2I roomWallPos = new Vector2I(
+                            (int)worldOffset.X + endX,
+                            (int)worldOffset.Y + y
+                        );
+
+                        // Размещаем пол и удаляем стены
+                        FloorsTileMap.SetCell(MAP_LAYER, roomWallPos, FloorsSourceID, floorTile);
+                        WallsTileMap.EraseCell(MAP_LAYER, roomWallPos);
+                    }
+                    break;
+
+                case "bottom":
+                    // Проход идет снизу от комнаты до нижнего края секции
+                    startX = passagePosition - tunnelWidth / 2;
+                    endX = passagePosition + tunnelWidth / 2 + 1;
+                    startY = room.Position.Y + room.Size.Y;
+                    endY = MapHeight;
+
+                    // Расчищаем внутреннюю часть комнаты, чтобы проход соединялся с ней
+                    for (int x = startX; x <= endX; x++)
+                    {
+                        // Убедимся, что координаты в пределах карты
+                        if (x < 0 || x >= MapWidth) continue;
+
+                        if (x < room.Position.X || x >= room.Position.X + room.Size.X)
+                        {
+                            // Если мы за пределами комнаты по горизонтали, пропускаем
+                            continue;
+                        }
+
+                        // Создаем путь через нижнюю стену комнаты
+                        Vector2I roomWallPos = new Vector2I(
+                            (int)worldOffset.X + x,
+                            (int)worldOffset.Y + startY - 1
+                        );
+
+                        // Размещаем пол и удаляем стены
+                        FloorsTileMap.SetCell(MAP_LAYER, roomWallPos, FloorsSourceID, floorTile);
+                        WallsTileMap.EraseCell(MAP_LAYER, roomWallPos);
+                    }
+                    break;
+
+                case "top":
+                    // Проход идет сверху от комнаты до верхнего края секции
+                    startX = passagePosition - tunnelWidth / 2;
+                    endX = passagePosition + tunnelWidth / 2 + 1;
+                    startY = 0;
+                    endY = room.Position.Y;
+
+                    // Расчищаем внутреннюю часть комнаты, чтобы проход соединялся с ней
+                    for (int x = startX; x <= endX; x++)
+                    {
+                        // Убедимся, что координаты в пределах карты
+                        if (x < 0 || x >= MapWidth) continue;
+
+                        if (x < room.Position.X || x >= room.Position.X + room.Size.X)
+                        {
+                            // Если мы за пределами комнаты по горизонтали, пропускаем
+                            continue;
+                        }
+
+                        // Создаем путь через верхнюю стену комнаты
+                        Vector2I roomWallPos = new Vector2I(
+                            (int)worldOffset.X + x,
+                            (int)worldOffset.Y + endY
+                        );
+
+                        // Размещаем пол и удаляем стены
+                        FloorsTileMap.SetCell(MAP_LAYER, roomWallPos, FloorsSourceID, floorTile);
+                        WallsTileMap.EraseCell(MAP_LAYER, roomWallPos);
+                    }
+                    break;
+            }
+
+            Logger.Debug($"Created path from room to {exitSide} edge", false);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error ensuring path to room edge: {e.Message}");
+        }
+    }
+
+
+
+    // НОВЫЙ метод: Добавляет стены вокруг горизонтального прохода
+    private void AddWallsAroundHorizontalConnector(MapSection leftSection, MapSection rightSection, int passageY, int tunnelWidth)
+    {
+        try
+        {
+            // Получаем тайлы стен для обеих секций
+            Vector2I leftWallTile = GetWallTileForBiome(leftSection.BiomeType, new Vector2I(0, 0));
+            Vector2I rightWallTile = GetWallTileForBiome(rightSection.BiomeType, new Vector2I(0, 0));
+
+            // Верхняя стена прохода (для левой и правой секции)
+            int topWallY = passageY - tunnelWidth / 2 - 1;
+
+            // Нижняя стена прохода (для левой и правой секции)
+            int bottomWallY = passageY + tunnelWidth / 2 + 1;
+
+            if (topWallY >= 0 && topWallY < MapHeight && bottomWallY >= 0 && bottomWallY < MapHeight)
+            {
+                // Добавляем стены для левой секции (справа сверху и снизу)
+                for (int x = MapWidth - SectionSpacing; x < MapWidth; x++)
+                {
+                    // Верхняя стена
+                    Vector2I topWallWorldPos = new Vector2I(
+                        (int)leftSection.WorldOffset.X + x,
+                        (int)leftSection.WorldOffset.Y + topWallY
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, topWallWorldPos, WallsSourceID, leftWallTile);
+
+                    // Нижняя стена
+                    Vector2I bottomWallWorldPos = new Vector2I(
+                        (int)leftSection.WorldOffset.X + x,
+                        (int)leftSection.WorldOffset.Y + bottomWallY
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, bottomWallWorldPos, WallsSourceID, leftWallTile);
+                }
+
+                // Добавляем стены для правой секции (слева сверху и снизу)
+                for (int x = 0; x < SectionSpacing; x++)
+                {
+                    // Верхняя стена
+                    Vector2I topWallWorldPos = new Vector2I(
+                        (int)rightSection.WorldOffset.X + x,
+                        (int)rightSection.WorldOffset.Y + topWallY
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, topWallWorldPos, WallsSourceID, rightWallTile);
+
+                    // Нижняя стена
+                    Vector2I bottomWallWorldPos = new Vector2I(
+                        (int)rightSection.WorldOffset.X + x,
+                        (int)rightSection.WorldOffset.Y + bottomWallY
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, bottomWallWorldPos, WallsSourceID, rightWallTile);
+                }
+
+                // Добавляем стены для пространства между секциями
+                for (int bridgeX = 0; bridgeX < SectionSpacing; bridgeX++)
+                {
+                    // Верхняя стена
+                    Vector2I topWallWorldPos = new Vector2I(
+                        (int)leftSection.WorldOffset.X + MapWidth + bridgeX,
+                        (int)leftSection.WorldOffset.Y + topWallY
+                    );
+                    Vector2I wallTile = (bridgeX < SectionSpacing / 2) ? leftWallTile : rightWallTile;
+                    WallsTileMap.SetCell(MAP_LAYER, topWallWorldPos, WallsSourceID, wallTile);
+
+                    // Нижняя стена
+                    Vector2I bottomWallWorldPos = new Vector2I(
+                        (int)leftSection.WorldOffset.X + MapWidth + bridgeX,
+                        (int)leftSection.WorldOffset.Y + bottomWallY
+                    );
+                    wallTile = (bridgeX < SectionSpacing / 2) ? leftWallTile : rightWallTile;
+                    WallsTileMap.SetCell(MAP_LAYER, bottomWallWorldPos, WallsSourceID, wallTile);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error adding walls around horizontal connector: {e.Message}");
+        }
+    }
+
+    // НОВЫЙ метод: Добавляет стены вокруг вертикального прохода
+    private void AddWallsAroundVerticalConnector(MapSection topSection, MapSection bottomSection, int passageX, int tunnelWidth)
+    {
+        try
+        {
+            // Получаем тайлы стен для обеих секций
+            Vector2I topWallTile = GetWallTileForBiome(topSection.BiomeType, new Vector2I(0, 0));
+            Vector2I bottomWallTile = GetWallTileForBiome(bottomSection.BiomeType, new Vector2I(0, 0));
+
+            // Левая стена прохода (для верхней и нижней секции)
+            int leftWallX = passageX - tunnelWidth / 2 - 1;
+
+            // Правая стена прохода (для верхней и нижней секции)
+            int rightWallX = passageX + tunnelWidth / 2 + 1;
+
+            if (leftWallX >= 0 && leftWallX < MapWidth && rightWallX >= 0 && rightWallX < MapWidth)
+            {
+                // Добавляем стены для верхней секции (снизу слева и справа)
+                for (int y = MapHeight - SectionSpacing; y < MapHeight; y++)
+                {
+                    // Левая стена
+                    Vector2I leftWallWorldPos = new Vector2I(
+                        (int)topSection.WorldOffset.X + leftWallX,
+                        (int)topSection.WorldOffset.Y + y
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, leftWallWorldPos, WallsSourceID, topWallTile);
+
+                    // Правая стена
+                    Vector2I rightWallWorldPos = new Vector2I(
+                        (int)topSection.WorldOffset.X + rightWallX,
+                        (int)topSection.WorldOffset.Y + y
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, rightWallWorldPos, WallsSourceID, topWallTile);
+                }
+
+                // Добавляем стены для нижней секции (сверху слева и справа)
+                for (int y = 0; y < SectionSpacing; y++)
+                {
+                    // Левая стена
+                    Vector2I leftWallWorldPos = new Vector2I(
+                        (int)bottomSection.WorldOffset.X + leftWallX,
+                        (int)bottomSection.WorldOffset.Y + y
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, leftWallWorldPos, WallsSourceID, bottomWallTile);
+
+                    // Правая стена
+                    Vector2I rightWallWorldPos = new Vector2I(
+                        (int)bottomSection.WorldOffset.X + rightWallX,
+                        (int)bottomSection.WorldOffset.Y + y
+                    );
+                    WallsTileMap.SetCell(MAP_LAYER, rightWallWorldPos, WallsSourceID, bottomWallTile);
+                }
+
+                // Добавляем стены для пространства между секциями
+                for (int bridgeY = 0; bridgeY < SectionSpacing; bridgeY++)
+                {
+                    // Левая стена
+                    Vector2I leftWallWorldPos = new Vector2I(
+                        (int)topSection.WorldOffset.X + leftWallX,
+                        (int)topSection.WorldOffset.Y + MapHeight + bridgeY
+                    );
+                    Vector2I wallTile = (bridgeY < SectionSpacing / 2) ? topWallTile : bottomWallTile;
+                    WallsTileMap.SetCell(MAP_LAYER, leftWallWorldPos, WallsSourceID, wallTile);
+
+                    // Правая стена
+                    Vector2I rightWallWorldPos = new Vector2I(
+                        (int)topSection.WorldOffset.X + rightWallX,
+                        (int)topSection.WorldOffset.Y + MapHeight + bridgeY
+                    );
+                    wallTile = (bridgeY < SectionSpacing / 2) ? topWallTile : bottomWallTile;
+                    WallsTileMap.SetCell(MAP_LAYER, rightWallWorldPos, WallsSourceID, wallTile);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error adding walls around vertical connector: {e.Message}");
         }
     }
 
@@ -2054,7 +3009,7 @@ public partial class LevelGenerator : Node
         }
     }
 
-    // Метод для выбора тайла декорации в зависимости от биома
+  // Метод для выбора тайла декорации в зависимости от биома
     private Vector2I GetDecorationTileForBiome()
     {
         return GetDecorationTileForBiome(BiomeType);
@@ -2321,31 +3276,31 @@ public partial class LevelGenerator : Node
     {
         // Находим секцию по координатам сетки
         MapSection section = _mapSections.Find(s => s.GridX == sectionX && s.GridY == sectionY);
-
+        
         if (section == null)
         {
             Logger.Error($"Cannot find section at grid coordinates ({sectionX}, {sectionY})");
             return;
         }
-
+        
         if (!section.SpawnPosition.HasValue)
         {
             Logger.Error($"Section at ({sectionX}, {sectionY}) has no spawn position");
             return;
         }
-
+        
         // Рассчитываем мировые координаты точки спавна
         Vector2 localSpawnPos = section.SpawnPosition.Value;
         Vector2 worldOffset = section.WorldOffset;
         Vector2 worldSpawnPos = new Vector2(localSpawnPos.X + worldOffset.X, localSpawnPos.Y + worldOffset.Y);
-
+        
         // Находим игрока и телепортируем
         Node2D player = FindPlayer();
         if (player != null)
         {
             player.Position = worldSpawnPos;
             Logger.Debug($"Player teleported to section ({sectionX}, {sectionY}) at position {worldSpawnPos}", true);
-
+            
             // Центрируем камеру
             CenterCameraOnPlayer();
         }
@@ -2359,16 +3314,16 @@ public partial class LevelGenerator : Node
     public string GetSectionsInfo()
     {
         string info = $"Multi-section map: {_mapSections.Count} sections in {GridWidth}x{GridHeight} grid\n";
-
+        
         foreach (var section in _mapSections)
         {
             info += $"Section ({section.GridX}, {section.GridY}): Biome {GetBiomeName(section.BiomeType)}, " +
                    $"Rooms: {section.Rooms.Count}, " +
                    $"Offset: {section.WorldOffset}\n";
         }
-
+        
         info += $"Current spawn position: {_currentSpawnPosition}";
-
+        
         return info;
     }
 }
