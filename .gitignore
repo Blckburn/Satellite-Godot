@@ -30,3 +30,5 @@ mono_crash.*.json
 # Godot uid files
 *.uid
 /Дорожная карта проекта Satellite на Godot Engine 4.4 (.NET) 0.2.txt
+/Items evolved
+/Расширенная система повреждений и статусных эффектов в Satellite.txt
