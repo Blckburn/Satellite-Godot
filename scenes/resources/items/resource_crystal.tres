@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Item" load_steps=2 format=3 uid="uid://ddvokyx0ctv7r"]
+
+[ext_resource type="Script" uid="uid://dq07pxh84nuut" path="res://scripts/Item.cs" id="1_mev4q"]
+
+[resource]
+script = ExtResource("1_mev4q")
+ID = "resource_crystal"
+DisplayName = "Crystal"
+Description = "A rare and valuable crystal with unique properties. Essential for advanced technology and energy systems."
+Type = 3
+Weight = 1.0
+Value = 25
+MaxStackSize = 15
+IconPath = "res://scenes/resources/textures/resources/crystal.png"
+Quantity = 1
+metadata/_custom_type_script = "uid://dq07pxh84nuut"

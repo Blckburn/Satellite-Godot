@@ -43,50 +43,19 @@ public partial class Item : Resource
     {
         get
         {
-            if (_icon == null)
+            if (_icon == null && !string.IsNullOrEmpty(IconPath))
             {
-                if (!string.IsNullOrEmpty(IconPath))
-                {
-                    _icon = ResourceLoader.Load<Texture2D>(IconPath);
-                }
+                // Для отладки выводим полный путь
+                GD.Print($"Loading icon from path: {IconPath}");
+                _icon = ResourceLoader.Load<Texture2D>(IconPath);
 
-                // Если иконка не загрузилась, создаем временную
                 if (_icon == null)
                 {
-                    GD.Print($"Creating default icon for item: {DisplayName}");
-                    // Создаем динамическую текстуру
-                    var imgTexture = new ImageTexture();
-                    var img = Image.Create(32, 32, false, Image.Format.Rgba8);
-
-                    // Закрашиваем разными цветами в зависимости от типа предмета
-                    Color color;
-                    switch (Type)
-                    {
-                        case ItemType.Weapon:
-                            color = new Color(1, 0, 0); // Красный
-                            break;
-                        case ItemType.Consumable:
-                            color = new Color(0, 1, 0); // Зеленый
-                            break;
-                        case ItemType.Resource:
-                            color = new Color(0, 0, 1); // Синий
-                            break;
-                        case ItemType.Key:
-                            color = new Color(1, 1, 0); // Желтый
-                            break;
-                        case ItemType.Tool:
-                            color = new Color(1, 0, 1); // Фиолетовый
-                            break;
-                        default:
-                            color = new Color(0.5f, 0.5f, 0.5f); // Серый
-                            break;
-                    }
-
-                    img.Fill(color);
-
-                    // Создаем текстуру из изображения
-                    imgTexture.SetImage(img);
-                    _icon = imgTexture;
+                    GD.Print($"WARNING: Failed to load icon from path: {IconPath}");
+                }
+                else
+                {
+                    GD.Print($"Successfully loaded icon from path: {IconPath}");
                 }
             }
             return _icon;
@@ -130,12 +99,26 @@ public partial class Item : Resource
     // Создание копии предмета
     public virtual Item Clone()
     {
+        // Для отладки
+        GD.Print($"Cloning item: {DisplayName} (ID: {ID})");
+
         if (!string.IsNullOrEmpty(ResourcePath))
         {
-            return ResourceLoader.Load<Item>(ResourcePath);
+            GD.Print($"Cloning from resource path: {ResourcePath}");
+            var loadedItem = ResourceLoader.Load<Item>(ResourcePath);
+            if (loadedItem != null)
+            {
+                GD.Print($"Successfully loaded item from resource path");
+                return loadedItem;
+            }
+            else
+            {
+                GD.Print($"WARNING: Failed to load item from resource path, falling back to manual clone");
+            }
         }
 
         // Если предмет не является ресурсом, создаем новый экземпляр
+        GD.Print($"Creating manual clone of item");
         Item clone = new Item();
         clone.ID = ID;
         clone.DisplayName = DisplayName;
@@ -144,11 +127,14 @@ public partial class Item : Resource
         clone.Weight = Weight;
         clone.Value = Value;
         clone.MaxStackSize = MaxStackSize;
-        clone.IconPath = IconPath;
+        clone.IconPath = IconPath; // Важно копировать путь к иконке
         clone.Quantity = Quantity;
+
+        GD.Print($"Clone created: {clone.DisplayName} (ID: {clone.ID}, Quantity: {clone.Quantity})");
 
         return clone;
     }
+
 
     // Проверка, можно ли предметы объединить в стек
     public virtual bool CanStackWith(Item other)

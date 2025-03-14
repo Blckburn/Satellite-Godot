@@ -39,15 +39,25 @@ public partial class Player
             InitializeInventory();
         }
 
+        // Отладочная информация
+        GD.Print($"Adding to inventory: {item.DisplayName} (ID: {item.ID}, Type: {item.Type}, Quantity: {item.Quantity})");
+
+        // Проверяем, что это валидный предмет
+        if (string.IsNullOrEmpty(item.ID) || string.IsNullOrEmpty(item.DisplayName))
+        {
+            GD.Print("ERROR: Invalid item (ID or DisplayName is empty)");
+            return false;
+        }
+
         bool result = PlayerInventory.AddItem(item);
 
         if (result)
         {
-            Logger.Debug($"Added {item.DisplayName} x{item.Quantity} to inventory", false);
+            GD.Print($"Successfully added {item.DisplayName} x{item.Quantity} to inventory");
         }
         else
         {
-            Logger.Debug($"Failed to add {item.DisplayName} to inventory", false);
+            GD.Print($"Failed to add {item.DisplayName} to inventory");
         }
 
         return result;

@@ -145,6 +145,12 @@ public partial class LevelGenerator : Node
     // Флаг, указывающий, что уровень был сгенерирован
     private bool _levelGenerated = false;
 
+    private ResourceGenerator _resourceGenerator;
+    [Export] public PackedScene ResourceNodeScene { get; set; }
+    [Export] public int MaxResourcesPerRoom { get; set; } = 3;
+    [Export] public float ResourceDensity { get; set; } = 0.5f;
+
+
     public override void _Ready()
     {
         // Инициализируем генератор случайных чисел
@@ -163,6 +169,18 @@ public partial class LevelGenerator : Node
             Logger.Debug("Automatically generating multi-section map on startup", true);
             GenerateMultiSectionMap();
         };
+
+        // Инициализируем генератор ресурсов
+        if (ResourceNodeScene != null)
+        {
+            _resourceGenerator = new ResourceGenerator(ResourceNodeScene, MaxResourcesPerRoom, ResourceDensity);
+            Logger.Debug("ResourceGenerator initialized", true);
+        }
+        else
+        {
+            Logger.Error("ResourceNodeScene is not set in LevelGenerator!");
+        }
+
     }
 
 
@@ -293,11 +311,68 @@ public partial class LevelGenerator : Node
             // Выбираем точку спавна для секции
             section.SpawnPosition = GetSectionSpawnPosition(section);
 
+            // Добавляем генерацию ресурсов после добавления стен и декораций
+            AddSectionResources(section);
+
             Logger.Debug($"Section level generated at ({section.GridX}, {section.GridY}) with {section.Rooms.Count} rooms", false);
         }
         catch (Exception e)
         {
             Logger.Error($"Error generating section level: {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    private void AddSectionResources(MapSection section)
+    {
+        if (_resourceGenerator == null || YSortContainer == null)
+        {
+            Logger.Debug("ResourceGenerator or YSortContainer is null, skipping resource generation", false);
+            return;
+        }
+
+        try
+        {
+            // Генерируем ресурсы в секции
+            int resourcesPlaced = _resourceGenerator.GenerateResources(
+                section.Rooms,          // Список комнат секции
+                section.BiomeType,      // Тип биома
+                section.SectionMask,    // Маска секции
+                section.WorldOffset,    // Мировое смещение
+                YSortContainer          // Родительский узел для добавления ресурсов
+            );
+
+            Logger.Debug($"Added {resourcesPlaced} resources to section ({section.GridX}, {section.GridY}) with biome {GetBiomeName(section.BiomeType)}", false);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error adding resources to section: {e.Message}");
+        }
+    }
+
+    private void AddResources()
+    {
+        if (_resourceGenerator == null || YSortContainer == null)
+        {
+            Logger.Debug("ResourceGenerator or YSortContainer is null, skipping resource generation", false);
+            return;
+        }
+
+        try
+        {
+            // Генерируем ресурсы для однокарточной карты
+            int resourcesPlaced = _resourceGenerator.GenerateResources(
+                _rooms,                 // Список комнат
+                BiomeType,              // Тип биома
+                _mapMask,               // Маска карты
+                Vector2.Zero,           // Мировое смещение (для однокарточной карты - нулевое)
+                YSortContainer          // Родительский узел для добавления ресурсов
+            );
+
+            Logger.Debug($"Added {resourcesPlaced} resources to single-section map with biome {GetBiomeName(BiomeType)}", true);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error adding resources to map: {e.Message}");
         }
     }
 
@@ -1688,6 +1763,9 @@ public partial class LevelGenerator : Node
             // Добавляем опасные зоны (вода/лава)
             AddHazards();
 
+            // Добавляем генерацию ресурсов после добавления декораций и опасных зон
+            AddResources();
+
             // Вычисляем позицию спавна игрока
             _currentSpawnPosition = GetPlayerSpawnPosition();
 
@@ -1709,6 +1787,7 @@ public partial class LevelGenerator : Node
         {
             Logger.Error($"Error during level generation: {e.Message}\n{e.StackTrace}");
         }
+
     }
 
     // НОВОЕ: Метод для сброса маски секции

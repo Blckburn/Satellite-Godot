@@ -1,0 +1,38 @@
+[gd_scene load_steps=5 format=3 uid="uid://br4icehjc8xsm"]
+
+[ext_resource type="Script" uid="uid://c3vp2quk34c13" path="res://scripts/ResourceNode.cs" id="1_73mkm"]
+[ext_resource type="Texture2D" uid="uid://bgyvvfne50cko" path="res://icon.svg" id="2_yrqnr"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_4krdk"]
+radius = 8.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_avvav"]
+radius = 34.0147
+
+[node name="ResourceNode" type="Node2D" groups=["Interactables", "ResourceNodes"]]
+script = ExtResource("1_73mkm")
+InteractionRadius = 100.0
+InteractionHint = "Press E to harvest resource"
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("2_yrqnr")
+
+[node name="ResourceLabel" type="Label" parent="."]
+offset_left = -12.0
+offset_top = -17.0
+offset_right = 60.0
+offset_bottom = 6.0
+scale = Vector2(0.325, 0.325)
+text = "Resource"
+horizontal_alignment = 1
+
+[node name="StaticBody2D" type="StaticBody2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D"]
+shape = SubResource("CircleShape2D_4krdk")
+
+[node name="Area2D" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+shape = SubResource("CircleShape2D_avvav")

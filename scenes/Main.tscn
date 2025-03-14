@@ -1,9 +1,10 @@
-[gd_scene load_steps=8 format=3 uid="uid://dgp0p1mfdb25l"]
+[gd_scene load_steps=9 format=3 uid="uid://dgp0p1mfdb25l"]
 
 [ext_resource type="Script" uid="uid://iyb7fjxu7j21" path="res://scripts/LevelGenerator.cs" id="5_c01mt"]
 [ext_resource type="PackedScene" uid="uid://df1fsrm24trwj" path="res://scenes/ui/ui_manager.tscn" id="5_vcsgt"]
 [ext_resource type="Script" uid="uid://btenqntxsc3nd" path="res://scripts/InteractionSystem.cs" id="6_c01mt"]
 [ext_resource type="PackedScene" uid="uid://cdpklt0cb7nbq" path="res://scenes/ui/inventory_ui.tscn" id="6_jlsqs"]
+[ext_resource type="PackedScene" uid="uid://br4icehjc8xsm" path="res://scenes/resources/resource_node.tscn" id="6_q8u5g"]
 [ext_resource type="PackedScene" uid="uid://bu3h56rpjxyms" path="res://scenes/player/Player.tscn" id="7_jlsqs"]
 [ext_resource type="PackedScene" uid="uid://cycm7sv72virf" path="res://scenes/isometric_tileset.tscn" id="7_nxtc6"]
 [ext_resource type="Script" uid="uid://b27sqnopxnkvx" path="res://scripts/BiomeInfoUI.cs" id="8_wp0k4"]
@@ -32,6 +33,9 @@ UseMultiSectionMap = true
 GridWidth = 3
 GridHeight = 3
 SectionSpacing = 0
+ResourceNodeScene = ExtResource("6_q8u5g")
+MaxResourcesPerRoom = 4
+ResourceDensity = 0.6
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 script = ExtResource("8_wp0k4")

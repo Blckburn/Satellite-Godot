@@ -49,12 +49,17 @@ public partial class Inventory : Resource
     public bool AddItem(Item item)
     {
         if (item == null)
+        {
+            GD.Print("ERROR: Attempting to add null item to inventory");
             return false;
+        }
+
+        GD.Print($"Inventory.AddItem: {item.DisplayName} (ID: {item.ID}, Type: {item.Type}, Quantity: {item.Quantity})");
 
         // Проверка на максимальный вес
         if (MaxWeight > 0 && CurrentWeight + item.Weight * item.Quantity > MaxWeight)
         {
-            Logger.Debug("Inventory is too heavy to add this item.");
+            GD.Print($"Inventory is too heavy to add this item. Current weight: {CurrentWeight}, Max weight: {MaxWeight}");
             return false;
         }
 
@@ -63,12 +68,15 @@ public partial class Inventory : Resource
         foreach (var existingItem in _items.Where(i => i.CanStackWith(item)).ToList())
         {
             int originalQuantity = existingItem.Quantity;
-            existingItem.StackWith(item);
+            int remainder = existingItem.StackWith(item);
             int added = existingItem.Quantity - originalQuantity;
             remainingQuantity -= added;
 
+            GD.Print($"Stacked {added} items with existing stack. Remaining: {remainingQuantity}");
+
             if (remainingQuantity <= 0)
             {
+                GD.Print("All items stacked successfully");
                 EmitSignal("InventoryChanged");
                 return true;
             }
@@ -82,7 +90,7 @@ public partial class Inventory : Resource
         {
             if (_items.Count >= MaxSlots)
             {
-                Logger.Debug("Inventory is full.");
+                GD.Print($"Inventory is full. Current items: {_items.Count}, Max slots: {MaxSlots}");
                 return false;
             }
 
@@ -90,9 +98,12 @@ public partial class Inventory : Resource
             Item newItem = item.Clone();
             newItem.Quantity = remainingQuantity;
             _items.Add(newItem);
+
+            GD.Print($"Added new item to inventory: {newItem.DisplayName} x{newItem.Quantity}");
         }
 
         EmitSignal("InventoryChanged");
+        GD.Print($"Inventory changed. Current item count: {_items.Count}");
         return true;
     }
 

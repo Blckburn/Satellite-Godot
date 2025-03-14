@@ -93,16 +93,25 @@ public partial class InventoryUI : Control
 
         if (_isVisible)
         {
+            // Перед обновлением UI при открытии убедимся, что у нас есть инвентарь
+            if (_inventory == null)
+            {
+                GD.Print("ToggleInventory: Inventory is null, finding player inventory");
+                FindPlayerInventory();
+            }
+
             // Обновляем UI при открытии
             UpdateInventoryUI();
+            GD.Print("Inventory UI is now visible");
         }
         else
         {
-            // Скрываем тултип при закрытии инвентаря (добавлено)
+            // Скрываем тултип при закрытии инвентаря
             if (_itemTooltip != null)
             {
                 _itemTooltip.HideTooltip();
             }
+            GD.Print("Inventory UI is now hidden");
         }
     }
 
@@ -115,20 +124,35 @@ public partial class InventoryUI : Control
             // Инициализируем инвентарь, если его нет
             if (player.PlayerInventory == null)
             {
+                GD.Print("Player inventory is null, initializing new inventory");
                 player.InitializeInventory();
             }
 
             // Получаем ссылку на инвентарь
             _inventory = player.PlayerInventory;
+            if (_inventory != null)
+            {
+                GD.Print("Successfully connected to player inventory");
 
-            // Подписываемся на изменения инвентаря
-            player.Connect("PlayerInventoryChanged", Callable.From(() => UpdateInventoryUI()));
+                // Отписываемся от предыдущих сигналов, чтобы избежать дубликатов
+                if (player.IsConnected("PlayerInventoryChanged", Callable.From(() => UpdateInventoryUI())))
+                {
+                    player.Disconnect("PlayerInventoryChanged", Callable.From(() => UpdateInventoryUI()));
+                }
 
-            Logger.Debug("InventoryUI connected to player inventory", true);
+                // Подписываемся на изменения инвентаря
+                player.Connect("PlayerInventoryChanged", Callable.From(() => UpdateInventoryUI()));
+                GD.Print("Connected to PlayerInventoryChanged signal");
+            }
+            else
+            {
+                GD.Print("ERROR: Player.PlayerInventory is still null after initialization");
+            }
         }
         else
         {
             Logger.Error("InventoryUI: Player not found");
+            GD.Print("ERROR: No Player found in 'Player' group for inventory connection");
         }
     }
 
@@ -225,10 +249,18 @@ public partial class InventoryUI : Control
     // Обновление отображения инвентаря
     public void UpdateInventoryUI()
     {
+        // Проверяем, не нулевой ли инвентарь, и если да, пытаемся найти его снова
         if (_inventory == null)
         {
-            GD.Print("UpdateInventoryUI: Inventory is null");
-            return;
+            GD.Print("UpdateInventoryUI: Inventory is null, trying to find it again");
+            FindPlayerInventory();
+
+            // Если все еще null, выходим с сообщением
+            if (_inventory == null)
+            {
+                GD.Print("UpdateInventoryUI: Still couldn't find inventory, aborting update");
+                return;
+            }
         }
 
         if (_slots.Count == 0)
