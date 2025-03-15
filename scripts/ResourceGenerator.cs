@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>
 /// Класс для генерации и размещения ресурсов на карте
@@ -141,66 +142,50 @@ public class ResourceGenerator
 
         try
         {
-            // Загружаем предметы ресурсов из правильных путей
-            var metalItem = ResourceLoader.Load<Item>("res://scenes/resources/items/metal_ore.tres");
-            var crystalItem = ResourceLoader.Load<Item>("res://scenes/resources/items/resource_crystal.tres");
-            var organicItem = ResourceLoader.Load<Item>("res://scenes/resources/items/organic_matter.tres");
+            // Папка, содержащая ресурсы
+            string resourcesDirectory = "res://scenes/resources/items/";
 
-            if (metalItem != null)
+            // Получаем список файлов .tres
+            var dir = DirAccess.Open(resourcesDirectory);
+            if (dir == null)
             {
-                _resourceItems[ResourceType.Metal] = metalItem;
-                Logger.Debug("Loaded metal_ore.tres successfully", true);
-            }
-            else
-            {
-                Logger.Error("Failed to load metal_ore.tres");
+                Logger.Error($"Failed to open resources directory: {resourcesDirectory}");
+                return;
             }
 
-            if (crystalItem != null)
-            {
-                _resourceItems[ResourceType.Crystal] = crystalItem;
-                Logger.Debug("Loaded resource_crystal.tres successfully", true);
-            }
-            else
-            {
-                Logger.Error("Failed to load resource_crystal.tres");
-            }
+            List<string> resourceFiles = new List<string>();
+            dir.ListDirBegin();
+            string fileName = dir.GetNext();
 
-            if (organicItem != null)
+            while (fileName != "")
             {
-                _resourceItems[ResourceType.Organic] = organicItem;
-                Logger.Debug("Loaded organic_matter.tres successfully", true);
+                if (!dir.CurrentIsDir() && fileName.EndsWith(".tres"))
+                {
+                    resourceFiles.Add(resourcesDirectory + fileName);
+                    Logger.Debug($"Found resource file: {fileName}", false);
+                }
+                fileName = dir.GetNext();
             }
-            else
+            dir.ListDirEnd();
+
+            // Загружаем каждый найденный ресурс
+            foreach (string filePath in resourceFiles)
             {
-                Logger.Error("Failed to load organic_matter.tres");
+                var item = ResourceLoader.Load<Item>(filePath);
+                if (item != null)
+                {
+                    // Получаем тип ресурса из свойства ResourceTypeEnum
+                    ResourceType resourceType = item.GetResourceType();
+
+                    // Добавляем в словарь
+                    _resourceItems[resourceType] = item;
+                    Logger.Debug($"Loaded resource from {filePath}: {item.DisplayName} as {resourceType} (from {item.ResourceTypeEnum})", true);
+                }
+                else
+                {
+                    Logger.Error($"Failed to load resource from {filePath}");
+                }
             }
-
-            // Создаем энергетический ресурс, если он отсутствует
-            var energyItem = new Item
-            {
-                ID = "resource_energy",
-                DisplayName = "Energy Source",
-                Description = "A concentrated energy source that can power advanced technology.",
-                Type = ItemType.Resource,
-                Weight = 0.5f,
-                Value = 30,
-                MaxStackSize = 10
-            };
-            _resourceItems[ResourceType.Energy] = energyItem;
-
-            // Создаем композитный ресурс, если он отсутствует
-            var compositeItem = new Item
-            {
-                ID = "resource_composite",
-                DisplayName = "Composite Material",
-                Description = "An advanced composite material with unique properties.",
-                Type = ItemType.Resource,
-                Weight = 1.5f,
-                Value = 20,
-                MaxStackSize = 15
-            };
-            _resourceItems[ResourceType.Composite] = compositeItem;
 
             Logger.Debug($"Successfully loaded {_resourceItems.Count} resource items", true);
         }
@@ -209,6 +194,25 @@ public class ResourceGenerator
             Logger.Error($"Error loading resource items: {e.Message}");
         }
     }
+
+    private ResourceType DetermineResourceTypeFromId(string resourceId)
+    {
+        // Алгоритм определения типа ресурса по его ID
+        if (resourceId.Contains("metal"))
+            return ResourceType.Metal;
+        else if (resourceId.Contains("crystal"))
+            return ResourceType.Crystal;
+        else if (resourceId.Contains("organic"))
+            return ResourceType.Organic;
+
+        // Добавьте дополнительные условия для новых ресурсов
+        // else if (resourceId.Contains("new_resource_keyword"))
+        //    return ResourceType.YourNewType;
+
+        // По умолчанию возвращаем Metal
+        return ResourceType.Metal;
+    }
+
 
     /// <summary>
     /// Генерация ресурсов на карте
@@ -293,20 +297,54 @@ public class ResourceGenerator
     /// <returns>Выбранный тип ресурса</returns>
     private ResourceType SelectResourceType(Dictionary<ResourceType, float> probabilities)
     {
-        // Вычисляем сумму всех вероятностей
+        // Проверяем, что словарь не пустой и содержит хотя бы один ресурс из _resourceItems
+        if (probabilities == null || probabilities.Count == 0 ||
+            !probabilities.Keys.Any(k => _resourceItems.ContainsKey(k)))
+        {
+            // Если нет подходящих вероятностей, выбираем первый доступный ресурс
+            foreach (var type in _resourceItems.Keys)
+            {
+                Logger.Debug($"No valid probabilities, defaulting to first available resource: {type}", false);
+                return type;
+            }
+
+            // Если ресурсов нет вообще, возвращаем Metal
+            Logger.Debug("No resources available, defaulting to Metal", false);
+            return ResourceType.Metal;
+        }
+
+        // Вычисляем сумму вероятностей только для доступных ресурсов
         float totalProbability = 0f;
         foreach (var kv in probabilities)
         {
-            totalProbability += kv.Value;
+            if (_resourceItems.ContainsKey(kv.Key))
+            {
+                totalProbability += kv.Value;
+            }
+        }
+
+        // Если сумма вероятностей равна 0, возвращаем первый доступный тип ресурса
+        if (totalProbability <= 0f)
+        {
+            foreach (var type in _resourceItems.Keys)
+            {
+                Logger.Debug($"Zero total probability, defaulting to first available resource: {type}", false);
+                return type;
+            }
+
+            return ResourceType.Metal;
         }
 
         // Генерируем случайное число в диапазоне [0, totalProbability)
         float randomValue = (float)_random.NextDouble() * totalProbability;
 
-        // Выбираем тип ресурса
+        // Выбираем тип ресурса, но только среди доступных
         float cumulativeProbability = 0f;
         foreach (var kv in probabilities)
         {
+            if (!_resourceItems.ContainsKey(kv.Key))
+                continue;
+
             cumulativeProbability += kv.Value;
             if (randomValue < cumulativeProbability)
             {
@@ -314,8 +352,8 @@ public class ResourceGenerator
             }
         }
 
-        // По умолчанию, если что-то пошло не так
-        return ResourceType.Metal;
+        // По умолчанию, если что-то пошло не так, возвращаем первый доступный тип
+        return _resourceItems.Keys.First();
     }
 
     /// <summary>

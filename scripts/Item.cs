@@ -13,6 +13,7 @@ public enum ItemType
     Key         // Ключи и доступы
 }
 
+
 // Добавляем атрибуты для регистрации класса в редакторе Godot
 [Tool]
 [GlobalClass]
@@ -35,6 +36,21 @@ public partial class Item : Resource
     {
         get => _quantity;
         set => _quantity = Mathf.Clamp(value, 0, MaxStackSize);
+    }
+
+    // Добавляем новое свойство ResourceTypeEnum в класс Item
+    [Export(PropertyHint.Enum, "Metal,Crystal,Organic")]
+    public string ResourceTypeEnum { get; set; } = "Metal";  // Значение по умолчанию
+
+    // Вспомогательный метод для получения типа ресурса из строки
+    public ResourceType GetResourceType()
+    {
+        switch (ResourceTypeEnum)
+        {
+            case "Crystal": return ResourceType.Crystal;
+            case "Organic": return ResourceType.Organic;
+            default: return ResourceType.Metal;  // По умолчанию Metal
+        }
     }
 
     // Ссылка на текстуру иконки (загружается при необходимости)

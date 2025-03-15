@@ -200,10 +200,6 @@ public partial class ResourceNode : InteractiveObject, IInteraction
                 return "res://resources/textures/resources/crystal.png";
             case ResourceType.Organic:
                 return "res://resources/textures/resources/organic_matter.png";
-            case ResourceType.Energy:
-                return "res://resources/textures/resources/energy_source.png";
-            case ResourceType.Composite:
-                return "res://resources/textures/resources/composite_material.png";
             default:
                 return "res://icon.svg"; // Стандартная иконка Godot
         }

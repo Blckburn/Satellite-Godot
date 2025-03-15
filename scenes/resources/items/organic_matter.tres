@@ -13,4 +13,5 @@ Value = 15
 MaxStackSize = 30
 IconPath = "res://resources/textures/resources/organic_matter.png"
 Quantity = 1
+ResourceTypeEnum = "Organic"
 metadata/_custom_type_script = "uid://dq07pxh84nuut"

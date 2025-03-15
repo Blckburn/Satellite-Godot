@@ -13,4 +13,5 @@ Value = 25
 MaxStackSize = 15
 IconPath = "res://resources/textures/resources/crystal.png"
 Quantity = 1
+ResourceTypeEnum = "Crystal"
 metadata/_custom_type_script = "uid://dq07pxh84nuut"
