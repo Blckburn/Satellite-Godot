@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using System.Linq;
+using System.Xml.Linq;
 
 public partial class InteractionSystem : Node
 {
@@ -13,6 +14,9 @@ public partial class InteractionSystem : Node
 
     // Отслеживаем состояние клавиши взаимодействия
     private bool _isInteractionKeyPressed = false;
+
+    // Для отслеживания текущего ресурса, с которым взаимодействуем
+    private ResourceNode _currentInteractingResource;
 
     // Синглтон для удобного доступа
     public static InteractionSystem Instance { get; private set; }
@@ -54,17 +58,20 @@ public partial class InteractionSystem : Node
 
     public override void _Process(double delta)
     {
+        // Сначала обновляем ближайший интерактивный объект
         UpdateNearestInteractable();
 
-        // Проверяем состояние клавиши взаимодействия
+        // Явно проверяем состояние клавиши E (взаимодействие)
         bool eKeyCurrentlyPressed = Input.IsActionPressed("interact");
 
-        // Если клавиша была нажата, а теперь отпущена
+        // ВАЖНО: Если клавиша была нажата, а теперь отпущена - отправляем событие
         if (_isInteractionKeyPressed && !eKeyCurrentlyPressed)
         {
+            Logger.Debug("InteractionSystem: Detected E key released", true);
             OnInteractionKeyReleased();
         }
 
+        // Сохраняем текущее состояние клавиши для следующей проверки
         _isInteractionKeyPressed = eKeyCurrentlyPressed;
 
         // Проверяем, если игрок вышел из зоны взаимодействия во время процесса
@@ -75,12 +82,16 @@ public partial class InteractionSystem : Node
                 && interaction.IsInteracting())
             {
                 interaction.CancelInteraction();
-                Logger.Debug("Interaction canceled - player moved away", false);
+                Logger.Debug("InteractionSystem: Interaction canceled - player moved away", true);
             }
 
             _lastInteractable = _nearestInteractable;
         }
+
+        // Обновляем процесс взаимодействия
+        UpdateInteraction(delta);
     }
+
 
     // Обработка нажатия клавиши взаимодействия
     public bool HandleInteraction()
@@ -92,25 +103,88 @@ public partial class InteractionSystem : Node
 
         if (_nearestInteractable != null && _nearestInteractable.CanInteract(_player))
         {
+            // Если это ResourceNode, сохраняем ссылку и устанавливаем флаг нажатия клавиши
+            if (_nearestInteractable is ResourceNode resourceNode)
+            {
+                _currentInteractingResource = resourceNode;
+                _isInteractionKeyPressed = true; // ВАЖНО: устанавливаем флаг нажатия клавиши
+                Logger.Debug($"InteractionSystem: Started interaction with resource: {resourceNode.Name}", true);
+            }
+
             return _nearestInteractable.Interact(_player);
         }
 
         return false;
     }
 
+
     // Обработка отпускания клавиши взаимодействия
     private void OnInteractionKeyReleased()
     {
-        // Уведомляем текущий объект взаимодействия об отпускании клавиши
-        if (_nearestInteractable is IInteraction interaction)
+        // Логируем для отладки
+        Logger.Debug("InteractionSystem: Interaction key E released", true);
+
+        // Уведомляем текущий ресурс об отпускании клавиши, если это ResourceNode
+        if (_currentInteractingResource != null && _currentInteractingResource.IsInteracting())
         {
-            // Если объект поддерживает интерфейс длительного взаимодействия
-            if (interaction.IsInteracting() && interaction.GetInteractionProgress() < 1.0f)
+            // Явный вызов метода на ресурсе
+            _currentInteractingResource.OnInteractionKeyReleased();
+            Logger.Debug("InteractionSystem: Notified resource of key release", true);
+        }
+        // Для дверей
+        else if (_nearestInteractable is Door door && door.IsInteracting())
+        {
+            door.OnInteractionKeyReleased();
+            Logger.Debug("InteractionSystem: Notified door of key release", true);
+        }
+        else if (_nearestInteractable is IInteraction interaction && interaction.IsInteracting())
+        {
+            // Для других объектов с интерфейсом IInteraction
+            interaction.CancelInteraction();
+            Logger.Debug("InteractionSystem: Called CancelInteraction on interactive object", true);
+        }
+    }
+
+    // Обновление активного процесса взаимодействия
+    private void UpdateInteraction(double delta)
+    {
+        // Обновляем состояние для активного процесса взаимодействия с дверью
+        if (_currentInteractingResource != null && _currentInteractingResource.IsInteracting())
+        {
+            // Процесс продолжается - проверяем, видно ли ресурс еще и близко ли игрок
+            if (!IsInstanceValid(_currentInteractingResource) ||
+                !IsInInteractionRange(_player, _currentInteractingResource))
             {
-                interaction.CancelInteraction();
-                Logger.Debug("Interaction canceled - key released", false);
+                // Если ресурс исчез или далеко, отменяем взаимодействие
+                CancelCurrentInteraction();
             }
         }
+        else
+        {
+            // Процесс завершен или прерван - сбрасываем текущий ресурс
+            _currentInteractingResource = null;
+        }
+    }
+
+    // Проверка, находится ли игрок в зоне взаимодействия
+    private bool IsInInteractionRange(Player player, IInteractable interactable)
+    {
+        if (player == null || interactable == null || !(interactable is Node2D interactableNode))
+            return false;
+
+        float distance = player.GlobalPosition.DistanceTo(interactableNode.GlobalPosition);
+        return distance <= interactable.GetInteractionRadius();
+    }
+
+    // Отмена текущего взаимодействия
+    private void CancelCurrentInteraction()
+    {
+        if (_currentInteractingResource != null && _currentInteractingResource.IsInteracting())
+        {
+            _currentInteractingResource.CancelInteraction();
+            Logger.Debug("Resource interaction canceled", false);
+        }
+        _currentInteractingResource = null;
     }
 
     // Обновление ближайшего интерактивного объекта
@@ -177,5 +251,22 @@ public partial class InteractionSystem : Node
     public void SetCurrentInteractable(IInteractable interactable)
     {
         _nearestInteractable = interactable;
+    }
+
+    // Метод для уведомления о нажатии клавиши
+    public void NotifyKeyPressed(Key key)
+    {
+        if (key == Key.E)
+            _isInteractionKeyPressed = true;
+    }
+
+    // Метод для уведомления об отпускании клавиши
+    public void NotifyKeyReleased(Key key)
+    {
+        if (key == Key.E)
+        {
+            _isInteractionKeyPressed = false;
+            OnInteractionKeyReleased();
+        }
     }
 }

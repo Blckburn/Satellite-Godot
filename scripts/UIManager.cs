@@ -128,6 +128,9 @@ public partial class UIManager : CanvasLayer
                 float progress = interaction.GetInteractionProgress();
                 _interactionProgressBar.Value = progress * 100;
                 _interactionProgressBar.Visible = true;
+
+                // Выводим в лог для отладки
+                Logger.Debug($"Interaction progress: {progress * 100:F1}%", false);
             }
             else if (_interactionProgressBar != null)
             {

@@ -57,16 +57,18 @@ public partial class ResourceNode : InteractiveObject, IInteraction
 
     // Визуальные компоненты
     private Sprite2D _sprite;
-    private Label _resourceLabel;
+    private Godot.Label _resourceLabel;
+    private Godot.Label _progressLabel;
 
     // Переменные для процесса добычи
     private bool _isHarvesting = false;
     private float _harvestProgress = 0.0f;
     private float _harvestTimer = 0.0f;
     private bool _keyHeld = false;
+    private bool _harvestPaused = false;
 
     // Переменные для визуальных эффектов
-    private Vector2 _initialScale = Vector2.One;
+    private Godot.Vector2 _initialScale = Godot.Vector2.One;
     private float _time = 0.0f;
 
     // Сигналы
@@ -80,7 +82,14 @@ public partial class ResourceNode : InteractiveObject, IInteraction
 
         // Инициализация компонентов
         _sprite = GetNodeOrNull<Sprite2D>("Sprite2D");
-        _resourceLabel = GetNodeOrNull<Label>("ResourceLabel");
+        _resourceLabel = GetNodeOrNull<Godot.Label>("ResourceLabel");
+
+        // Создаем метку прогресса, если её ещё нет
+        _progressLabel = GetNodeOrNull<Godot.Label>("ProgressLabel");
+        if (_progressLabel == null)
+        {
+            CreateProgressLabel();
+        }
 
         // Сохраняем начальный масштаб для эффектов
         if (_sprite != null)
@@ -104,6 +113,55 @@ public partial class ResourceNode : InteractiveObject, IInteraction
         Logger.Debug($"ResourceNode '{Name}' initialized with type: {Type}", true);
     }
 
+    // Создание элементов прогресса
+    private void CreateProgressLabel()
+    {
+        // Создаем родительский контейнер для всех элементов прогресса
+        var progressContainer = new Control();
+        progressContainer.Name = "ProgressContainer";
+        progressContainer.Position = new Godot.Vector2(0, -40); // Располагаем над ресурсом
+        progressContainer.SetAnchorsPreset(Control.LayoutPreset.Center);
+        progressContainer.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+        AddChild(progressContainer);
+
+        // Создаем фон для прогресс-бара - теперь он шире для размещения текста
+        var progressBackground = new ColorRect();
+        progressBackground.Name = "ProgressBackground";
+        progressBackground.Size = new Godot.Vector2(100, 20); // Увеличиваем размер для текста внутри
+        progressBackground.Position = new Godot.Vector2(-50, 0); // Центрируем
+        progressBackground.Color = new Godot.Color(0.2f, 0.2f, 0.2f, 0.8f);
+        progressContainer.AddChild(progressBackground);
+
+        // Создаем передний план прогресс-бара (заполняющаяся часть)
+        var progressFill = new ColorRect();
+        progressFill.Name = "ProgressFill";
+        progressFill.Size = new Godot.Vector2(0, 20); // Начальная ширина 0, та же высота
+        progressFill.Position = new Godot.Vector2(-50, 0); // Та же позиция, что и у фона
+        progressFill.Color = new Godot.Color(1, 1, 1, 0.9f); // Белый полупрозрачный
+        progressContainer.AddChild(progressFill);
+
+        // Создаем текстовую метку прогресса поверх прогресс-бара
+        _progressLabel = new Godot.Label();
+        _progressLabel.Name = "ProgressLabel";
+        _progressLabel.Position = new Godot.Vector2(0, 0); // Центрируем текст в контейнере
+        _progressLabel.Size = new Godot.Vector2(100, 20); // Размер как у бара
+        _progressLabel.Position = new Godot.Vector2(-50, 0); // Та же позиция, что и у бара
+
+        // Стилизация для лучшей видимости
+        _progressLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _progressLabel.VerticalAlignment = VerticalAlignment.Center; // Центрируем по вертикали
+        _progressLabel.AddThemeColorOverride("font_color", Colors.White);
+        _progressLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
+        _progressLabel.AddThemeConstantOverride("outline_size", 2);
+        _progressLabel.AddThemeFontSizeOverride("font_size", 12);
+        progressContainer.AddChild(_progressLabel);
+
+        // Скрываем контейнер изначально
+        progressContainer.Visible = false;
+
+        Logger.Debug("Progress UI elements created for resource node", false);
+    }
+
     public override void _Process(double delta)
     {
         base._Process(delta);
@@ -111,17 +169,42 @@ public partial class ResourceNode : InteractiveObject, IInteraction
         // Обновляем время для визуальных эффектов
         _time += (float)delta;
 
-        // Применяем визуальные эффекты, если они включены
+        // Применяем визуальные эффекты
         ApplyVisualEffects(delta);
 
-        // Обрабатываем процесс добычи
-        if (_isHarvesting && _keyHeld)
+        // Добавляем явную проверку клавиши E для дополнительной надежности
+        bool eKeyPressed = Input.IsActionPressed("interact");
+        if (_isHarvesting && !_harvestPaused && !eKeyPressed)
         {
+            // Если ключ отпущен, но мы все еще собираем ресурс, приостанавливаем
+            Logger.Debug("ResourceNode: E key not pressed, pausing harvest", true);
+            PauseHarvest();
+        }
+        else if (_isHarvesting && !_harvestPaused && _keyHeld)
+        {
+            // Проверяем, находится ли игрок в пределах зоны взаимодействия
+            var players = GetTree().GetNodesInGroup("Player");
+            if (players.Count > 0 && players[0] is Player player)
+            {
+                float distance = GlobalPosition.DistanceTo(player.GlobalPosition);
+                if (distance > InteractionRadius)
+                {
+                    // Игрок отошел слишком далеко, приостанавливаем сбор
+                    Logger.Debug("ResourceNode: Player moved too far, pausing harvest", true);
+                    PauseHarvest();
+                    return; // Прекращаем обработку
+                }
+            }
+
+            // Если все проверки пройдены, продолжаем сбор
             _harvestTimer += (float)delta;
             _harvestProgress = Mathf.Min(1.0f, _harvestTimer / HarvestTime);
 
             // Обновляем подсказку с прогрессом
             UpdateInteractionHintDuringHarvest();
+
+            // Обновляем метку прогресса
+            UpdateProgressLabel();
 
             // Проверяем завершение процесса
             if (_harvestProgress >= 1.0f)
@@ -131,23 +214,116 @@ public partial class ResourceNode : InteractiveObject, IInteraction
         }
     }
 
+
+    // Обновление метки прогресса
+    private void UpdateProgressLabel()
+    {
+        var progressContainer = GetNodeOrNull<Control>("ProgressContainer");
+        if (progressContainer == null) return;
+
+        if (_isHarvesting)
+        {
+            int percent = (int)(_harvestProgress * 100);
+
+            // Обновляем текст
+            if (_progressLabel != null)
+            {
+                if (_harvestPaused)
+                    _progressLabel.Text = $"Paused: {percent}%";
+                else
+                    _progressLabel.Text = $"Harvesting: {percent}%";
+            }
+
+            // Обновляем прогресс-бар
+            var progressFill = progressContainer.GetNodeOrNull<ColorRect>("ProgressFill");
+            if (progressFill != null)
+            {
+                // Вычисляем новую ширину заполнения в зависимости от прогресса
+                float maxWidth = 100; // Ширина 100 для вмещения текста
+                float newWidth = maxWidth * _harvestProgress;
+                progressFill.Size = new Godot.Vector2(newWidth, progressFill.Size.Y);
+
+                // Меняем цвет в зависимости от прогресса и статуса
+                if (_harvestPaused)
+                {
+                    // Более тусклый цвет для приостановленного сбора
+                    progressFill.Color = new Godot.Color(0.5f, 0.5f, 0.5f, 0.7f);
+                }
+                else
+                {
+                    // Яркий зеленый для активного сбора
+                    progressFill.Color = new Godot.Color(
+                        0.3f + (_harvestProgress * 0.3f), // R увеличивается немного
+                        0.8f + (_harvestProgress * 0.2f), // G увеличивается немного
+                        0.3f, // B остается низким для зеленого оттенка
+                        0.9f
+                    );
+                }
+            }
+
+            progressContainer.Visible = true;
+        }
+        else
+        {
+            progressContainer.Visible = false;
+        }
+    }
+
+    // Обновленный метод для отображения статуса сбора
+    private void UpdateInteractionHintDuringHarvest()
+    {
+        int percent = (int)(_harvestProgress * 100);
+        if (_harvestPaused)
+        {
+            InteractionHint = $"Press E to continue harvesting ({percent}%)";
+        }
+        else
+        {
+            InteractionHint = $"Harvesting ({percent}%)... Hold E";
+        }
+    }
+
     // Применение визуальных эффектов
     private void ApplyVisualEffects(double delta)
     {
         if (_sprite == null)
             return;
 
-        // Эффект пульсации
-        if (EnablePulsating)
-        {
-            float pulseFactor = 1.0f + Mathf.Sin(_time * PulsatingSpeed) * PulsatingStrength;
-            _sprite.Scale = _initialScale * pulseFactor;
-        }
-
-        // Эффект вращения
+        // Эффект вращения сохраняем
         if (EnableRotation)
         {
             _sprite.RotationDegrees += (float)delta * RotationSpeed;
+        }
+
+        // Во время активного процесса сбора
+        if (_isHarvesting && !_harvestPaused)
+        {
+            // Уменьшаем размер ресурса в зависимости от прогресса
+            float shrinkFactor = 1.0f - (_harvestProgress * 0.7f);
+            _sprite.Scale = _initialScale * shrinkFactor;
+
+            // Изменяем прозрачность - ресурс становится более прозрачным
+            float alpha = 1.0f - (_harvestProgress * 0.5f);
+            _sprite.Modulate = new Godot.Color(
+                1.0f,
+                1.0f - _harvestProgress * 0.3f,  // Немного краснеет
+                1.0f - _harvestProgress * 0.3f,  // Немного краснеет
+                alpha  // Становится прозрачнее
+            );
+        }
+        else if (_isHarvesting && _harvestPaused)
+        {
+            // Для приостановленного сбора сохраняем уменьшенный размер,
+            // но возвращаем нормальный цвет
+            float shrinkFactor = 1.0f - (_harvestProgress * 0.7f);
+            _sprite.Scale = _initialScale * shrinkFactor;
+            _sprite.Modulate = Colors.White;
+        }
+        else
+        {
+            // Возвращаем нормальный вид спрайту, если не собираем
+            _sprite.Modulate = Colors.White;
+            _sprite.Scale = _initialScale;
         }
     }
 
@@ -242,13 +418,6 @@ public partial class ResourceNode : InteractiveObject, IInteraction
         InteractionHint = $"Press E to harvest {resourceName}";
     }
 
-    // Обновление подсказки во время процесса добычи
-    private void UpdateInteractionHintDuringHarvest()
-    {
-        int percent = (int)(_harvestProgress * 100);
-        InteractionHint = $"Harvesting ({percent}%)... Hold E";
-    }
-
     // Реализация интерфейса IInteractable для начального взаимодействия
     public override bool Interact(Node source)
     {
@@ -257,30 +426,129 @@ public partial class ResourceNode : InteractiveObject, IInteraction
             return false;
         }
 
-        // Начинаем процесс добычи
-        StartHarvest();
-        return true;
+        // Если сбор приостановлен, продолжаем с текущего прогресса
+        if (_harvestPaused)
+        {
+            ResumeHarvest();
+            return true;
+        }
+
+        // Если не приостановлен и не идет, начинаем новый сбор
+        if (!_isHarvesting)
+        {
+            StartHarvest();
+            return true;
+        }
+
+        return false;
     }
 
     // Начало процесса добычи
     private void StartHarvest()
     {
         _isHarvesting = true;
+        _harvestPaused = false;
         _harvestProgress = 0.0f;
         _harvestTimer = 0.0f;
-        _keyHeld = true;
+        _keyHeld = true; // Устанавливаем флаг, что клавиша удерживается
+
+        // Явно проверяем состояние клавиши сразу после начала сбора
+        // Это дополнительная защита, чтобы убедиться, что клавиша действительно нажата
+        if (!Input.IsActionPressed("interact"))
+        {
+            Logger.Debug("ResourceNode: E key not pressed immediately after StartHarvest, forcing keyHeld=false", true);
+            _keyHeld = false;
+            PauseHarvest();
+            return;
+        }
+
+        // Показываем метку прогресса и сбрасываем прогресс-бар
+        var progressContainer = GetNodeOrNull<Control>("ProgressContainer");
+        if (progressContainer != null)
+        {
+            var progressFill = progressContainer.GetNodeOrNull<ColorRect>("ProgressFill");
+            if (progressFill != null)
+            {
+                progressFill.Size = new Godot.Vector2(0, progressFill.Size.Y); // Сбрасываем ширину
+            }
+
+            if (_progressLabel != null)
+            {
+                _progressLabel.Text = "Harvesting: 0%";
+            }
+
+            progressContainer.Visible = true;
+        }
 
         EmitSignal(SignalName.HarvestStarted);
-        Logger.Debug($"Started harvesting {Type} resource", false);
+        Logger.Debug($"ResourceNode: Started harvesting {Type} resource", true);
+    }
+
+    // Приостановка процесса добычи (сохраняем прогресс)
+    private void PauseHarvest()
+    {
+        if (_isHarvesting && !_harvestPaused)
+        {
+            _harvestPaused = true;
+            _keyHeld = false;
+
+            // Обновляем подсказку для продолжения
+            UpdateInteractionHintDuringHarvest();
+
+            // Обновляем вид прогресс-бара
+            UpdateProgressLabel();
+
+            // Возвращаем нормальный вид спрайту, но сохраняем размер для индикации прогресса
+            if (_sprite != null)
+            {
+                _sprite.Modulate = Colors.White;
+                // НЕ меняем размер, чтобы визуально показать прогресс: _sprite.Scale
+            }
+
+            Logger.Debug($"Harvesting of {Type} resource paused at {_harvestProgress * 100}%", false);
+        }
+    }
+
+    // Возобновление процесса добычи
+    private void ResumeHarvest()
+    {
+        if (_isHarvesting && _harvestPaused)
+        {
+            _harvestPaused = false;
+            _keyHeld = true;
+
+            // Обновляем подсказку для сбора
+            UpdateInteractionHintDuringHarvest();
+
+            // Обновляем вид прогресс-бара
+            UpdateProgressLabel();
+
+            Logger.Debug($"Resumed harvesting of {Type} resource from {_harvestProgress * 100}%", false);
+        }
     }
 
     // Завершение процесса добычи
     private void CompleteHarvest()
     {
         _isHarvesting = false;
+        _harvestPaused = false;
         _harvestProgress = 0.0f;
         _harvestTimer = 0.0f;
         _keyHeld = false;
+
+        // Скрываем элементы прогресса
+        var progressContainer = GetNodeOrNull<Control>("ProgressContainer");
+        if (progressContainer != null)
+        {
+            progressContainer.Visible = false;
+        }
+
+        // Возвращаем нормальный вид спрайту
+        if (_sprite != null)
+        {
+            _sprite.Modulate = Colors.White;
+            _sprite.Scale = _initialScale;
+        }
 
         // Добавляем ресурс в инвентарь игрока
         if (TryAddResourceToInventory())
@@ -289,13 +557,61 @@ public partial class ResourceNode : InteractiveObject, IInteraction
             EmitSignal(SignalName.HarvestCompleted, ResourceAmount, (int)Type);
 
             // Удаляем узел ресурса, так как он был исчерпан
-            // В будущем можно модифицировать для поддержки многократной добычи
             QueueFree();
+        }
+        else
+        {
+            // Обновляем подсказку на случай неудачи
+            UpdateInteractionHint();
+        }
+    }
+
+    // Обработчик отпускания клавиши (теперь приостанавливает вместо отмены)
+    public void OnInteractionKeyReleased()
+    {
+        if (_isHarvesting && _keyHeld)
+        {
+            _keyHeld = false;
+
+            // Приостанавливаем, а не отменяем взаимодействие
+            PauseHarvest();
+        }
+    }
+
+    // Метод полной отмены сбора (например, если игрок отошел очень далеко)
+    public void CancelHarvestCompletely()
+    {
+        if (_isHarvesting)
+        {
+            _isHarvesting = false;
+            _harvestPaused = false;
+            _keyHeld = false;
+            _harvestProgress = 0.0f;
+            _harvestTimer = 0.0f;
+
+            // Скрываем элементы прогресса
+            var progressContainer = GetNodeOrNull<Control>("ProgressContainer");
+            if (progressContainer != null)
+            {
+                progressContainer.Visible = false;
+            }
+
+            // Возвращаем нормальный вид спрайту
+            if (_sprite != null)
+            {
+                _sprite.Modulate = Colors.White;
+                _sprite.Scale = _initialScale;
+            }
+
+            // Возвращаем исходную подсказку
+            UpdateInteractionHint();
+
+            EmitSignal(SignalName.HarvestCanceled);
+            Logger.Debug($"Harvesting of {Type} resource completely canceled", false);
         }
     }
 
     // Добавление ресурса в инвентарь игрока
-    // Исправленный метод TryAddResourceToInventory для класса ResourceNode
     private bool TryAddResourceToInventory()
     {
         // Находим игрока
@@ -374,24 +690,6 @@ public partial class ResourceNode : InteractiveObject, IInteraction
         return false;
     }
 
-    // Отмена процесса добычи
-    public void CancelHarvest()
-    {
-        if (_isHarvesting)
-        {
-            _isHarvesting = false;
-            _keyHeld = false;
-            _harvestProgress = 0.0f;
-            _harvestTimer = 0.0f;
-
-            // Возвращаем исходную подсказку
-            UpdateInteractionHint();
-
-            EmitSignal(SignalName.HarvestCanceled);
-            Logger.Debug($"Harvesting of {Type} resource canceled", false);
-        }
-    }
-
     // Реализация IInteraction - проверка активности процесса
     public bool IsInteracting()
     {
@@ -407,6 +705,7 @@ public partial class ResourceNode : InteractiveObject, IInteraction
     // Реализация IInteraction - отмена взаимодействия
     public void CancelInteraction()
     {
-        CancelHarvest();
+        // Только приостанавливаем, а не отменяем полностью
+        PauseHarvest();
     }
 }
