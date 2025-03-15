@@ -63,20 +63,30 @@ public partial class Inventory : Resource
             return false;
         }
 
+        // Запоминаем изначальное количество для отчета
+        int initialQuantity = item.Quantity;
+        int totalAddedQuantity = 0;
+
         // Пытаемся сначала объединить с существующими стеками
         int remainingQuantity = item.Quantity;
         foreach (var existingItem in _items.Where(i => i.CanStackWith(item)).ToList())
         {
+            // Запоминаем исходное количество в существующем стеке
             int originalQuantity = existingItem.Quantity;
+
+            // Пытаемся добавить предметы в стек
             int remainder = existingItem.StackWith(item);
+
+            // Вычисляем, сколько предметов действительно добавлено в этот стек
             int added = existingItem.Quantity - originalQuantity;
+            totalAddedQuantity += added;
             remainingQuantity -= added;
 
-            GD.Print($"Stacked {added} items with existing stack. Remaining: {remainingQuantity}");
+            GD.Print($"Stacked {added} items with existing stack. New quantity: {existingItem.Quantity}, Remaining: {remainingQuantity}");
 
             if (remainingQuantity <= 0)
             {
-                GD.Print("All items stacked successfully");
+                GD.Print($"All items stacked successfully. Total added: {totalAddedQuantity} from initial {initialQuantity}");
                 EmitSignal("InventoryChanged");
                 return true;
             }
@@ -91,7 +101,8 @@ public partial class Inventory : Resource
             if (_items.Count >= MaxSlots)
             {
                 GD.Print($"Inventory is full. Current items: {_items.Count}, Max slots: {MaxSlots}");
-                return false;
+                // Возвращаем true только если что-то было добавлено в существующие стеки
+                return totalAddedQuantity > 0;
             }
 
             // Создаем новый экземпляр для добавления в инвентарь
@@ -99,11 +110,12 @@ public partial class Inventory : Resource
             newItem.Quantity = remainingQuantity;
             _items.Add(newItem);
 
+            totalAddedQuantity += remainingQuantity;
             GD.Print($"Added new item to inventory: {newItem.DisplayName} x{newItem.Quantity}");
         }
 
+        GD.Print($"Final result: Added {totalAddedQuantity} items to inventory");
         EmitSignal("InventoryChanged");
-        GD.Print($"Inventory changed. Current item count: {_items.Count}");
         return true;
     }
 

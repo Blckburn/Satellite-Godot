@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Linq;
 
 // Расширение класса Player для добавления системы инвентаря
 public partial class Player
@@ -31,7 +32,7 @@ public partial class Player
         }
     }
 
-    // Добавление предмета в инвентарь
+    // Исправленный метод добавления предмета в инвентарь
     public bool AddItemToInventory(Item item)
     {
         if (PlayerInventory == null)
@@ -40,7 +41,8 @@ public partial class Player
         }
 
         // Отладочная информация
-        GD.Print($"Adding to inventory: {item.DisplayName} (ID: {item.ID}, Type: {item.Type}, Quantity: {item.Quantity})");
+        int initialQuantity = item.Quantity;
+        GD.Print($"Adding to inventory: {item.DisplayName} (ID: {item.ID}, Type: {item.Type}, Quantity: {initialQuantity})");
 
         // Проверяем, что это валидный предмет
         if (string.IsNullOrEmpty(item.ID) || string.IsNullOrEmpty(item.DisplayName))
@@ -49,11 +51,35 @@ public partial class Player
             return false;
         }
 
+        // Получаем текущее количество предмета до добавления
+        int currentQuantity = 0;
+        Item existingItem = PlayerInventory.Items.FirstOrDefault(i => i.ID == item.ID);
+        if (existingItem != null)
+        {
+            currentQuantity = existingItem.Quantity;
+        }
+
+        // Добавляем предмет в инвентарь
         bool result = PlayerInventory.AddItem(item);
 
         if (result)
         {
-            GD.Print($"Successfully added {item.DisplayName} x{item.Quantity} to inventory");
+            // Проверяем новое количество после добавления
+            int newQuantity = 0;
+            Item updatedItem = PlayerInventory.Items.FirstOrDefault(i => i.ID == item.ID);
+            if (updatedItem != null)
+            {
+                newQuantity = updatedItem.Quantity;
+            }
+
+            int actuallyAdded = newQuantity - currentQuantity;
+            GD.Print($"Successfully added {item.DisplayName} x{actuallyAdded} to inventory (Previous: {currentQuantity}, New: {newQuantity})");
+
+            // Проверяем на случай, если было добавлено меньше, чем просили
+            if (actuallyAdded < initialQuantity)
+            {
+                GD.Print($"Note: Only {actuallyAdded} of {initialQuantity} {item.DisplayName} could be added to inventory (stack limit or other constraints)");
+            }
         }
         else
         {

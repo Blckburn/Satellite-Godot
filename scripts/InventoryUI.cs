@@ -42,6 +42,9 @@ public partial class InventoryUI : Control
     // Клавиша для открытия/закрытия инвентаря
     [Export] public Key ToggleKey { get; set; } = Key.I;
 
+    // Переменная для отслеживания открытого диалога информации
+    private Window _currentInfoDialog = null;
+
     public override void _Ready()
     {
         // Находим контейнер для слотов
@@ -71,6 +74,19 @@ public partial class InventoryUI : Control
 
         // Создаем контекстное меню 
         CreateContextMenu();
+    }
+
+    public override void _Process(double delta)
+    {
+        base._Process(delta);
+
+        // Проверяем, если открыт диалог с информацией и нажата клавиша Escape
+        if (_currentInfoDialog != null && _currentInfoDialog.Visible && Input.IsKeyPressed(Key.Escape))
+        {
+            _currentInfoDialog.QueueFree();
+            _currentInfoDialog = null;
+            Logger.Debug("Item info dialog closed via Escape key", false);
+        }
     }
 
     public override void _Input(InputEvent @event)
@@ -349,18 +365,39 @@ public partial class InventoryUI : Control
             iconRect.Position = Vector2.Zero;
         }
 
-        // Создание QuantityLabel если нужно
+        // Создание или обновление QuantityLabel для отображения количества предметов
         if (quantityLabel == null && item.Quantity > 1)
         {
             GD.Print("Creating new QuantityLabel");
             quantityLabel = new Label();
             quantityLabel.Name = "QuantityLabel";
-            quantityLabel.HorizontalAlignment = HorizontalAlignment.Right;
-            quantityLabel.VerticalAlignment = VerticalAlignment.Bottom;
 
+            // Правильная установка якорей для нижнего правого угла
             quantityLabel.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
 
-            // Стили
+            // Устанавливаем правильные отступы, чтобы метка всегда была внутри ячейки
+            quantityLabel.Position = new Vector2(-20, -15); // Смещаем внутрь от правого нижнего угла
+
+            // Настройка выравнивания текста и размера шрифта
+            quantityLabel.HorizontalAlignment = HorizontalAlignment.Right;
+            quantityLabel.VerticalAlignment = VerticalAlignment.Bottom;
+            quantityLabel.AddThemeFontSizeOverride("font_size", 12); // Уменьшаем размер шрифта
+
+            // Добавляем фон для лучшей видимости на разных иконках
+            quantityLabel.AddThemeStyleboxOverride("normal", new StyleBoxFlat
+            {
+                BgColor = new Color(0, 0, 0, 0.5f),
+                CornerRadiusBottomLeft = 3,
+                CornerRadiusBottomRight = 3,
+                CornerRadiusTopLeft = 3,
+                CornerRadiusTopRight = 3,
+                ContentMarginLeft = 2,
+                ContentMarginRight = 2,
+                ContentMarginTop = 0,
+                ContentMarginBottom = 0
+            });
+
+            // Стили для текста
             quantityLabel.AddThemeColorOverride("font_color", Colors.White);
             quantityLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
             quantityLabel.AddThemeConstantOverride("outline_size", 1);
@@ -405,6 +442,8 @@ public partial class InventoryUI : Control
 
         GD.Print($"Slot updated: {slot.Name}");
     }
+
+
 
 
     // Очистка слота
@@ -696,6 +735,7 @@ public partial class InventoryUI : Control
     // Используйте уже существующий метод FormatItemInfo, заменив его содержимое
     // Не добавляйте новый метод!
 
+    // Обновленный метод OnItemInfoRequested для исправления проблемы с незакрывающимся окном
     private void OnItemInfoRequested(int slotIndex)
     {
         if (_inventory == null || slotIndex < 0 || slotIndex >= _inventory.Items.Count)
@@ -707,20 +747,36 @@ public partial class InventoryUI : Control
 
         Logger.Debug($"Showing detailed info for item: {item.DisplayName}", false);
 
+        // Если уже есть открытый диалог, закрываем его
+        if (_currentInfoDialog != null && IsInstanceValid(_currentInfoDialog))
+        {
+            _currentInfoDialog.QueueFree();
+            _currentInfoDialog = null;
+        }
+
         // Создаем кастомный диалог
         var infoDialog = new Window();
+        infoDialog.Name = "ItemInfoDialog"; // Добавляем уникальное имя для поиска
         infoDialog.Title = item.DisplayName;
         infoDialog.Size = new Vector2I(400, 300);
         infoDialog.Exclusive = true; // Модальное окно
+        infoDialog.Unresizable = true;
 
-        // Исправляем ошибку с WindowInitialPosition
-        // В Godot 4.4 это значение может называться иначе
+        // Сохраняем ссылку на текущий диалог
+        _currentInfoDialog = infoDialog;
+
+        // Позиционируем окно по центру экрана
         infoDialog.Position = new Vector2I(
             (DisplayServer.WindowGetSize().X - infoDialog.Size.X) / 2,
             (DisplayServer.WindowGetSize().Y - infoDialog.Size.Y) / 2
         );
 
-        infoDialog.Unresizable = true;
+        // Добавляем обработчик закрытия окна при клике на крестик
+        infoDialog.CloseRequested += () => {
+            infoDialog.QueueFree();
+            _currentInfoDialog = null;
+            Logger.Debug("Item info dialog closed via CloseRequested", false);
+        };
 
         // Создаем главный контейнер
         var container = new VBoxContainer();
@@ -739,10 +795,14 @@ public partial class InventoryUI : Control
         // Создаем кнопку закрытия
         var closeButton = new Button();
         closeButton.Text = "Закрыть";
-
-        // Исправляем ошибку с SizeExpand - используем правильное имя флага
         closeButton.SizeFlagsHorizontal = Control.SizeFlags.Expand;
-        closeButton.Pressed += () => infoDialog.QueueFree();
+
+        // Добавляем обработчик нажатия для кнопки
+        closeButton.Pressed += () => {
+            infoDialog.QueueFree();
+            _currentInfoDialog = null;
+            Logger.Debug("Item info dialog closed via button", false);
+        };
 
         // Добавляем элементы в контейнер
         container.AddChild(richText);

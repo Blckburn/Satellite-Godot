@@ -11,6 +11,6 @@ Type = 3
 Weight = 1.0
 Value = 25
 MaxStackSize = 15
-IconPath = "res://scenes/resources/textures/resources/crystal.png"
+IconPath = "res://resources/textures/resources/crystal.png"
 Quantity = 1
 metadata/_custom_type_script = "uid://dq07pxh84nuut"

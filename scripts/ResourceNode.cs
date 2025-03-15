@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Linq;
 
 /// <summary>
 /// Класс для представления добываемого ресурса в игровом мире
@@ -298,6 +299,7 @@ public partial class ResourceNode : InteractiveObject, IInteraction
     }
 
     // Добавление ресурса в инвентарь игрока
+    // Исправленный метод TryAddResourceToInventory для класса ResourceNode
     private bool TryAddResourceToInventory()
     {
         // Находим игрока
@@ -319,13 +321,34 @@ public partial class ResourceNode : InteractiveObject, IInteraction
                     Logger.Debug($"Cloned ResourceItem: ID={resourceItemCopy.ID}, Name={resourceItemCopy.DisplayName}, Quantity={resourceItemCopy.Quantity}", true);
                     GD.Print($"DEBUG: Resource clone created - ID: {resourceItemCopy.ID}, Name: {resourceItemCopy.DisplayName}, Quantity: {resourceItemCopy.Quantity}");
 
+                    // Получаем текущее количество в инвентаре до добавления
+                    int currentQuantity = 0;
+                    if (player.PlayerInventory != null)
+                    {
+                        Item existingItem = player.PlayerInventory.Items.FirstOrDefault(i => i.ID == resourceItemCopy.ID);
+                        if (existingItem != null)
+                        {
+                            currentQuantity = existingItem.Quantity;
+                        }
+                    }
+
                     // Добавляем в инвентарь
                     bool added = player.AddItemToInventory(resourceItemCopy);
 
                     if (added)
                     {
-                        Logger.Debug($"Successfully added {ResourceAmount} {Type} resource to player inventory", true);
-                        GD.Print($"SUCCESS: Added {ResourceAmount} {Type} resource to player inventory");
+                        // Проверяем новое количество после добавления
+                        int newQuantity = 0;
+                        Item updatedItem = player.PlayerInventory.Items.FirstOrDefault(i => i.ID == resourceItemCopy.ID);
+                        if (updatedItem != null)
+                        {
+                            newQuantity = updatedItem.Quantity;
+                        }
+
+                        int actuallyAdded = newQuantity - currentQuantity;
+
+                        Logger.Debug($"Successfully added {actuallyAdded} {Type} resource to player inventory", true);
+                        GD.Print($"SUCCESS: Added {actuallyAdded} {Type} resource to player inventory");
                         return true;
                     }
                     else

@@ -11,6 +11,6 @@ Type = 3
 Weight = 2.0
 Value = 10
 MaxStackSize = 20
-IconPath = "res://scenes/resources/textures/resources/metal_ore_icon.png"
+IconPath = "res://resources/textures/resources/metal_ore.png"
 Quantity = 1
 metadata/_custom_type_script = "uid://dq07pxh84nuut"

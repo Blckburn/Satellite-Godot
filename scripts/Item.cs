@@ -147,13 +147,33 @@ public partial class Item : Resource
     public virtual int StackWith(Item other)
     {
         if (!CanStackWith(other))
-            return 0;
+        {
+            GD.Print($"Cannot stack {other.DisplayName} with {DisplayName} - incompatible items");
+            return other.Quantity; // Возвращаем всё количество как остаток
+        }
 
-        int totalQuantity = Quantity + other.Quantity;
-        int newQuantity = Mathf.Min(totalQuantity, MaxStackSize);
-        int remainder = totalQuantity - newQuantity;
+        // Максимально возможное количество, которое можно добавить в стек
+        int canAdd = MaxStackSize - Quantity;
 
-        Quantity = newQuantity;
+        // Если нельзя ничего добавить, возвращаем всё количество как остаток
+        if (canAdd <= 0)
+        {
+            GD.Print($"Cannot stack more {DisplayName} - max stack size reached ({Quantity}/{MaxStackSize})");
+            return other.Quantity;
+        }
+
+        // Сколько предметов мы реально добавляем в стек
+        int toAdd = Math.Min(canAdd, other.Quantity);
+
+        // Увеличиваем текущий стек
+        int oldQuantity = Quantity;
+        Quantity += toAdd;
+
+        // Сколько предметов остаётся в исходном стеке (остаток)
+        int remainder = other.Quantity - toAdd;
+
+        GD.Print($"Stacked {toAdd} items of {other.DisplayName} to existing stack " +
+                 $"({oldQuantity} → {Quantity}, remainder: {remainder})");
 
         return remainder;
     }
