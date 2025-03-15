@@ -22,8 +22,8 @@ public class ResourceGenerator
     // Биом-специфичные настройки вероятностей появления ресурсов
     private Dictionary<int, Dictionary<ResourceType, float>> _biomeProbabilities;
 
-    // Ссылки на предметы ресурсов в соответствии с типом
-    private Dictionary<ResourceType, Item> _resourceItems;
+    // Измененная структура - теперь хранит список ресурсов для каждого типа
+    private Dictionary<ResourceType, List<Item>> _resourceItems;
 
     // Генератор случайных чисел
     private Random _random;
@@ -138,12 +138,20 @@ public class ResourceGenerator
     /// </summary>
     private void InitializeResourceItems()
     {
-        _resourceItems = new Dictionary<ResourceType, Item>();
+        // Изменено: теперь хранит список ресурсов для каждого типа
+        _resourceItems = new Dictionary<ResourceType, List<Item>>();
+
+        // Инициализируем пустые списки для всех типов ресурсов
+        foreach (ResourceType type in Enum.GetValues(typeof(ResourceType)))
+        {
+            _resourceItems[type] = new List<Item>();
+        }
 
         try
         {
             // Папка, содержащая ресурсы
             string resourcesDirectory = "res://scenes/resources/items/";
+            Logger.Debug($"Scanning for resource files in: {resourcesDirectory}", true);
 
             // Получаем список файлов .tres
             var dir = DirAccess.Open(resourcesDirectory);
@@ -162,32 +170,53 @@ public class ResourceGenerator
                 if (!dir.CurrentIsDir() && fileName.EndsWith(".tres"))
                 {
                     resourceFiles.Add(resourcesDirectory + fileName);
-                    Logger.Debug($"Found resource file: {fileName}", false);
+                    Logger.Debug($"Found resource file: {fileName}", true);
                 }
                 fileName = dir.GetNext();
             }
             dir.ListDirEnd();
 
+            Logger.Debug($"Found {resourceFiles.Count} resource files", true);
+
             // Загружаем каждый найденный ресурс
             foreach (string filePath in resourceFiles)
             {
-                var item = ResourceLoader.Load<Item>(filePath);
-                if (item != null)
-                {
-                    // Получаем тип ресурса из свойства ResourceTypeEnum
-                    ResourceType resourceType = item.GetResourceType();
+                Logger.Debug($"Attempting to load resource from: {filePath}", false);
 
-                    // Добавляем в словарь
-                    _resourceItems[resourceType] = item;
-                    Logger.Debug($"Loaded resource from {filePath}: {item.DisplayName} as {resourceType} (from {item.ResourceTypeEnum})", true);
-                }
-                else
+                try
                 {
-                    Logger.Error($"Failed to load resource from {filePath}");
+                    var item = ResourceLoader.Load<Item>(filePath);
+                    if (item != null)
+                    {
+                        // Получаем тип ресурса из свойства ResourceTypeEnum
+                        ResourceType resourceType = item.GetResourceType();
+
+                        // Добавляем в список соответствующего типа
+                        _resourceItems[resourceType].Add(item);
+                        Logger.Debug($"Loaded resource from {filePath}: {item.DisplayName} as {resourceType} (from {item.ResourceTypeEnum})", true);
+                    }
+                    else
+                    {
+                        Logger.Error($"Failed to load resource from {filePath} - returned null");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logger.Error($"Exception loading resource from {filePath}: {e.Message}");
                 }
             }
 
-            Logger.Debug($"Successfully loaded {_resourceItems.Count} resource items", true);
+            // Выводим информацию о загруженных ресурсах по типам
+            foreach (var kvp in _resourceItems)
+            {
+                Logger.Debug($"ResourceType {kvp.Key}: loaded {kvp.Value.Count} resource variants", true);
+                foreach (var item in kvp.Value)
+                {
+                    Logger.Debug($"  - {item.DisplayName} (ID: {item.ID})", false);
+                }
+            }
+
+            Logger.Debug($"Successfully loaded resources. Types with resources: {_resourceItems.Count(kvp => kvp.Value.Count > 0)}", true);
         }
         catch (Exception e)
         {
@@ -298,14 +327,16 @@ public class ResourceGenerator
     private ResourceType SelectResourceType(Dictionary<ResourceType, float> probabilities)
     {
         // Проверяем, что словарь не пустой и содержит хотя бы один ресурс из _resourceItems
-        if (probabilities == null || probabilities.Count == 0 ||
-            !probabilities.Keys.Any(k => _resourceItems.ContainsKey(k)))
+        if (probabilities == null || probabilities.Count == 0)
         {
             // Если нет подходящих вероятностей, выбираем первый доступный ресурс
             foreach (var type in _resourceItems.Keys)
             {
-                Logger.Debug($"No valid probabilities, defaulting to first available resource: {type}", false);
-                return type;
+                if (_resourceItems[type].Count > 0)
+                {
+                    Logger.Debug($"No valid probabilities, defaulting to first available resource: {type}", false);
+                    return type;
+                }
             }
 
             // Если ресурсов нет вообще, возвращаем Metal
@@ -317,7 +348,7 @@ public class ResourceGenerator
         float totalProbability = 0f;
         foreach (var kv in probabilities)
         {
-            if (_resourceItems.ContainsKey(kv.Key))
+            if (_resourceItems.ContainsKey(kv.Key) && _resourceItems[kv.Key].Count > 0)
             {
                 totalProbability += kv.Value;
             }
@@ -328,8 +359,11 @@ public class ResourceGenerator
         {
             foreach (var type in _resourceItems.Keys)
             {
-                Logger.Debug($"Zero total probability, defaulting to first available resource: {type}", false);
-                return type;
+                if (_resourceItems[type].Count > 0)
+                {
+                    Logger.Debug($"Zero total probability, defaulting to first available resource: {type}", false);
+                    return type;
+                }
             }
 
             return ResourceType.Metal;
@@ -342,7 +376,7 @@ public class ResourceGenerator
         float cumulativeProbability = 0f;
         foreach (var kv in probabilities)
         {
-            if (!_resourceItems.ContainsKey(kv.Key))
+            if (!_resourceItems.ContainsKey(kv.Key) || _resourceItems[kv.Key].Count == 0)
                 continue;
 
             cumulativeProbability += kv.Value;
@@ -353,7 +387,15 @@ public class ResourceGenerator
         }
 
         // По умолчанию, если что-то пошло не так, возвращаем первый доступный тип
-        return _resourceItems.Keys.First();
+        foreach (var type in _resourceItems.Keys)
+        {
+            if (_resourceItems[type].Count > 0)
+            {
+                return type;
+            }
+        }
+
+        return ResourceType.Metal;
     }
 
     /// <summary>
@@ -442,10 +484,19 @@ public class ResourceGenerator
                 resourceNode.Type = resourceType;
                 resourceNode.ResourceAmount = _random.Next(1, 4); // Случайное количество от 1 до 3
 
-                // Устанавливаем предмет ресурса
-                if (_resourceItems.TryGetValue(resourceType, out Item resourceItem))
+                // Выбираем случайный предмет ресурса из доступных для данного типа
+                List<Item> availableItems = _resourceItems[resourceType];
+
+                if (availableItems.Count > 0)
                 {
-                    Item itemCopy = resourceItem.Clone();
+                    // Случайно выбираем один из доступных ресурсов этого типа
+                    int randomIndex = _random.Next(0, availableItems.Count);
+                    Item selectedItem = availableItems[randomIndex];
+
+                    Logger.Debug($"Selected {randomIndex + 1} of {availableItems.Count} available resources for type {resourceType}: {selectedItem.DisplayName}", false);
+
+                    // Устанавливаем предмет ресурса
+                    Item itemCopy = selectedItem.Clone();
                     resourceNode.ResourceItem = itemCopy;
                     Logger.Debug($"Set ResourceItem {itemCopy.DisplayName} (ID: {itemCopy.ID}) for {resourceType} resource", false);
 
@@ -461,7 +512,7 @@ public class ResourceGenerator
                 }
                 else
                 {
-                    Logger.Error($"No ResourceItem found for {resourceType} resource type!");
+                    Logger.Error($"No ResourceItems found for {resourceType} resource type!");
                 }
 
                 // Настраиваем визуальные эффекты

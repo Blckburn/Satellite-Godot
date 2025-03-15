@@ -38,18 +38,24 @@ public partial class Item : Resource
         set => _quantity = Mathf.Clamp(value, 0, MaxStackSize);
     }
 
-    // Добавляем новое свойство ResourceTypeEnum в класс Item
-    [Export(PropertyHint.Enum, "Metal,Crystal,Organic")]
+    // Обновлено: использование расширенного перечисления типов ресурсов
+    [Export(PropertyHint.Enum, "Metal,Crystal,Organic,Energy,Composite")]
     public string ResourceTypeEnum { get; set; } = "Metal";  // Значение по умолчанию
 
-    // Вспомогательный метод для получения типа ресурса из строки
+    // Вспомогательный метод для получения типа ресурса из строки - с расширенной поддержкой всех типов
     public ResourceType GetResourceType()
     {
         switch (ResourceTypeEnum)
         {
+            case "Metal": return ResourceType.Metal;
             case "Crystal": return ResourceType.Crystal;
             case "Organic": return ResourceType.Organic;
-            default: return ResourceType.Metal;  // По умолчанию Metal
+            case "Energy": return ResourceType.Energy;
+            case "Composite": return ResourceType.Composite;
+            default:
+                // Логгируем неизвестный тип и возвращаем Metal как значение по умолчанию
+                GD.Print($"WARNING: Unknown resource type: {ResourceTypeEnum}, defaulting to Metal");
+                return ResourceType.Metal;
         }
     }
 
@@ -137,6 +143,7 @@ public partial class Item : Resource
                 resourceClone.Value = loadedItem.Value;
                 resourceClone.MaxStackSize = loadedItem.MaxStackSize;
                 resourceClone.IconPath = loadedItem.IconPath;
+                resourceClone.ResourceTypeEnum = loadedItem.ResourceTypeEnum; // Не забываем скопировать тип ресурса
                 // Устанавливаем количество = 1 (базовое)
                 resourceClone.Quantity = 1;
 
@@ -160,6 +167,7 @@ public partial class Item : Resource
         clone.Value = Value;
         clone.MaxStackSize = MaxStackSize;
         clone.IconPath = IconPath; // Важно копировать путь к иконке
+        clone.ResourceTypeEnum = ResourceTypeEnum; // Не забываем скопировать тип ресурса
 
         // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Устанавливаем quantity = 1, а не копируем исходное
         clone.Quantity = 1;
@@ -167,7 +175,6 @@ public partial class Item : Resource
         GD.Print($"Clone created with quantity 1: {clone.DisplayName} (ID: {clone.ID})");
         return clone;
     }
-
 
     // Проверка, можно ли предметы объединить в стек
     public virtual bool CanStackWith(Item other)
