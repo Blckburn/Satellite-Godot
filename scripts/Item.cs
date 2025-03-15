@@ -100,7 +100,7 @@ public partial class Item : Resource
     public virtual Item Clone()
     {
         // Для отладки
-        GD.Print($"Cloning item: {DisplayName} (ID: {ID})");
+        GD.Print($"Cloning item: {DisplayName} (ID: {ID}, Quantity: {Quantity})");
 
         if (!string.IsNullOrEmpty(ResourcePath))
         {
@@ -108,8 +108,24 @@ public partial class Item : Resource
             var loadedItem = ResourceLoader.Load<Item>(ResourcePath);
             if (loadedItem != null)
             {
-                GD.Print($"Successfully loaded item from resource path");
-                return loadedItem;
+                // Загружаем исходный ресурс из файла
+                GD.Print($"Loaded base item from resource path");
+                // Клонирование ресурса, но без установки quantity
+                // Используем другое имя переменной (resourceClone вместо clone)
+                Item resourceClone = new Item();
+                resourceClone.ID = loadedItem.ID;
+                resourceClone.DisplayName = loadedItem.DisplayName;
+                resourceClone.Description = loadedItem.Description;
+                resourceClone.Type = loadedItem.Type;
+                resourceClone.Weight = loadedItem.Weight;
+                resourceClone.Value = loadedItem.Value;
+                resourceClone.MaxStackSize = loadedItem.MaxStackSize;
+                resourceClone.IconPath = loadedItem.IconPath;
+                // Устанавливаем количество = 1 (базовое)
+                resourceClone.Quantity = 1;
+
+                GD.Print($"Clone from resource created with quantity 1: {resourceClone.DisplayName} (ID: {resourceClone.ID})");
+                return resourceClone;
             }
             else
             {
@@ -128,10 +144,11 @@ public partial class Item : Resource
         clone.Value = Value;
         clone.MaxStackSize = MaxStackSize;
         clone.IconPath = IconPath; // Важно копировать путь к иконке
-        clone.Quantity = Quantity;
 
-        GD.Print($"Clone created: {clone.DisplayName} (ID: {clone.ID}, Quantity: {clone.Quantity})");
+        // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Устанавливаем quantity = 1, а не копируем исходное
+        clone.Quantity = 1;
 
+        GD.Print($"Clone created with quantity 1: {clone.DisplayName} (ID: {clone.ID})");
         return clone;
     }
 

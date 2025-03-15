@@ -119,6 +119,7 @@ public partial class PickupItem : InteractiveObject // убираем ", IIntera
     }
 
     // Получение предмета, который будет подобран
+    // Получение предмета, который будет подобран
     public Item GetItem()
     {
         if (_cachedItem != null)
@@ -126,8 +127,14 @@ public partial class PickupItem : InteractiveObject // убираем ", IIntera
 
         if (ItemResource != null)
         {
+            // Создаем клон с нулевым количеством
             _cachedItem = ItemResource.Clone();
+
+            // Явно устанавливаем нужное количество
             _cachedItem.Quantity = Quantity;
+
+            // Для отладки
+            Logger.Debug($"GetItem: Created item with quantity {_cachedItem.Quantity}", false);
             return _cachedItem;
         }
 
@@ -158,6 +165,10 @@ public partial class PickupItem : InteractiveObject // убираем ", IIntera
             return false;
         }
 
+        // Для отладки: зафиксируем, сколько предметов мы пытаемся поднять
+        int quantityToPickup = item.Quantity;
+        Logger.Debug($"Attempting to pick up {item.DisplayName} x{quantityToPickup}", false);
+
         // Передаем предмет игроку, если это возможно
         bool pickedUp = false;
 
@@ -170,8 +181,8 @@ public partial class PickupItem : InteractiveObject // убираем ", IIntera
             if (pickedUp)
             {
                 // Отправляем сигнал о подборе предмета
-                EmitSignal("ItemPickedUp", item.ID, item.Quantity);
-                Logger.Debug($"Player picked up {item.DisplayName} x{item.Quantity}", false);
+                EmitSignal(SignalName.ItemPickedUp, item.ID, quantityToPickup);
+                Logger.Debug($"Player picked up {item.DisplayName} x{quantityToPickup}", false);
 
                 // Удаляем предмет из сцены
                 QueueFree();

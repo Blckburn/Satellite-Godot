@@ -718,22 +718,22 @@ public partial class InventoryUI : Control
         var players = GetTree().GetNodesInGroup("Player");
         if (players.Count > 0 && players[0] is Player player)
         {
+            // Важно: сохраняем количество перед удалением из инвентаря
+            int quantity = item.Quantity;
+
             // Выбрасываем предмет
             DropItemInWorld(item, player.GlobalPosition);
 
-            // Удаляем предмет из инвентаря
-            _inventory.RemoveItem(item);
+            // Удаляем предмет из инвентаря, передавая все количество
+            _inventory.RemoveItem(item, quantity);
 
-            Logger.Debug($"Item dropped: {item.DisplayName}", false);
+            Logger.Debug($"Item dropped: {item.DisplayName} x{quantity}", false);
         }
         else
         {
             Logger.Error("Could not find player for item drop");
         }
     }
-
-    // Используйте уже существующий метод FormatItemInfo, заменив его содержимое
-    // Не добавляйте новый метод!
 
     // Обновленный метод OnItemInfoRequested для исправления проблемы с незакрывающимся окном
     private void OnItemInfoRequested(int slotIndex)
@@ -895,14 +895,17 @@ public partial class InventoryUI : Control
     }
 
     // Метод для выбрасывания предмета в мир
+    // Метод для выбрасывания предмета в мир
     private void DropItemInWorld(Item item, Vector2 position)
     {
         try
         {
-            Logger.Debug($"Trying to drop item: {item.DisplayName}", false);
+            // Запоминаем количество предметов, которые нужно выбросить
+            int quantityToDrop = item.Quantity;
+            Logger.Debug($"Dropping item in world: {item.DisplayName} x{quantityToDrop}", false);
 
-            // Используем точный путь к вашей сцене (измените на ваш путь)
-            string pickupScenePath = "res://scenes/ui/pickup_item.tscn"; // Измените на правильный путь
+            // Используем точный путь к вашей сцене
+            string pickupScenePath = "res://scenes/ui/pickup_item.tscn";
             Logger.Debug($"Loading pickup scene from path: {pickupScenePath}", false);
 
             PackedScene pickupScene = ResourceLoader.Load<PackedScene>(pickupScenePath);
@@ -922,9 +925,14 @@ public partial class InventoryUI : Control
 
             Logger.Debug("PickupItem instantiated successfully", false);
 
-            // Установка предмета в PickupItem
+            // Устанавливаем базовые свойства предмета (без количества)
             pickup.ItemResource = item.Clone();
-            pickup.Quantity = item.Quantity;
+
+            // Важно: устанавливаем количество после клонирования
+            // Это гарантирует, что количество не будет учтено дважды
+            pickup.Quantity = quantityToDrop;
+
+            Logger.Debug($"Set PickupItem quantity to {pickup.Quantity}", false);
 
             // Устанавливаем позицию с небольшим случайным смещением
             float randX = (float)GD.RandRange(-50, 50) / 100f;
@@ -932,12 +940,11 @@ public partial class InventoryUI : Control
             Vector2 dropPosition = position + new Vector2(randX, randY);
             pickup.Position = dropPosition;
 
-            // Важное изменение: добавляем PickupItem в текущую сцену
-            // Get the current active scene
+            // Добавляем PickupItem в текущую сцену
             var currentScene = GetTree().CurrentScene;
             currentScene.AddChild(pickup);
 
-            Logger.Debug($"Item dropped in world: {item.DisplayName} at {dropPosition}", false);
+            Logger.Debug($"Item dropped successfully: {item.DisplayName} x{quantityToDrop} at {dropPosition}", false);
         }
         catch (Exception ex)
         {
