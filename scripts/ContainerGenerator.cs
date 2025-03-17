@@ -7,6 +7,10 @@ using System.Collections.Generic;
 /// </summary>
 public class ContainerGenerator
 {
+
+    private Dictionary<ResourceType, List<Item>> _resourceItems;
+    private Dictionary<int, Dictionary<ResourceType, float>> _biomeProbabilities;
+
     // Константы для настройки генерации
     private const int MIN_DISTANCE_BETWEEN_CONTAINERS = 10; // Минимальное расстояние между контейнерами
     private const int MIN_DISTANCE_FROM_WALL = 2;           // Минимальное расстояние от стен
@@ -41,7 +45,13 @@ public class ContainerGenerator
 
         // Инициализируем типы контейнеров для разных биомов
         InitializeBiomeContainerTypes();
+
+        // Добавьте эти вызовы:
+        InitializeBiomeProbabilities();
+        InitializeResourceItems();
     }
+
+
 
     /// <summary>
     /// Инициализация типов контейнеров для разных биомов
@@ -241,11 +251,11 @@ public class ContainerGenerator
     /// Размещение контейнера в мире
     /// </summary>
     private void PlaceContainer(
-        Vector2I position,
-        int biomeType,
-        Vector2 worldOffset,
-        Node parentNode,
-        List<string> containerTypes)
+     Vector2I position,
+     int biomeType,
+     Vector2 worldOffset,
+     Node parentNode,
+     List<string> containerTypes)
     {
         try
         {
@@ -282,6 +292,12 @@ public class ContainerGenerator
                 // Добавляем в родительский узел
                 parentNode.AddChild(container);
 
+                // Добавляем в группу Interactables для уверенности
+                container.AddToGroup("Interactables");
+
+                // Заполняем контейнер предметами
+                PopulateContainerWithItems(container, biomeType);
+
                 Logger.Debug($"Placed {containerName} at world position {isoPos}", false);
             }
         }
@@ -289,6 +305,80 @@ public class ContainerGenerator
         {
             Logger.Error($"Error placing container: {e.Message}");
         }
+    }
+    // Новый метод для заполнения контейнера ресурсами
+   /*
+    private void PopulateContainerWithRandomItems(Container container, int biomeType)
+    {
+        // Определим количество предметов (1-5)
+        int itemCount = _random.Next(1, 6);
+
+        for (int i = 0; i < itemCount; i++)
+        {
+            // Создаем новый предмет на основе биома
+            Item newItem = CreateBiomeSpecificItem(biomeType);
+
+            if (newItem != null)
+            {
+                // Добавляем случайное количество (1-5)
+                newItem.Quantity = _random.Next(1, 6);
+
+                // Добавляем предмет в контейнер
+                container.AddItemToContainer(newItem);
+
+                Logger.Debug($"Added {newItem.DisplayName} x{newItem.Quantity} to container", false);
+            }
+        }
+    }
+    */
+    // Метод для создания предмета на основе биома
+    private Item CreateBiomeSpecificItem(int biomeType)
+    {
+        // Массив имеющихся типов ресурсов
+        string[] resourceTypes = { "Metal", "Crystal", "Organic", "Energy", "Composite" };
+
+        // Выбираем тип ресурса с учетом биома
+        string resourceType;
+        switch (biomeType)
+        {
+            case 1: // Forest
+                resourceType = (_random.Next(0, 100) < 70) ? "Organic" : resourceTypes[_random.Next(0, resourceTypes.Length)];
+                break;
+            case 2: // Desert
+                resourceType = (_random.Next(0, 100) < 70) ? "Crystal" : resourceTypes[_random.Next(0, resourceTypes.Length)];
+                break;
+            case 3: // Ice
+                resourceType = (_random.Next(0, 100) < 70) ? "Crystal" : resourceTypes[_random.Next(0, resourceTypes.Length)];
+                break;
+            case 4: // Techno
+                resourceType = (_random.Next(0, 100) < 70) ? "Energy" : resourceTypes[_random.Next(0, resourceTypes.Length)];
+                break;
+            case 5: // Anomal
+                resourceType = (_random.Next(0, 100) < 70) ? "Composite" : resourceTypes[_random.Next(0, resourceTypes.Length)];
+                break;
+            case 6: // Lava Springs
+                resourceType = (_random.Next(0, 100) < 70) ? "Metal" : resourceTypes[_random.Next(0, resourceTypes.Length)];
+                break;
+            default: // Grassland
+                resourceType = resourceTypes[_random.Next(0, resourceTypes.Length)];
+                break;
+        }
+
+        // Создаем предмет с соответствующими свойствами
+        Item item = new Item
+        {
+            ID = $"resource_{resourceType.ToLower()}",
+            DisplayName = $"{resourceType} Resource",
+            Description = $"A {resourceType.ToLower()} resource found in containers.",
+            Type = ItemType.Resource,
+            Weight = _random.Next(1, 5) * 0.5f,
+            Value = _random.Next(5, 20),
+            MaxStackSize = 20,
+            IconPath = $"res://resources/icons/resource_{resourceType.ToLower()}.png",
+            ResourceTypeEnum = resourceType
+        };
+
+        return item;
     }
 
     /// <summary>
@@ -304,5 +394,291 @@ public class ContainerGenerator
         float y = (tilePos.X + tilePos.Y) * tileSize.Y / 2.0f;
 
         return new Vector2(x, y);
+    }
+
+    private void InitializeBiomeProbabilities()
+    {
+        _biomeProbabilities = new Dictionary<int, Dictionary<ResourceType, float>>();
+
+        // Биом 0: Grassland (стандартный биом)
+        var grasslandProbs = new Dictionary<ResourceType, float>
+    {
+        { ResourceType.Metal, 0.4f },
+        { ResourceType.Crystal, 0.2f },
+        { ResourceType.Organic, 0.4f },
+        { ResourceType.Energy, 0.0f },
+        { ResourceType.Composite, 0.0f }
+    };
+        _biomeProbabilities[0] = grasslandProbs;
+
+        // Биом 1: Forest
+        var forestProbs = new Dictionary<ResourceType, float>
+    {
+        { ResourceType.Metal, 0.2f },
+        { ResourceType.Crystal, 0.2f },
+        { ResourceType.Organic, 0.6f },
+        { ResourceType.Energy, 0.0f },
+        { ResourceType.Composite, 0.0f }
+    };
+        _biomeProbabilities[1] = forestProbs;
+
+        // Биом 2: Desert
+        var desertProbs = new Dictionary<ResourceType, float>
+    {
+        { ResourceType.Metal, 0.5f },
+        { ResourceType.Crystal, 0.3f },
+        { ResourceType.Organic, 0.1f },
+        { ResourceType.Energy, 0.1f },
+        { ResourceType.Composite, 0.0f }
+    };
+        _biomeProbabilities[2] = desertProbs;
+
+        // Биом 3: Ice
+        var iceProbs = new Dictionary<ResourceType, float>
+    {
+        { ResourceType.Metal, 0.3f },
+        { ResourceType.Crystal, 0.5f },
+        { ResourceType.Organic, 0.1f },
+        { ResourceType.Energy, 0.1f },
+        { ResourceType.Composite, 0.0f }
+    };
+        _biomeProbabilities[3] = iceProbs;
+
+        // Биом 4: Techno
+        var technoProbs = new Dictionary<ResourceType, float>
+    {
+        { ResourceType.Metal, 0.4f },
+        { ResourceType.Crystal, 0.2f },
+        { ResourceType.Organic, 0.0f },
+        { ResourceType.Energy, 0.3f },
+        { ResourceType.Composite, 0.1f }
+    };
+        _biomeProbabilities[4] = technoProbs;
+
+        // Биом 5: Anomal
+        var anomalProbs = new Dictionary<ResourceType, float>
+    {
+        { ResourceType.Metal, 0.2f },
+        { ResourceType.Crystal, 0.4f },
+        { ResourceType.Organic, 0.1f },
+        { ResourceType.Energy, 0.2f },
+        { ResourceType.Composite, 0.1f }
+    };
+        _biomeProbabilities[5] = anomalProbs;
+
+        // Биом 6: Lava Springs
+        var lavaProbs = new Dictionary<ResourceType, float>
+    {
+        { ResourceType.Metal, 0.5f },
+        { ResourceType.Crystal, 0.3f },
+        { ResourceType.Organic, 0.0f },
+        { ResourceType.Energy, 0.2f },
+        { ResourceType.Composite, 0.0f }
+    };
+        _biomeProbabilities[6] = lavaProbs;
+    }
+
+    private void InitializeResourceItems()
+    {
+        // Инициализируем словарь для хранения ресурсов по типам
+        _resourceItems = new Dictionary<ResourceType, List<Item>>();
+
+        // Инициализируем пустые списки для всех типов ресурсов
+        foreach (ResourceType type in Enum.GetValues(typeof(ResourceType)))
+        {
+            _resourceItems[type] = new List<Item>();
+        }
+
+        try
+        {
+            // Папка, содержащая ресурсы
+            string resourcesDirectory = "res://scenes/resources/items/";
+            Logger.Debug($"ContainerGenerator: Scanning for resource files in: {resourcesDirectory}", true);
+
+            // Получаем список файлов .tres
+            var dir = DirAccess.Open(resourcesDirectory);
+            if (dir == null)
+            {
+                Logger.Error($"ContainerGenerator: Failed to open resources directory: {resourcesDirectory}");
+                return;
+            }
+
+            List<string> resourceFiles = new List<string>();
+            dir.ListDirBegin();
+            string fileName = dir.GetNext();
+
+            while (fileName != "")
+            {
+                if (!dir.CurrentIsDir() && fileName.EndsWith(".tres"))
+                {
+                    resourceFiles.Add(resourcesDirectory + fileName);
+                    Logger.Debug($"ContainerGenerator: Found resource file: {fileName}", false);
+                }
+                fileName = dir.GetNext();
+            }
+            dir.ListDirEnd();
+
+            Logger.Debug($"ContainerGenerator: Found {resourceFiles.Count} resource files", true);
+
+            // Загружаем каждый найденный ресурс
+            foreach (string filePath in resourceFiles)
+            {
+                try
+                {
+                    var item = ResourceLoader.Load<Item>(filePath);
+                    if (item != null)
+                    {
+                        // Получаем тип ресурса из свойства ResourceTypeEnum
+                        ResourceType resourceType = item.GetResourceType();
+
+                        // Добавляем в список соответствующего типа
+                        _resourceItems[resourceType].Add(item);
+                        Logger.Debug($"ContainerGenerator: Loaded resource from {filePath}: {item.DisplayName} as {resourceType}", false);
+                    }
+                    else
+                    {
+                        Logger.Error($"ContainerGenerator: Failed to load resource from {filePath} - returned null");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logger.Error($"ContainerGenerator: Exception loading resource from {filePath}: {e.Message}");
+                }
+            }
+
+            // Выводим информацию о загруженных ресурсах по типам
+            foreach (var kvp in _resourceItems)
+            {
+                Logger.Debug($"ContainerGenerator: ResourceType {kvp.Key}: loaded {kvp.Value.Count} resource variants", true);
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"ContainerGenerator: Error loading resource items: {e.Message}");
+        }
+    }
+
+    // Метод для выбора типа ресурса на основе вероятностей биома
+    private ResourceType SelectResourceType(Dictionary<ResourceType, float> probabilities)
+    {
+        // Проверяем, что словарь не пустой и содержит хотя бы один ресурс из _resourceItems
+        if (probabilities == null || probabilities.Count == 0)
+        {
+            // Если нет подходящих вероятностей, выбираем первый доступный ресурс
+            foreach (var type in _resourceItems.Keys)
+            {
+                if (_resourceItems[type].Count > 0)
+                {
+                    return type;
+                }
+            }
+
+            // Если ресурсов нет вообще, возвращаем Metal
+            return ResourceType.Metal;
+        }
+
+        // Вычисляем сумму вероятностей только для доступных ресурсов
+        float totalProbability = 0f;
+        foreach (var kv in probabilities)
+        {
+            if (_resourceItems.ContainsKey(kv.Key) && _resourceItems[kv.Key].Count > 0)
+            {
+                totalProbability += kv.Value;
+            }
+        }
+
+        // Если сумма вероятностей равна 0, возвращаем первый доступный тип ресурса
+        if (totalProbability <= 0f)
+        {
+            foreach (var type in _resourceItems.Keys)
+            {
+                if (_resourceItems[type].Count > 0)
+                {
+                    return type;
+                }
+            }
+
+            return ResourceType.Metal;
+        }
+
+        // Генерируем случайное число в диапазоне [0, totalProbability)
+        float randomValue = (float)_random.NextDouble() * totalProbability;
+
+        // Выбираем тип ресурса, но только среди доступных
+        float cumulativeProbability = 0f;
+        foreach (var kv in probabilities)
+        {
+            if (!_resourceItems.ContainsKey(kv.Key) || _resourceItems[kv.Key].Count == 0)
+                continue;
+
+            cumulativeProbability += kv.Value;
+            if (randomValue < cumulativeProbability)
+            {
+                return kv.Key;
+            }
+        }
+
+        // По умолчанию, если что-то пошло не так, возвращаем первый доступный тип
+        foreach (var type in _resourceItems.Keys)
+        {
+            if (_resourceItems[type].Count > 0)
+            {
+                return type;
+            }
+        }
+
+        return ResourceType.Metal;
+    }
+
+    // Метод для заполнения контейнера случайными предметами
+    private void PopulateContainerWithItems(Container container, int biomeType)
+    {
+        try
+        {
+            // Определим количество предметов (1-5)
+            int itemCount = _random.Next(1, 6);
+
+            // Получаем вероятности для данного биома
+            Dictionary<ResourceType, float> probabilities;
+            if (!_biomeProbabilities.TryGetValue(biomeType, out probabilities))
+            {
+                probabilities = _biomeProbabilities[0]; // Используем стандартный биом по умолчанию
+            }
+
+            // Заполняем контейнер предметами
+            for (int i = 0; i < itemCount; i++)
+            {
+                // Выбираем тип ресурса на основе вероятностей биома
+                ResourceType resourceType = SelectResourceType(probabilities);
+
+                // Проверяем, есть ли доступные ресурсы этого типа
+                if (_resourceItems.ContainsKey(resourceType) && _resourceItems[resourceType].Count > 0)
+                {
+                    // Выбираем случайный ресурс из доступных
+                    int randomIndex = _random.Next(0, _resourceItems[resourceType].Count);
+                    Item selectedItem = _resourceItems[resourceType][randomIndex];
+
+                    // Создаем копию предмета
+                    Item itemCopy = selectedItem.Clone();
+
+                    // Устанавливаем случайное количество (1-5)
+                    itemCopy.Quantity = _random.Next(1, 6);
+
+                    // Добавляем предмет в контейнер
+                    bool added = container.AddItemToContainer(itemCopy);
+
+                    if (added)
+                    {
+                        Logger.Debug($"ContainerGenerator: Added {itemCopy.DisplayName} x{itemCopy.Quantity} to container", false);
+                    }
+                }
+            }
+
+            Logger.Debug($"ContainerGenerator: Container was populated with {itemCount} items for biome {biomeType}", true);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"ContainerGenerator: Error populating container: {e.Message}");
+        }
     }
 }

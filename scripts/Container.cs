@@ -40,6 +40,8 @@ public partial class Container : InteractiveObject
     {
         base._Ready();
 
+        AddToGroup("Interactables");
+
         // Инициализация инвентаря
         InitializeInventory();
 
