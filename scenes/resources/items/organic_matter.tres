@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Item" load_steps=2 format=3 uid="uid://c7sho5qdd1epa"]
+
+[ext_resource type="Script" uid="uid://dq07pxh84nuut" path="res://scripts/Item.cs" id="1_io41u"]
+
+[resource]
+script = ExtResource("1_io41u")
+ID = "resource_organic_matter"
+DisplayName = "Organic Matter"
+Description = "Biological material from alien plants and organisms. Used in medicine, cultivation, and synthetic materials."
+Type = 3
+Weight = 0.8
+Value = 15
+MaxStackSize = 30
+IconPath = "res://resources/textures/resources/organic_matter.png"
+Quantity = 1
+ResourceTypeEnum = "Organic"
+metadata/_custom_type_script = "uid://dq07pxh84nuut"

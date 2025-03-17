@@ -1,10 +1,57 @@
-[gd_scene load_steps=2 format=3 uid="uid://dgp0p1mfdb25l"]
+[gd_scene load_steps=11 format=3 uid="uid://dgp0p1mfdb25l"]
 
-[ext_resource type="TileSet" uid="uid://lv1em2iyhdlo" path="res://resources/tilemaps/basic_tileset.tres" id="1_elqb8"]
+[ext_resource type="Script" uid="uid://iyb7fjxu7j21" path="res://scripts/LevelGenerator.cs" id="5_c01mt"]
+[ext_resource type="PackedScene" uid="uid://df1fsrm24trwj" path="res://scenes/ui/ui_manager.tscn" id="5_vcsgt"]
+[ext_resource type="Script" uid="uid://btenqntxsc3nd" path="res://scripts/InteractionSystem.cs" id="6_c01mt"]
+[ext_resource type="PackedScene" uid="uid://cdpklt0cb7nbq" path="res://scenes/ui/inventory_ui.tscn" id="6_jlsqs"]
+[ext_resource type="PackedScene" uid="uid://bpsti3p5o8bla" path="res://scenes/interactive_objects/StorageContainer.tscn" id="6_lhr70"]
+[ext_resource type="PackedScene" uid="uid://br4icehjc8xsm" path="res://scenes/resources/resource_node.tscn" id="6_q8u5g"]
+[ext_resource type="PackedScene" uid="uid://bu3h56rpjxyms" path="res://scenes/player/Player.tscn" id="7_jlsqs"]
+[ext_resource type="PackedScene" uid="uid://cycm7sv72virf" path="res://scenes/isometric_tileset.tscn" id="7_nxtc6"]
+[ext_resource type="Script" uid="uid://b27sqnopxnkvx" path="res://scripts/BiomeInfoUI.cs" id="8_wp0k4"]
+[ext_resource type="PackedScene" uid="uid://dvkiae0slh4s3" path="res://scenes/ui/ContainerUI.tscn" id="9_q8u5g"]
 
 [node name="Node2D" type="Node2D"]
 
-[node name="IsometricMap" type="TileMap" parent="."]
-tile_set = ExtResource("1_elqb8")
-format = 2
-layer_0/tile_data = PackedInt32Array(0, 65537, 0, -65536, 65537, 0, -1, 65537, 0, 65535, 65537, 0, 65534, 65537, 0, -2, 65537, 0, -65538, 65537, 0, -65537, 65537, 0, -131073, 65537, 0, -196608, 65537, 0, -131072, 65537, 0, -131074, 65537, 0, -196607, 65537, 0, -196606, 65537, 0, -131070, 65537, 0, -131071, 65537, 0, -65535, 65537, 0, -65534, 65537, 0, 2, 65537, 0, 1, 65537, 0, 65537, 65537, 0, 65536, 65537, 0, 131071, 65537, 0, 196607, 65537, 0, 196606, 65537, 0, 196605, 65537, 0, 131070, 65537, 0, 131069, 65537, 0, 65533, 65537, 0, -3, 65537, 0, -65539, 65537, 0, 131072, 65537, 0, 131073, 65537, 0, 65538, 65537, 0, -131075, 65537, 0, 131074, 65537, 0, -262142, 65537, 0, -327678, 65537, 0, -393214, 65537, 0, -458750, 65537, 0, -458751, 65537, 0, -458752, 65537, 0, -393217, 65537, 0, -393218, 65537, 0, -393219, 65537, 0, -393220, 65537, 0, -393221, 65537, 0, -393222, 65537, 0, -393223, 65537, 0, -327687, 65537, 0, -262151, 65537, 0, -196615, 65537, 0, -131079, 65537, 0, -131078, 65537, 0, -65542, 65537, 0, -6, 65537, 0, 65530, 65537, 0, 131066, 65537, 0, 196602, 65537, 0, 196603, 65537, 0, 196604, 65537, 0, 131068, 65537, 0, 131067, 65537, 0, 65532, 65537, 0, 65531, 65537, 0, -4, 65537, 0, -5, 65537, 0, -65541, 65537, 0, -65540, 65537, 0, -131076, 65537, 0, -196612, 65537, 0, -196613, 65537, 0, -262150, 65537, 0, -262149, 65537, 0, -327685, 65537, 0, -327684, 65537, 0, -327683, 65537, 0, -327682, 65537, 0, -327681, 65537, 0, -262145, 65537, 0, -327680, 65537, 0, -327679, 65537, 0, -393215, 65537, 0, -393216, 65537, 0, -262144, 65537, 0, -262143, 65537, 0, -196609, 65537, 0, -196610, 65537, 0, -196611, 65537, 0, -262147, 65537, 0, -65543, 65537, 0, -7, 65537, 0, 65529, 65537, 0, 131065, 65537, 0, 196601, 65537, 0)
+[node name="UIManager" parent="." instance=ExtResource("5_vcsgt")]
+layer = 0
+InteractionSystemPath = NodePath("../InteractionSystem")
+
+[node name="InventoryUI" parent="UIManager" instance=ExtResource("6_jlsqs")]
+z_index = 6
+
+[node name="InteractionSystem" type="Node" parent="."]
+script = ExtResource("6_c01mt")
+PlayerPath = NodePath("")
+
+[node name="LevelGenerator" type="Node" parent="." node_paths=PackedStringArray("FloorsTileMap", "WallsTileMap", "YSortContainer", "IsometricTileset")]
+script = ExtResource("5_c01mt")
+FloorsTileMap = NodePath("../isometric_tileset/Floors")
+WallsTileMap = NodePath("../isometric_tileset/Walls")
+YSortContainer = NodePath("../isometric_tileset/YSortContainer")
+IsometricTileset = NodePath("../isometric_tileset")
+PlayerScene = ExtResource("7_jlsqs")
+UseMultiSectionMap = true
+GridWidth = 3
+GridHeight = 3
+SectionSpacing = 0
+ContainerScene = ExtResource("6_lhr70")
+ContainerDensity = 1.0
+ResourceNodeScene = ExtResource("6_q8u5g")
+MaxResourcesPerRoom = 4
+ResourceDensity = 0.6
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+script = ExtResource("8_wp0k4")
+LevelGeneratorPath = NodePath("../LevelGenerator")
+DisplayTime = null
+
+[node name="IsometricSorter" type="Node" parent="."]
+
+[node name="isometric_tileset" parent="." instance=ExtResource("7_nxtc6")]
+
+[node name="ContainerUI" type="CanvasLayer" parent="."]
+
+[node name="ContainerUI" parent="ContainerUI" instance=ExtResource("9_q8u5g")]
+
+[editable path="isometric_tileset"]

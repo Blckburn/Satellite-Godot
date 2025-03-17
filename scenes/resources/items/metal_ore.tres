@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Item" load_steps=2 format=3 uid="uid://dknp06b68yafv"]
+
+[ext_resource type="Script" uid="uid://dq07pxh84nuut" path="res://scripts/Item.cs" id="1_dmuix"]
+
+[resource]
+script = ExtResource("1_dmuix")
+ID = "resource_metal_ore"
+DisplayName = "Metal Ore"
+Description = "Raw metal ore that can be processed into usable materials. Required for crafting and building."
+Type = 3
+Weight = 2.0
+Value = 10
+MaxStackSize = 20
+IconPath = "res://resources/textures/resources/metal_ore.png"
+Quantity = 1
+metadata/_custom_type_script = "uid://dq07pxh84nuut"

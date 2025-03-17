@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Item" load_steps=2 format=3 uid="uid://dyeecshlmdmxd"]
+
+[ext_resource type="Script" uid="uid://dq07pxh84nuut" path="res://scripts/Item.cs" id="1_pdhpq"]
+
+[resource]
+script = ExtResource("1_pdhpq")
+ID = "1"
+DisplayName = "pistol"
+Description = "pistol"
+Type = 1
+Weight = 1.0
+Value = 2
+MaxStackSize = 1
+IconPath = "res://icon.svg"
+Quantity = 1
+metadata/_custom_type_script = "uid://dq07pxh84nuut"

@@ -1,0 +1,32 @@
+[gd_scene load_steps=5 format=3 uid="uid://bpsti3p5o8bla"]
+
+[ext_resource type="Script" uid="uid://dd0ri1320swuw" path="res://scripts/Container.cs" id="1_bjyh2"]
+[ext_resource type="Texture2D" uid="uid://bgyvvfne50cko" path="res://icon.svg" id="2_teb5p"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_qgg8k"]
+size = Vector2(127, 127)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_bjyh2"]
+radius = 289.444
+
+[node name="Node2D" type="Node2D" groups=["Interactables"]]
+script = ExtResource("1_bjyh2")
+MaxInteractionDistance = 200.0
+InteractionRadius = 200.0
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+scale = Vector2(0.15, 0.15)
+texture = ExtResource("2_teb5p")
+
+[node name="StorageContainer" type="StaticBody2D" parent="."]
+scale = Vector2(0.15, 0.15)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StorageContainer"]
+position = Vector2(-0.5, -0.5)
+shape = SubResource("RectangleShape2D_qgg8k")
+
+[node name="Area2D" type="Area2D" parent="."]
+scale = Vector2(0.15, 0.15)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+shape = SubResource("CircleShape2D_bjyh2")

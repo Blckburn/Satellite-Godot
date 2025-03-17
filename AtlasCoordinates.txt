@@ -1,0 +1,22 @@
+ // Перечисление для слоев плитки
+ Layers
+ 
+     Level0 = 0,
+     Level1 = 1,
+     Level2 = 2,
+	 
+// Координаты тайлов в атласе
+
+Atlas coordintes:
+Grass (0, 0)
+Stone (1, 0)
+Ground (2, 0)
+Snow (3, 0)
+Sand (4, 0)
+Water (5, 0)
+Ice (0, 1);
+Lava (1, 1);
+ForestFloor (2, 1)
+Techno (3, 1);
+Anomal (4, 1);
+Empty (5, 1)
