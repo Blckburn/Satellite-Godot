@@ -1,0 +1,20 @@
+[gd_scene load_steps=4 format=3 uid="uid://bpsti3p5o8bla"]
+
+[ext_resource type="Script" uid="uid://dd0ri1320swuw" path="res://scripts/Container.cs" id="1_bjyh2"]
+[ext_resource type="Texture2D" uid="uid://bgyvvfne50cko" path="res://icon.svg" id="2_teb5p"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_qgg8k"]
+size = Vector2(127, 127)
+
+[node name="StorageContainer" type="StaticBody2D"]
+script = ExtResource("1_bjyh2")
+InventorySize = 15
+ContainerName = "Storage Box"
+InteractionRadius = 2.0
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_teb5p")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(-0.5, -0.5)
+shape = SubResource("RectangleShape2D_qgg8k")

@@ -1,0 +1,133 @@
+[gd_scene load_steps=4 format=3 uid="uid://dvkiae0slh4s3"]
+
+[ext_resource type="Script" uid="uid://b0rot4nuh01mx" path="res://scripts/ContainerUI.cs" id="1_g84o8"]
+[ext_resource type="PackedScene" uid="uid://dvyg2vbhucri0" path="res://scenes/ui/SlotTemplate.tscn" id="2_y6774"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_y6774"]
+bg_color = Color(0.156863, 0.156863, 0.196078, 0.901961)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.313726, 0.313726, 0.392157, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[node name="ContainerUI" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_g84o8")
+SlotTemplate = ExtResource("2_y6774")
+
+[node name="Background" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -450.0
+offset_top = -250.0
+offset_right = 450.0
+offset_bottom = 250.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_y6774")
+
+[node name="ContainerTitleLabel" type="Label" parent="Background"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 23.0
+grow_horizontal = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 22
+text = "Container"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlayerInventorySection" type="VBoxContainer" parent="Background"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 60.0
+offset_right = 420.0
+offset_bottom = 480.0
+theme_override_constants/separation = 10
+
+[node name="PlayerInventoryLabel" type="Label" parent="Background/PlayerInventorySection"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Player Inventory"
+horizontal_alignment = 1
+
+[node name="PlayerSlotsContainer" type="GridContainer" parent="Background/PlayerInventorySection"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 5
+
+[node name="ContainerInventorySection" type="VBoxContainer" parent="Background"]
+layout_mode = 0
+offset_left = 440.0
+offset_top = 60.0
+offset_right = 840.0
+offset_bottom = 480.0
+theme_override_constants/separation = 10
+
+[node name="ContainerInventoryLabel" type="Label" parent="Background/ContainerInventorySection"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Container Inventory"
+horizontal_alignment = 1
+
+[node name="ContainerSlotsContainer" type="GridContainer" parent="Background/ContainerInventorySection"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 5
+
+[node name="CloseButton" type="Button" parent="Background"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -40.0
+offset_bottom = 40.0
+grow_horizontal = 0
+theme_override_font_sizes/font_size = 18
+text = "X"
+
+[node name="HintLabel" type="Label" parent="Background"]
+modulate = Color(1, 1, 1, 0.705882)
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -23.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 14
+text = "Нажмите ЛКМ чтобы переместить предмет. ESC для выхода."
+horizontal_alignment = 1
+
+[connection signal="pressed" from="Background/CloseButton" to="." method="_on_close_button_pressed"]

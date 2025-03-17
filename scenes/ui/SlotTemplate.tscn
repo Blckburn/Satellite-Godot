@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=3 uid="uid://dvyg2vbhucri0"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4y0ql"]
+bg_color = Color(0.117647, 0.117647, 0.117647, 0.705882)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.313726, 0.313726, 0.313726, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[node name="InventorySlot" type="Panel"]
+custom_minimum_size = Vector2(50, 50)
+offset_right = 50.0
+offset_bottom = 50.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_4y0ql")

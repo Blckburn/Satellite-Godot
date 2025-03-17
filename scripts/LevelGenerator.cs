@@ -82,6 +82,11 @@ public partial class LevelGenerator : Node
     // Тайлы для фонового заполнения
     private Vector2I _backgroundTile;
 
+    private ContainerGenerator _containerGenerator;
+    [Export] public PackedScene ContainerScene { get; set; }
+    [Export] public int MaxContainersPerRoom { get; set; } = 1;
+    [Export] public float ContainerDensity { get; set; } = 0.3f;
+
     // Координаты тайлов
     private static readonly Vector2I Grass = new Vector2I(0, 0);
     private static readonly Vector2I Stone = new Vector2I(1, 0);
@@ -181,8 +186,154 @@ public partial class LevelGenerator : Node
             Logger.Error("ResourceNodeScene is not set in LevelGenerator!");
         }
 
+        if (ContainerScene != null)
+        {
+            _containerGenerator = new ContainerGenerator(ContainerScene, MaxContainersPerRoom, ContainerDensity);
+            Logger.Debug("ContainerGenerator initialized", true);
+        }
+        else
+        {
+            Logger.Error("LevelGenerator: ContainerScene is not set!");
+        }
+
     }
 
+
+    private void AddContainers()
+    {
+        if (_containerGenerator == null || YSortContainer == null)
+        {
+            Logger.Debug("ContainerGenerator or YSortContainer is null, skipping container generation", false);
+            return;
+        }
+
+        try
+        {
+            // Собираем позиции всех размещенных ресурсов для избежания пересечений
+            List<Vector2I> resourcePositions = GetResourcePositions();
+
+            // Генерируем контейнеры для однокарточной карты
+            int containersPlaced = _containerGenerator.GenerateContainers(
+                _rooms,               // Список комнат
+                BiomeType,            // Тип биома
+                _mapMask,             // Маска карты
+                Vector2.Zero,         // Мировое смещение (для однокарточной карты - нулевое)
+                YSortContainer,       // Родительский узел для добавления контейнеров
+                resourcePositions     // Позиции размещенных ресурсов
+            );
+
+            Logger.Debug($"Added {containersPlaced} containers to single-section map with biome {GetBiomeName(BiomeType)}", true);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error adding containers to map: {e.Message}");
+        }
+    }
+
+    // Добавьте этот метод в класс для поддержки мульти-секций
+    private void AddSectionContainers(MapSection section)
+    {
+        if (_containerGenerator == null || YSortContainer == null)
+        {
+            Logger.Debug("ContainerGenerator or YSortContainer is null, skipping container generation", false);
+            return;
+        }
+
+        try
+        {
+            // Собираем позиции всех размещенных ресурсов в секции
+            List<Vector2I> resourcePositions = GetSectionResourcePositions(section);
+
+            // Генерируем контейнеры для секции
+            int containersPlaced = _containerGenerator.GenerateContainers(
+                section.Rooms,         // Список комнат секции
+                section.BiomeType,     // Тип биома секции
+                section.SectionMask,   // Маска секции
+                section.WorldOffset,   // Мировое смещение
+                YSortContainer,        // Родительский узел для добавления контейнеров
+                resourcePositions      // Позиции размещенных ресурсов
+            );
+
+            Logger.Debug($"Added {containersPlaced} containers to section ({section.GridX}, {section.GridY}) with biome {GetBiomeName(section.BiomeType)}", false);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error adding containers to section: {e.Message}");
+        }
+    }
+
+    // Вспомогательный метод для сбора позиций ресурсов
+    private List<Vector2I> GetResourcePositions()
+    {
+        List<Vector2I> positions = new List<Vector2I>();
+
+        // Получаем все узлы ResourceNode
+        var resourceNodes = GetTree().GetNodesInGroup("ResourceNodes");
+
+        // Преобразуем мировые координаты в координаты тайлов
+        foreach (var node in resourceNodes)
+        {
+            if (node is Node2D resourceNode)
+            {
+                // Преобразуем мировые координаты в координаты тайлов
+                Vector2I tilePos = WorldToMapTile(resourceNode.GlobalPosition);
+                positions.Add(tilePos);
+            }
+        }
+
+        return positions;
+    }
+
+    // Вспомогательный метод для сбора позиций ресурсов в секции
+    private List<Vector2I> GetSectionResourcePositions(MapSection section)
+    {
+        List<Vector2I> positions = new List<Vector2I>();
+        Vector2 worldOffset = section.WorldOffset;
+
+        // Получаем все узлы ResourceNode
+        var resourceNodes = GetTree().GetNodesInGroup("ResourceNodes");
+
+        // Проверяем, какие из них находятся в текущей секции
+        foreach (var node in resourceNodes)
+        {
+            if (node is Node2D resourceNode)
+            {
+                // Преобразуем мировые координаты в координаты тайлов
+                Vector2I tilePos = WorldToMapTile(resourceNode.GlobalPosition);
+
+                // Вычисляем локальные координаты в секции
+                Vector2I localPos = new Vector2I(
+                    tilePos.X - (int)worldOffset.X,
+                    tilePos.Y - (int)worldOffset.Y
+                );
+
+                // Если координаты в пределах секции, добавляем
+                if (localPos.X >= 0 && localPos.X < MapWidth &&
+                    localPos.Y >= 0 && localPos.Y < MapHeight)
+                {
+                    positions.Add(localPos);
+                }
+            }
+        }
+
+        return positions;
+    }
+
+    // Вспомогательный метод для преобразования мировых координат в координаты тайлов
+    private Vector2I WorldToMapTile(Vector2 worldPos)
+    {
+        // Размер тайла (должен соответствовать используемому в проекте)
+        Vector2I tileSize = new Vector2I(64, 32);
+
+        // Обратная формула преобразования для изометрии 2:1
+        float tempX = worldPos.X / (tileSize.X / 2.0f);
+        float tempY = worldPos.Y / (tileSize.Y / 2.0f);
+
+        int tileX = (int)Math.Round((tempX + tempY) / 2.0f);
+        int tileY = (int)Math.Round((tempY - tempX) / 2.0f);
+
+        return new Vector2I(tileX, tileY);
+    }
 
     // Обработка ввода для генерации нового уровня
     public override void _Input(InputEvent @event)
@@ -313,6 +464,8 @@ public partial class LevelGenerator : Node
 
             // Добавляем генерацию ресурсов после добавления стен и декораций
             AddSectionResources(section);
+
+            AddSectionContainers(section);
 
             Logger.Debug($"Section level generated at ({section.GridX}, {section.GridY}) with {section.Rooms.Count} rooms", false);
         }
@@ -1773,6 +1926,8 @@ public partial class LevelGenerator : Node
             _levelGenerated = true;
 
             Logger.Debug($"Level generated with {_rooms.Count} rooms", true);
+
+            AddContainers();
 
             // Вызываем сигнал о завершении генерации
             EmitSignal("LevelGenerated", _currentSpawnPosition);
