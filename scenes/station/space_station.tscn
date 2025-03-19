@@ -1,0 +1,45 @@
+[gd_scene load_steps=8 format=3 uid="uid://dk7arq0ta6k33"]
+
+[ext_resource type="Script" uid="uid://g0qcls0dppxf" path="res://scripts/SpaceStation.cs" id="1_f3sb1"]
+[ext_resource type="Script" uid="uid://bhja00xilj31x" path="res://scripts/StationGrid.cs" id="3_36ka1"]
+[ext_resource type="Texture2D" uid="uid://b3dldgawkcvq1" path="res://resources/textures/backgrounds/Blue_Nebula_04-1024x1024.png" id="4_f3sb1"]
+[ext_resource type="PackedScene" uid="uid://djhfs8tnhhmva" path="res://scenes/station/modules/teleportation_module.tscn" id="5_36ka1"]
+[ext_resource type="PackedScene" uid="uid://cpeapi7wqfccg" path="res://scenes/station/modules/starting_module.tscn" id="5_t260c"]
+[ext_resource type="PackedScene" uid="uid://b8tgraoyr5m2b" path="res://scenes/world/objects/station_teleporter.tscn" id="6_a5dhq"]
+[ext_resource type="PackedScene" uid="uid://bu3h56rpjxyms" path="res://scenes/player/Player.tscn" id="9_ea0wa"]
+
+[node name="SpaceStation" type="Node2D"]
+script = ExtResource("1_f3sb1")
+PlayerScene = ExtResource("9_ea0wa")
+PlayerSpawnPointPath = NodePath("")
+
+[node name="SpaceBackground" type="Sprite2D" parent="."]
+z_index = -100
+scale = Vector2(7, 7)
+texture = ExtResource("4_f3sb1")
+
+[node name="Grid" type="Node2D" parent="."]
+z_index = -50
+position = Vector2(0, -1000)
+script = ExtResource("3_36ka1")
+GridWidth = 100
+GridHeight = 100
+
+[node name="ModulesContainer" type="Node2D" parent="."]
+
+[node name="StartingModule" parent="ModulesContainer" instance=ExtResource("5_t260c")]
+position = Vector2(565, 217)
+RespawnCapsulePath = NodePath("RespawnCapsule")
+
+[node name="RespawnCapsule" type="Node2D" parent="ModulesContainer/StartingModule"]
+
+[node name="TeleportationModule" parent="ModulesContainer" instance=ExtResource("5_36ka1")]
+position = Vector2(186, 28)
+AvailableDestinations = PackedStringArray("Earth", "Earth 2")
+
+[node name="StationTeleporter" parent="ModulesContainer" instance=ExtResource("6_a5dhq")]
+position = Vector2(64, 312)
+WorldScenePath = "res://scenes/Main.tscn"
+
+[node name="TeleporterSpawnPoint" type="Node2D" parent="ModulesContainer/StationTeleporter"]
+position = Vector2(0, 39.355)

@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3 uid="uid://bbusrfua7by55"]
+
+[ext_resource type="Script" uid="uid://d16qiy0otuj8k" path="res://scripts/WorldTeleporter.cs" id="1_yooo0"]
+[ext_resource type="Texture2D" uid="uid://q1aln4nry02u" path="res://resources/textures/modules/teleport_station.png" id="2_yooo0"]
+[ext_resource type="Texture2D" uid="uid://bkboqii20ubxk" path="res://resources/textures/modules/teleport.png" id="3_5kovv"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_he013"]
+radius = 47.0106
+
+[node name="WorldTeleporter" type="Node2D" groups=["interactables"]]
+script = ExtResource("1_yooo0")
+InteractionRadius = 150.0
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+scale = Vector2(0.2, 0.2)
+texture = ExtResource("2_yooo0")
+
+[node name="Sprite2D2" type="Sprite2D" parent="."]
+position = Vector2(0, -5)
+scale = Vector2(0.254, 0.27)
+texture = ExtResource("3_5kovv")
+
+[node name="InteractionArea" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionArea"]
+shape = SubResource("CircleShape2D_he013")
