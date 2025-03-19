@@ -7,8 +7,10 @@ public partial class Player : Character
 {
     // Константы
     private const float INTERACTION_RADIUS = 2.0f;
-    // Удаляем фиксированный Z-индекс
-    // private const int FORCE_Z_INDEX = 100;
+    [Export] public string StationScenePath { get; set; } = "res://scenes/station/space_station.tscn";
+
+    private Node2D _teleportEffects;
+    private AnimationPlayer _teleportAnimation;
 
     // Ссылки на компоненты
     private Sprite2D _sprite;
@@ -31,8 +33,7 @@ public partial class Player : Character
 
     public override void _Ready()
     {
-        // ВАЖНО: Убедиться, что Z-индекс не устанавливается принудительно
-        // ZIndex = DEFAULT_Z_INDEX;
+
 
         // Вызываем базовый метод для остальной инициализации
         base._Ready();
@@ -70,12 +71,98 @@ public partial class Player : Character
 
         // Отправляем сигнал о состоянии здоровья
         EmitSignal(SignalName.HealthChanged, _currentHealth, MaxHealth);
+
+        SetupInputMap();
     }
 
     public override void _Process(double delta)
     {
         // Обработка ввода
         HandleInput();
+
+        // Вызов базового метода, если он существует
+        base._Process(delta);
+
+        // Проверка нажатия клавиши T
+        if (Input.IsKeyPressed(Key.T) && Input.IsActionJustPressed("teleport_to_station"))
+        {
+            TeleportToStation();
+        }
+    }
+    private void TeleportToStation()
+    {
+        Logger.Debug("Starting teleportation to station via keyboard shortcut", true);
+
+        // Сохраняем текущую позицию игрока
+        SavePlayerPosition();
+
+        // Показываем эффекты телепортации
+        if (_teleportEffects != null)
+        {
+            _teleportEffects.Visible = true;
+        }
+
+        // Запускаем анимацию телепортации
+        if (_teleportAnimation != null && _teleportAnimation.HasAnimation("teleport"))
+        {
+            _teleportAnimation.Play("teleport");
+        }
+        else
+        {
+            // Если анимации нет, просто вызываем завершение телепортации
+            CompleteTeleportToStation();
+        }
+    }
+    private void CompleteTeleportToStation()
+    {
+        // Устанавливаем флаг для создания игрока при загрузке станции
+        ProjectSettings.SetSetting("CreatePlayerOnLoad", true);
+
+        // ВАЖНО: Сохраняем информацию о том, что игрок должен появиться у телепортера, а не в стартовом модуле
+        ProjectSettings.SetSetting("SpawnAtTeleporter", true);
+
+        // Переходим к сцене станции
+        GetTree().ChangeSceneToFile(StationScenePath);
+    }
+
+    // Сохранение позиции игрока
+    private void SavePlayerPosition()
+    {
+        // Сохраняем позицию игрока в глобальной переменной или файле
+        // Здесь используем ProjectSettings для простоты
+
+        // Проверяем, существует ли синглтон GameManager
+        var gameManager = GetNode<GameManager>("/root/GameManager");
+        if (gameManager != null)
+        {
+            // Сохраняем позицию через GameManager
+            gameManager.SetData("LastWorldPosition", GlobalPosition);
+            Logger.Debug($"Player position saved: {GlobalPosition}", false);
+        }
+        else
+        {
+            // Сохраняем в ProjectSettings если GameManager отсутствует
+            ProjectSettings.SetSetting("LastWorldPosition", GlobalPosition);
+            Logger.Debug($"Player position saved via ProjectSettings: {GlobalPosition}", false);
+        }
+    }
+    private void SetupInputMap()
+    {
+        // Проверяем, существует ли действие "teleport_to_station"
+        if (!InputMap.HasAction("teleport_to_station"))
+        {
+            // Создаем новое действие
+            InputMap.AddAction("teleport_to_station");
+
+            // Создаем событие клавиши T
+            var eventT = new InputEventKey();
+            eventT.Keycode = Key.T;
+
+            // Добавляем событие к действию
+            InputMap.ActionAddEvent("teleport_to_station", eventT);
+
+            Logger.Debug("Added 'teleport_to_station' action to InputMap with key T", true);
+        }
     }
 
     // Дополнительно обрабатываем физический процесс
