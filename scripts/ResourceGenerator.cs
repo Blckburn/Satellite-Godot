@@ -10,7 +10,7 @@ public class ResourceGenerator
 {
     // Константы для настройки генерации
     private const int MIN_DISTANCE_BETWEEN_RESOURCES = 3; // Минимальное расстояние между ресурсами в тайлах
-    private const int MIN_DISTANCE_FROM_WALL = 1;         // Минимальное расстояние от стен
+    private const int MIN_DISTANCE_FROM_WALL = 2;         // Минимальное расстояние от стен
 
     // Параметры генерации
     private int _maxResourcesPerRoom;      // Максимальное количество ресурсов в комнате
@@ -407,50 +407,106 @@ public class ResourceGenerator
     /// <returns>Позиция для размещения или null, если подходящей позиции не найдено</returns>
     private Vector2I? FindResourcePosition(Rect2I room, LevelGenerator.TileType[,] sectionMask, List<Vector2I> placedPositions)
     {
-        // Максимальное количество попыток найти подходящую позицию
-        int maxAttempts = 20;
+        // Увеличиваем количество попыток для лучшего результата
+        int maxAttempts = 50;
 
-        for (int attempt = 0; attempt < maxAttempts; attempt++)
+        // Сначала создадим карту безопасных позиций
+        List<Vector2I> safePositions = new List<Vector2I>();
+
+        // Проверяем все позиции в комнате
+        for (int y = room.Position.Y + MIN_DISTANCE_FROM_WALL;
+             y < room.Position.Y + room.Size.Y - MIN_DISTANCE_FROM_WALL; y++)
         {
-            // Выбираем случайную позицию внутри комнаты (с отступом от края)
-            int x = _random.Next(room.Position.X + MIN_DISTANCE_FROM_WALL,
-                                 room.Position.X + room.Size.X - MIN_DISTANCE_FROM_WALL);
-            int y = _random.Next(room.Position.Y + MIN_DISTANCE_FROM_WALL,
-                                 room.Position.Y + room.Size.Y - MIN_DISTANCE_FROM_WALL);
-
-            Vector2I position = new Vector2I(x, y);
-
-            // Проверяем, что позиция находится в пределах маски
-            if (x >= 0 && x < sectionMask.GetLength(0) &&
-                y >= 0 && y < sectionMask.GetLength(1))
+            for (int x = room.Position.X + MIN_DISTANCE_FROM_WALL;
+                 x < room.Position.X + room.Size.X - MIN_DISTANCE_FROM_WALL; x++)
             {
-                // Проверяем, что позиция свободна (это комната, а не стена или коридор)
-                if (sectionMask[x, y] != LevelGenerator.TileType.Room)
+                // Проверяем, что позиция находится в пределах маски
+                if (x >= 0 && x < sectionMask.GetLength(0) &&
+                    y >= 0 && y < sectionMask.GetLength(1))
                 {
-                    continue;
-                }
+                    // Проверяем, что вся область 5x5 вокруг точки - это комната (гарантированно вдали от стен)
+                    bool isValidPosition = true;
 
-                // Проверяем минимальное расстояние до других ресурсов
-                bool tooClose = false;
-                foreach (var placedPos in placedPositions)
-                {
-                    int distance = Mathf.Abs(placedPos.X - x) + Mathf.Abs(placedPos.Y - y);
-                    if (distance < MIN_DISTANCE_BETWEEN_RESOURCES)
+                    for (int dy = -2; dy <= 2 && isValidPosition; dy++)
                     {
-                        tooClose = true;
-                        break;
-                    }
-                }
+                        for (int dx = -2; dx <= 2 && isValidPosition; dx++)
+                        {
+                            int nx = x + dx;
+                            int ny = y + dy;
 
-                if (!tooClose)
-                {
-                    return position;
+                            if (nx >= 0 && nx < sectionMask.GetLength(0) &&
+                                ny >= 0 && ny < sectionMask.GetLength(1))
+                            {
+                                // Позиция невалидна, если это НЕ комната
+                                if (sectionMask[nx, ny] != LevelGenerator.TileType.Room)
+                                {
+                                    isValidPosition = false;
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                // Если вышли за пределы карты, позиция невалидна
+                                isValidPosition = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (isValidPosition)
+                    {
+                        safePositions.Add(new Vector2I(x, y));
+                    }
                 }
             }
         }
 
+        // Перемешиваем список безопасных позиций
+        ShuffleList(safePositions);
+
+        // Теперь выбираем из безопасных позиций те, которые достаточно далеко от других ресурсов
+        foreach (var pos in safePositions)
+        {
+            // Проверяем минимальное расстояние до других ресурсов
+            bool tooClose = false;
+            foreach (var placedPos in placedPositions)
+            {
+                int distance = Mathf.Abs(placedPos.X - pos.X) + Mathf.Abs(placedPos.Y - pos.Y);
+                if (distance < MIN_DISTANCE_BETWEEN_RESOURCES)
+                {
+                    tooClose = true;
+                    break;
+                }
+            }
+
+            if (!tooClose)
+            {
+                return pos; // Нашли подходящую позицию
+            }
+        }
+
+        // Если не нашли идеальную позицию, но есть безопасные точки, вернем первую из них
+        if (safePositions.Count > 0)
+        {
+            return safePositions[0];
+        }
+
         // Не удалось найти подходящую позицию
         return null;
+    }
+
+    // Вспомогательный метод для перемешивания списка
+    private void ShuffleList<T>(List<T> list)
+    {
+        int n = list.Count;
+        while (n > 1)
+        {
+            n--;
+            int k = _random.Next(n + 1);
+            T value = list[k];
+            list[k] = list[n];
+            list[n] = value;
+        }
     }
 
     /// <summary>
