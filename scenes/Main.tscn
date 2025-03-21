@@ -18,6 +18,7 @@ InteractionSystemPath = NodePath("../InteractionSystem")
 
 [node name="InventoryUI" parent="UIManager" instance=ExtResource("6_jlsqs")]
 z_index = 6
+metadata/_edit_use_anchors_ = true
 
 [node name="InteractionSystem" type="Node" parent="."]
 script = ExtResource("6_c01mt")

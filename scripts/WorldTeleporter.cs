@@ -63,6 +63,10 @@ public partial class WorldTeleporter : InteractiveObject
         // Сохраняем текущую позицию игрока
         SavePlayerPosition(player);
 
+        // Сохраняем инвентарь игрока
+        player.SaveInventory();
+        Logger.Debug("Player inventory saved before teleportation to station", false);
+
         // Запускаем эффекты телепортации
         if (_teleportEffects != null)
             _teleportEffects.Visible = true;

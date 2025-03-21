@@ -309,11 +309,11 @@ public partial class SpaceStation : Node2D
 
         // Создаем экземпляр игрока
         Logger.Debug("Instantiating player", true);
-        Node2D player = null;
+        Node2D playerNode = null;
         try
         {
-            player = PlayerScene.Instantiate<Node2D>();
-            if (player == null)
+            playerNode = PlayerScene.Instantiate<Node2D>();
+            if (playerNode == null)
             {
                 Logger.Error("Failed to instantiate player - result is null");
                 return;
@@ -326,22 +326,39 @@ public partial class SpaceStation : Node2D
         }
 
         // Устанавливаем позицию
-        player.Position = spawnPosition;
+        playerNode.Position = spawnPosition;
 
         // Добавляем игрока в сцену
         Logger.Debug("Adding player to scene", true);
         try
         {
-            AddChild(player);
+            AddChild(playerNode);
 
             // Добавляем игрока в группу Player, если он там еще не находится
-            if (!player.IsInGroup("Player"))
+            if (!playerNode.IsInGroup("Player"))
             {
-                player.AddToGroup("Player");
+                playerNode.AddToGroup("Player");
                 Logger.Debug("Added player to 'Player' group", true);
             }
 
-            Logger.Debug($"Player spawned at position {player.Position}", true);
+            Logger.Debug($"Player spawned at position {playerNode.Position}", true);
+
+            // Если игрок создан успешно и реализует класс Player,
+            // принудительно загружаем инвентарь
+            if (playerNode is Player player)
+            {
+                // Этот вызов произойдет после _Ready(), поэтому мы повторно загружаем инвентарь
+                try
+                {
+                    Logger.Debug("Ensuring player inventory is loaded", true);
+                    bool loaded = player.LoadInventory();
+                    Logger.Debug($"Force load inventory result: {loaded}", true);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Exception loading player inventory: {ex.Message}");
+                }
+            }
         }
         catch (Exception ex)
         {

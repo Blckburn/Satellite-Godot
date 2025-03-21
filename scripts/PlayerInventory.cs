@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using System.Linq;
+using System.Collections.Generic;
 
 // Расширение класса Player для добавления системы инвентаря
 public partial class Player
@@ -13,6 +14,10 @@ public partial class Player
 
     // Максимальный размер инвентаря по умолчанию
     private const int DEFAULT_INVENTORY_SIZE = 20;
+
+    // Константы для хранения данных
+    private const string INVENTORY_SAVE_KEY = "PlayerInventorySaved";
+
 
     // Инициализация инвентаря
     public void InitializeInventory(int inventorySize = DEFAULT_INVENTORY_SIZE)
@@ -115,4 +120,69 @@ public partial class Player
 
         return PlayerInventory.GetInventoryInfo();
     }
+
+    /// <summary>
+    /// Сохраняет инвентарь игрока через GameManager
+    /// </summary>
+    public void SaveInventory()
+    {
+        if (PlayerInventory == null)
+        {
+            Logger.Debug("Cannot save inventory - inventory is null", true);
+            return;
+        }
+
+        // Получаем GameManager
+        var gameManager = GetNode<GameManager>("/root/GameManager");
+        if (gameManager == null)
+        {
+            Logger.Error("GameManager not found for saving inventory");
+            return;
+        }
+
+        // Сериализуем и сохраняем инвентарь
+        var inventoryData = PlayerInventory.Serialize();
+        gameManager.SetData(INVENTORY_SAVE_KEY, inventoryData);
+
+        Logger.Debug($"Player inventory saved. Items count: {PlayerInventory.Items.Count}", true);
+    }
+
+    /// <summary>
+    /// Загружает инвентарь игрока через GameManager
+    /// </summary>
+    public bool LoadInventory()
+    {
+        // Инициализируем инвентарь, если его нет
+        if (PlayerInventory == null)
+        {
+            InitializeInventory();
+        }
+
+        // Получаем GameManager
+        var gameManager = GetNode<GameManager>("/root/GameManager");
+        if (gameManager == null)
+        {
+            Logger.Error("GameManager not found for loading inventory");
+            return false;
+        }
+
+        // Проверяем наличие сохраненных данных
+        if (!gameManager.HasData(INVENTORY_SAVE_KEY))
+        {
+            Logger.Debug("No saved inventory data found", true);
+            return false;
+        }
+
+        // Десериализуем и загружаем инвентарь
+        var inventoryData = gameManager.GetData<Dictionary<string, object>>(INVENTORY_SAVE_KEY);
+        if (inventoryData != null)
+        {
+            PlayerInventory.Deserialize(inventoryData);
+            Logger.Debug($"Player inventory loaded. Items count: {PlayerInventory.Items.Count}", true);
+            return true;
+        }
+
+        return false;
+    }
+
 }

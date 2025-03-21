@@ -33,13 +33,23 @@ public partial class Player : Character
 
     public override void _Ready()
     {
-
-
         // Вызываем базовый метод для остальной инициализации
         base._Ready();
 
         // Инициализация инвентаря
         InitializeInventory();
+
+        // Пытаемся загрузить сохраненный инвентарь
+        bool inventoryLoaded = LoadInventory();
+
+        if (inventoryLoaded)
+        {
+            Logger.Debug("Successfully loaded saved inventory", true);
+        }
+        else
+        {
+            Logger.Debug("Using fresh inventory (no saved data found)", true);
+        }
 
         // Подписка на события инвентаря
         Connect("PlayerInventoryChanged", Callable.From(() =>
@@ -49,17 +59,6 @@ public partial class Player : Character
 
         // Инициализация компонентов
         _sprite = GetNodeOrNull<Sprite2D>("Sprite2D");
-
-        // Отключаем все принудительные установки Z-индекса
-     /*   if (_sprite != null)
-        {
-            // Важно: не устанавливать ZIndex вручную
-            // _sprite.ZIndex = FORCE_Z_INDEX;
-
-            // Убедимся, что Y-сортировка работает
-            Logger.Debug($"Player sprite initialized. Y-Sort enabled in parent: {GetParent().GetParent().YSortEnabled}", true);
-        }*/
-
         _collisionShape = GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
         _interactionArea = GetNodeOrNull<Area2D>("InteractionArea");
 
@@ -72,7 +71,12 @@ public partial class Player : Character
         // Отправляем сигнал о состоянии здоровья
         EmitSignal(SignalName.HealthChanged, _currentHealth, MaxHealth);
 
+        // Настраиваем карту ввода
         SetupInputMap();
+
+        // Находим компоненты для телепортации
+        _teleportEffects = GetNodeOrNull<Node2D>("TeleportEffects");
+        _teleportAnimation = GetNodeOrNull<AnimationPlayer>("TeleportAnimation");
     }
 
     public override void _Process(double delta)
@@ -95,6 +99,10 @@ public partial class Player : Character
 
         // Сохраняем текущую позицию игрока
         SavePlayerPosition();
+
+        // Сохраняем инвентарь игрока
+        SaveInventory();
+        Logger.Debug("Player inventory saved before teleportation to station via keyboard", true);
 
         // Показываем эффекты телепортации
         if (_teleportEffects != null)

@@ -119,6 +119,10 @@ public partial class StationTeleporter : InteractiveObject
 
         Logger.Debug("Starting teleportation to world", false);
 
+        // Сохраняем инвентарь игрока
+        player.SaveInventory();
+        Logger.Debug("Player inventory saved before teleportation to world", false);
+
         // Запускаем эффекты телепортации
         if (_teleportEffects != null)
             _teleportEffects.Visible = true;
