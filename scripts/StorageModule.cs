@@ -105,6 +105,29 @@ public partial class StorageModule : BaseStationModule
             // Проверяем расстояние до игрока
             CheckPlayerDistance();
         }
+        if (_storageContainer != null && _storageContainer.InventorySize != StorageCapacity)
+        {
+            UpdateContainerSize();
+        }
+    }
+
+    private void UpdateContainerSize()
+    {
+        if (_storageContainer != null)
+        {
+            _storageContainer.InventorySize = StorageCapacity;
+
+            // Если контейнер открыт, обновляем UI
+            if (_isContainerOpen && _containerUI != null && IsInstanceValid(_containerUI))
+            {
+                // Закроем и снова откроем UI, чтобы обновить слоты
+                _containerUI.CloseContainerUI();
+                _containerUI.OpenContainerUI(_storageContainer);
+                Logger.Debug($"Reopened container UI after size update to {StorageCapacity}", true);
+            }
+
+            Logger.Debug($"Updated container size to {StorageCapacity}", true);
+        }
     }
 
     /// <summary>
@@ -159,14 +182,10 @@ public partial class StorageModule : BaseStationModule
             _storageContainer = new Container();
             _storageContainer.Name = "StorageContainer";
             _storageContainer.ContainerName = StorageName;
-            _storageContainer.InventorySize = StorageCapacity;
+            _storageContainer.InventorySize = StorageCapacity; // Убедитесь, что эта строка есть
 
             // Инициализируем инвентарь контейнера
             _storageContainer.AddToGroup("Containers");
-
-            // Подключаем сигналы для отслеживания событий контейнера
-            _storageContainer.Connect(Container.SignalName.ContainerOpened, Callable.From<Container>(OnContainerOpened));
-            _storageContainer.Connect(Container.SignalName.ContainerClosed, Callable.From<Container>(OnContainerClosed));
 
             // Добавляем контейнер как дочерний узел, но скрываем его
             AddChild(_storageContainer);
@@ -174,6 +193,15 @@ public partial class StorageModule : BaseStationModule
             _storageContainer.Visible = false; // Скрываем визуальное представление контейнера
 
             Logger.Debug($"Storage container created with {StorageCapacity} slots", true);
+        }
+        else
+        {
+            // Добавьте эту проверку для уже созданного контейнера
+            if (_storageContainer.InventorySize != StorageCapacity)
+            {
+                _storageContainer.InventorySize = StorageCapacity;
+                Logger.Debug($"Updated storage container capacity to {StorageCapacity}", true);
+            }
         }
     }
 

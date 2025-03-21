@@ -12,7 +12,22 @@ public partial class Container : InteractiveObject
     [Export] public Inventory ContainerInventory { get; private set; }
 
     // Максимальный размер инвентаря контейнера
-    [Export] public int InventorySize { get; set; } = 10;
+    [Export]
+    public int InventorySize
+    {
+        get => _inventorySize;
+        set
+        {
+            _inventorySize = value;
+            // Обновляем размер инвентаря, если он уже существует
+            if (ContainerInventory != null)
+            {
+                ContainerInventory.MaxSlots = value;
+                Logger.Debug($"Container '{Name}' inventory size updated to {value}", true);
+            }
+        }
+    }
+    private int _inventorySize = 10;
 
     // Название контейнера
     [Export] public string ContainerName { get; set; } = "Storage Container";

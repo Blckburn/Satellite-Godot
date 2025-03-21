@@ -8,7 +8,6 @@ radius = 148.354
 
 [node name="StorageModule" type="Node2D"]
 script = ExtResource("1_a5e46")
-StorageCapacity = 20
 StorageModelPath = NodePath("StorageModel")
 MaxInteractionDistance = 150.0
 ModuleName = "Storage Module"

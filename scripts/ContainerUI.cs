@@ -51,6 +51,7 @@ public partial class ContainerUI : Control
 
     // Путь к тултипу
     [Export] public string TooltipScenePath { get; set; } = "res://scenes/ui/item_tooltip.tscn";
+    [Export] public int PlayerSlotsCount { get; set; } = 28;
 
     public override void _Ready()
     {
@@ -206,7 +207,7 @@ public partial class ContainerUI : Control
         _playerSlots.Clear();
 
         // Получаем максимальное количество слотов
-        int slotsCount = _playerInventory != null ? _playerInventory.MaxSlots : 20;
+        int slotsCount = PlayerSlotsCount;
 
         // Создаем новые слоты
         for (int i = 0; i < slotsCount; i++)
