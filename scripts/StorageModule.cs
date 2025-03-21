@@ -35,6 +35,9 @@ public partial class StorageModule : BaseStationModule
     // Наблюдатель для отслеживания жизненного цикла UI
     private Timer _containerWatcher;
 
+    [Export] public bool CloseOnDistanceExceeded { get; set; } = true;
+    [Export] public float MaxInteractionDistance { get; set; } = 2.0f;
+
     public override void _Ready()
     {
         // Настройка основных параметров модуля
@@ -76,7 +79,32 @@ public partial class StorageModule : BaseStationModule
         // Находим анимацию, если она есть
         _animationPlayer = GetNodeOrNull<AnimationPlayer>("AnimationPlayer");
 
+        // Подключаем обработку эскейпа для закрытия хранилища
+        Connect("tree_entered", Callable.From(() => {
+            Logger.Debug("Adding input handling for storage module", true);
+            SetProcess(true);
+        }));
+
         Logger.Debug($"StorageModule '{Name}' initialized with {StorageCapacity} slots", true);
+    }
+    public override void _Process(double delta)
+    {
+        base._Process(delta);
+
+        // Проверяем нажатие Esc для закрытия контейнера
+        if (_isContainerOpen && Input.IsKeyPressed(Key.Escape))
+        {
+            Logger.Debug("Escape key detected, closing storage", true);
+            CloseStorage();
+
+        }
+
+        // Если хранилище открыто и включена опция закрытия по расстоянию
+        if (_isContainerOpen && CloseOnDistanceExceeded)
+        {
+            // Проверяем расстояние до игрока
+            CheckPlayerDistance();
+        }
     }
 
     /// <summary>
@@ -136,6 +164,10 @@ public partial class StorageModule : BaseStationModule
             // Инициализируем инвентарь контейнера
             _storageContainer.AddToGroup("Containers");
 
+            // Подключаем сигналы для отслеживания событий контейнера
+            _storageContainer.Connect(Container.SignalName.ContainerOpened, Callable.From<Container>(OnContainerOpened));
+            _storageContainer.Connect(Container.SignalName.ContainerClosed, Callable.From<Container>(OnContainerClosed));
+
             // Добавляем контейнер как дочерний узел, но скрываем его
             AddChild(_storageContainer);
             _storageContainer.Position = Vector2.Zero;
@@ -144,6 +176,7 @@ public partial class StorageModule : BaseStationModule
             Logger.Debug($"Storage container created with {StorageCapacity} slots", true);
         }
     }
+
 
     /// <summary>
     /// Метод для создания и открытия UI контейнера напрямую
@@ -194,6 +227,13 @@ public partial class StorageModule : BaseStationModule
 
         if (_containerUI != null)
         {
+            // Важно: подключаем сигнал закрытия контейнера, если он еще не подключен
+            if (_storageContainer != null && !_storageContainer.IsConnected(Container.SignalName.ContainerClosed, Callable.From<Container>(OnContainerClosed)))
+            {
+                _storageContainer.Connect(Container.SignalName.ContainerClosed, Callable.From<Container>(OnContainerClosed));
+                Logger.Debug("Connected ContainerClosed signal", true);
+            }
+
             // Открываем UI с нашим контейнером
             _containerUI.OpenContainerUI(_storageContainer);
             _isContainerOpen = true;
@@ -208,6 +248,40 @@ public partial class StorageModule : BaseStationModule
             Logger.Error("Failed to open container UI - couldn't find or create UI");
         }
     }
+    /// <summary>
+    /// Обработчик сигнала открытия контейнера
+    /// </summary>
+    private void OnContainerOpened(Container container)
+    {
+        if (container == _storageContainer)
+        {
+            _isContainerOpen = true;
+            // Запускаем наблюдатель
+            _containerWatcher.Start();
+            Logger.Debug("Container opened signal received", true);
+        }
+    }
+
+    /// <summary>
+    /// Обработчик сигнала закрытия контейнера
+    /// </summary>
+    private void OnContainerClosed(Container container)
+    {
+        // Проверяем, что это наш контейнер
+        if (container == _storageContainer)
+        {
+            Logger.Debug("Container closed signal received", true);
+            _isContainerOpen = false;
+            _containerWatcher.Stop();
+
+            // Воспроизводим анимацию закрытия, если она есть
+            if (_animationPlayer != null && _animationPlayer.HasAnimation("close"))
+            {
+                _animationPlayer.Play("close");
+            }
+        }
+    }
+
 
     /// <summary>
     /// Получает корневой узел для UI
@@ -275,13 +349,18 @@ public partial class StorageModule : BaseStationModule
             }
 
             // Если есть ContainerUI, закрываем его
-            if (_containerUI != null && IsInstanceValid(_containerUI))
+            var containerUIs = GetTree().GetNodesInGroup("ContainerUI");
+            if (containerUIs.Count > 0 && containerUIs[0] is ContainerUI ui)
             {
-                _containerUI.CloseContainerUI();
-                Logger.Debug("Closed container UI directly", true);
+                ui.CloseContainerUI();
+                Logger.Debug("Closed container UI directly from CloseStorage", true);
             }
 
+            // Сбрасываем флаг
             _isContainerOpen = false;
+            _containerWatcher.Stop();
+
+            Logger.Debug("Storage closed successfully", true);
         }
     }
 
@@ -386,4 +465,25 @@ public partial class StorageModule : BaseStationModule
     {
         return $"Press E to access {StorageName}";
     }
+
+    /// <summary>
+/// Проверяет расстояние от хранилища до игрока и закрывает его,
+/// если игрок ушел слишком далеко
+/// </summary>
+private void CheckPlayerDistance()
+{
+    var players = GetTree().GetNodesInGroup("Player");
+    if (players.Count > 0 && players[0] is Node2D player)
+    {
+        float distance = GlobalPosition.DistanceTo(player.GlobalPosition);
+
+        // Если игрок ушел слишком далеко, закрываем хранилище
+        if (distance > MaxInteractionDistance)
+        {
+            Logger.Debug($"Player moved too far ({distance:F2} > {MaxInteractionDistance:F2}), closing storage", true);
+            CloseStorage();
+        }
+    }
+}
+
 }

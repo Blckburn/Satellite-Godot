@@ -166,6 +166,8 @@ public partial class Container : InteractiveObject
     // Метод для закрытия контейнера
     public virtual void CloseContainer()
     {
+        Logger.Debug($"CloseContainer called for {Name}", true);
+
         if (_isOpen)
         {
             _isOpen = false;
@@ -173,10 +175,19 @@ public partial class Container : InteractiveObject
             // Вызываем сигнал закрытия контейнера
             EmitSignal(SignalName.ContainerClosed, this);
 
-            Logger.Debug($"Container '{Name}' closed", true);
+            Logger.Debug($"Container '{Name}' closed, signal emitted", true);
 
-            // Закрываем UI контейнера
-            CloseContainerUI();
+            // Непосредственное закрытие UI контейнера - принудительно ищем его
+            var containerUIs = GetTree().GetNodesInGroup("ContainerUI");
+            if (containerUIs.Count > 0 && containerUIs[0] is ContainerUI ui)
+            {
+                ui.CloseContainerUI();
+                Logger.Debug("Called CloseContainerUI directly", true);
+            }
+            else
+            {
+                Logger.Debug("No ContainerUI found to close", true);
+            }
         }
     }
 

@@ -130,6 +130,8 @@ public partial class ContainerUI : Control
     // Метод закрытия UI контейнера
     public void CloseContainerUI()
     {
+        Logger.Debug("CloseContainerUI called", true);
+
         // Скрываем UI
         Visible = false;
         _isVisible = false;
@@ -882,15 +884,31 @@ public partial class ContainerUI : Control
     }
 
     // Обработчик нажатия кнопки закрытия
-    private void _on_close_button_pressed()
+    public void _on_close_button_pressed()
     {
+        Logger.Debug("Close button pressed in ContainerUI", true);
+
         if (_currentContainer != null)
         {
-            _currentContainer.CloseContainer();
+            // Сначала проверим, принадлежит ли контейнер StorageModule
+            var storageModule = _currentContainer.GetParentOrNull<StorageModule>();
+            if (storageModule != null)
+            {
+                // Для хранилища на спутнике используем специальный метод
+                Logger.Debug("Container belongs to StorageModule, calling CloseStorage", true);
+                storageModule.CloseStorage();
+            }
+            else
+            {
+                // Для обычных контейнеров используем стандартный метод
+                Logger.Debug("Calling regular CloseContainer for world container", true);
+                _currentContainer.CloseContainer();
+            }
         }
         else
         {
-            // Если по какой-то причине контейнер уже null, просто скрываем UI
+            // Если по какой-то причине _currentContainer == null, просто закрываем UI
+            Logger.Debug("Current container is null, just closing UI", true);
             CloseContainerUI();
         }
     }
