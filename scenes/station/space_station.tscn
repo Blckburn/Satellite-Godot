@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://dk7arq0ta6k33"]
+[gd_scene load_steps=12 format=3 uid="uid://dk7arq0ta6k33"]
 
 [ext_resource type="Script" uid="uid://g0qcls0dppxf" path="res://scripts/SpaceStation.cs" id="1_f3sb1"]
 [ext_resource type="Script" uid="uid://bhja00xilj31x" path="res://scripts/StationGrid.cs" id="3_36ka1"]
@@ -6,9 +6,11 @@
 [ext_resource type="PackedScene" uid="uid://djhfs8tnhhmva" path="res://scenes/station/modules/teleportation_module.tscn" id="5_36ka1"]
 [ext_resource type="PackedScene" uid="uid://cpeapi7wqfccg" path="res://scenes/station/modules/starting_module.tscn" id="5_t260c"]
 [ext_resource type="PackedScene" uid="uid://b8tgraoyr5m2b" path="res://scenes/world/objects/station_teleporter.tscn" id="6_a5dhq"]
+[ext_resource type="PackedScene" uid="uid://dfld3ti6xtidv" path="res://scenes/station/modules/storage_module.tscn" id="8_ea0wa"]
 [ext_resource type="PackedScene" uid="uid://df1fsrm24trwj" path="res://scenes/ui/ui_manager.tscn" id="8_vm52f"]
 [ext_resource type="PackedScene" uid="uid://bu3h56rpjxyms" path="res://scenes/player/Player.tscn" id="9_ea0wa"]
 [ext_resource type="PackedScene" uid="uid://cdpklt0cb7nbq" path="res://scenes/ui/inventory_ui.tscn" id="9_vebmi"]
+[ext_resource type="PackedScene" uid="uid://dvkiae0slh4s3" path="res://scenes/ui/ContainerUI.tscn" id="11_vebmi"]
 
 [node name="SpaceStation" type="Node2D"]
 script = ExtResource("1_f3sb1")
@@ -46,6 +48,9 @@ WorldScenePath = "res://scenes/Main.tscn"
 [node name="TeleporterSpawnPoint" type="Node2D" parent="ModulesContainer/StationTeleporter"]
 position = Vector2(0, 39.355)
 
+[node name="StorageModule" parent="ModulesContainer" instance=ExtResource("8_ea0wa")]
+position = Vector2(831, 457)
+
 [node name="UIManager" parent="." instance=ExtResource("8_vm52f")]
 layer = 0
 InteractionSystemPath = NodePath("../InteractionSystem")
@@ -53,3 +58,7 @@ InteractionSystemPath = NodePath("../InteractionSystem")
 [node name="InventoryUI" parent="UIManager" instance=ExtResource("9_vebmi")]
 z_index = 6
 metadata/_edit_use_anchors_ = true
+
+[node name="ContainerUI" type="CanvasLayer" parent="."]
+
+[node name="ContainerUI" parent="ContainerUI" instance=ExtResource("11_vebmi")]
