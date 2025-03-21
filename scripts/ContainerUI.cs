@@ -316,7 +316,7 @@ public partial class ContainerUI : Control
     }
 
     // Обновление UI инвентаря игрока
-    private void UpdatePlayerInventoryUI()
+    public void UpdatePlayerInventoryUI()
     {
         if (_playerInventory == null || _playerSlots.Count == 0)
             return;
@@ -341,7 +341,7 @@ public partial class ContainerUI : Control
     }
 
     // Обновление UI инвентаря контейнера
-    private void UpdateContainerInventoryUI()
+    public void UpdateContainerInventoryUI()
     {
         if (_containerInventory == null || _containerSlots.Count == 0)
             return;
@@ -389,13 +389,12 @@ public partial class ContainerUI : Control
 
             slot.AddChild(iconRect);
         }
-        else
-        {
-            // Обновляем размер и положение
-            iconRect.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-            iconRect.Size = slot.Size;
-            iconRect.Position = Vector2.Zero;
-        }
+
+        // ВАЖНОЕ ИЗМЕНЕНИЕ: Обновляем размер и положение с отложенным вызовом
+        iconRect.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+
+        // Отложим установку размера, чтобы дать контролу возможность обновиться
+        CallDeferred(nameof(UpdateIconRectSize), iconRect, slot);
 
         // Создание метки количества
         if (quantityLabel == null && item.Quantity > 1)
@@ -469,6 +468,32 @@ public partial class ContainerUI : Control
 
         // Убираем подсказку при наведении, так как используем тултип
         slot.TooltipText = "";
+    }
+
+    // метод для отложенного обновления размеров иконки
+    private void UpdateIconRectSize(TextureRect iconRect, Control slot)
+    {
+        if (iconRect != null && IsInstanceValid(iconRect) && slot != null && IsInstanceValid(slot))
+        {
+            // Получим актуальные размеры слота
+            float width = slot.Size.X;
+            float height = slot.Size.Y;
+
+            // Иногда размеры могут быть 0, в этом случае используем CustomMinimumSize
+            if (width <= 0) width = slot.CustomMinimumSize.X;
+            if (height <= 0) height = slot.CustomMinimumSize.Y;
+
+            // Если размеры все еще 0, используем значения по умолчанию
+            if (width <= 0) width = 50;
+            if (height <= 0) height = 50;
+
+            // Установим размер и позицию TextureRect
+            iconRect.Size = new Vector2(width, height);
+            iconRect.Position = Vector2.Zero;
+
+            // Дополнительная информация для отладки
+            Logger.Debug($"ContainerUI: UpdateIconRectSize set to {width}x{height}", false);
+        }
     }
 
     // Очистка слота
@@ -711,9 +736,8 @@ public partial class ContainerUI : Control
             // Удаляем предмет из инвентаря игрока
             _playerInventory.RemoveItem(item, quantity);
 
-            // Обновляем UI
-            UpdatePlayerInventoryUI();
-            UpdateContainerInventoryUI();
+            // ИЗМЕНЕНИЕ: Обновляем UI с задержкой для правильного отображения
+            CallDeferred(nameof(UpdateUIAfterItemMove));
 
             Logger.Debug($"Moved {item.DisplayName} x{quantity} from player to container", true);
         }
@@ -744,9 +768,8 @@ public partial class ContainerUI : Control
             // Удаляем предмет из контейнера
             _containerInventory.RemoveItem(item, quantity);
 
-            // Обновляем UI
-            UpdatePlayerInventoryUI();
-            UpdateContainerInventoryUI();
+            // ИЗМЕНЕНИЕ: Обновляем UI с задержкой для правильного отображения
+            CallDeferred(nameof(UpdateUIAfterItemMove));
 
             Logger.Debug($"Moved {item.DisplayName} x{quantity} from container to player", true);
         }
@@ -754,6 +777,49 @@ public partial class ContainerUI : Control
         {
             Logger.Debug($"Failed to move {item.DisplayName} to player (inventory full?)", true);
         }
+    }
+
+    /// <summary>
+    /// метод для отложенного обновления UI после перемещения предметов
+    /// </summary>
+    private void UpdateUIAfterItemMove()
+    {
+        // Обновляем оба инвентаря
+        UpdatePlayerInventoryUI();
+        UpdateContainerInventoryUI();
+
+        // Дополнительно обновляем размеры всех иконок
+        UpdateAllIconSizes();
+
+        Logger.Debug("Inventories UI updated after item move", false);
+    }
+
+    /// <summary>
+    /// Новый метод для обновления размеров всех иконок в обоих инвентарях
+    /// </summary>
+    public void UpdateAllIconSizes()
+    {
+        // Обновляем размеры иконок в инвентаре игрока
+        foreach (var slot in _playerSlots)
+        {
+            var iconRect = slot.GetNodeOrNull<TextureRect>("IconTexture");
+            if (iconRect != null)
+            {
+                UpdateIconRectSize(iconRect, slot);
+            }
+        }
+
+        // Обновляем размеры иконок в инвентаре контейнера
+        foreach (var slot in _containerSlots)
+        {
+            var iconRect = slot.GetNodeOrNull<TextureRect>("IconTexture");
+            if (iconRect != null)
+            {
+                UpdateIconRectSize(iconRect, slot);
+            }
+        }
+
+        Logger.Debug("All icon sizes updated in container UI", false);
     }
 
     // Обработчики событий для контекстного меню

@@ -85,6 +85,21 @@ public partial class Player
             {
                 GD.Print($"Note: Only {actuallyAdded} of {initialQuantity} {item.DisplayName} could be added to inventory (stack limit or other constraints)");
             }
+
+            // НОВЫЙ КОД: Явно вызываем сигнал об изменении инвентаря, чтобы UI обновился
+            EmitSignal(SignalName.PlayerInventoryChanged);
+
+            // НОВЫЙ КОД: Чтобы быть уверенными, что UI обновится, 
+            // ищем InventoryUI и вызываем его метод UpdateInventoryUI
+            var inventoryUIs = GetTree().GetNodesInGroup("InventoryUI");
+            foreach (var ui in inventoryUIs)
+            {
+                if (ui is InventoryUI inventoryUI)
+                {
+                    // Вызываем метод обновления с задержкой, чтобы дать время на обработку всех событий
+                    CallDeferred("UpdateInventoryUIDeferred", inventoryUI);
+                }
+            }
         }
         else
         {
@@ -92,6 +107,16 @@ public partial class Player
         }
 
         return result;
+    }
+
+    // Добавьте этот новый метод для отложенного вызова UpdateInventoryUI
+    private void UpdateInventoryUIDeferred(InventoryUI inventoryUI)
+    {
+        if (inventoryUI != null && IsInstanceValid(inventoryUI))
+        {
+            inventoryUI.UpdateInventoryUI();
+            GD.Print("Forced inventory UI update after adding item");
+        }
     }
 
     // Использование предмета из инвентаря
