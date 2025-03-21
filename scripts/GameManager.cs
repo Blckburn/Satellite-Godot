@@ -166,4 +166,34 @@ public partial class GameManager : Node
     {
         return GetData<string>("TeleportScene");
     }
+
+    /// <summary>
+    /// Получает список всех сохраненных хранилищ
+    /// </summary>
+    public List<string> GetAllStorageIds()
+    {
+        List<string> storageIds = new List<string>();
+        string prefix = "StorageInventory_";
+
+        // Проходим по всем ключам и ищем те, что начинаются с префикса хранилища
+        foreach (var key in _data.Keys)
+        {
+            if (key.StartsWith(prefix))
+            {
+                string storageId = key.Substring(prefix.Length);
+                storageIds.Add(storageId);
+            }
+        }
+
+        return storageIds;
+    }
+
+    /// <summary>
+    /// Проверяет, существует ли сохраненное хранилище с указанным ID
+    /// </summary>
+    public bool HasStorageInventory(string storageId)
+    {
+        string key = $"StorageInventory_{storageId}";
+        return HasData(key);
+    }
 }

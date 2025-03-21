@@ -38,6 +38,10 @@ public partial class StorageModule : BaseStationModule
     [Export] public bool CloseOnDistanceExceeded { get; set; } = true;
     [Export] public float MaxInteractionDistance { get; set; } = 2.0f;
 
+    [Export] public string StorageID { get; set; } = "main_storage";
+
+    private const string STORAGE_INVENTORY_KEY = "StorageModuleInventory";
+
     public override void _Ready()
     {
         // Настройка основных параметров модуля
@@ -203,6 +207,7 @@ public partial class StorageModule : BaseStationModule
                 Logger.Debug($"Updated storage container capacity to {StorageCapacity}", true);
             }
         }
+        LoadStorageInventory();
     }
 
 
@@ -351,6 +356,13 @@ public partial class StorageModule : BaseStationModule
     {
         Logger.Debug("OpenStorage called", true);
 
+        // Убедимся, что данные хранилища загружены
+        if (_storageContainer != null && _storageContainer.ContainerInventory != null &&
+            _storageContainer.ContainerInventory.Items.Count == 0)
+        {
+            LoadStorageInventory();
+        }
+
         // Вместо обычного открытия контейнера, напрямую создаем UI
         ManuallyOpenContainerUI();
 
@@ -370,6 +382,8 @@ public partial class StorageModule : BaseStationModule
 
         if (_isContainerOpen)
         {
+            // Сохраняем инвентарь перед закрытием
+            SaveStorageInventory();
             // Воспроизводим анимацию закрытия, если она есть
             if (_animationPlayer != null && _animationPlayer.HasAnimation("close"))
             {
@@ -390,6 +404,16 @@ public partial class StorageModule : BaseStationModule
 
             Logger.Debug("Storage closed successfully", true);
         }
+    }
+
+    public override void _ExitTree()
+    {
+        base._ExitTree();
+
+        // Сохраняем инвентарь хранилища
+        SaveStorageInventory();
+
+        Logger.Debug("StorageModule saved inventory before exiting tree", true);
     }
 
     /// <summary>
@@ -513,5 +537,90 @@ private void CheckPlayerDistance()
         }
     }
 }
+    // Метод для генерации ключа хранения на основе ID
+    private string GetStorageInventoryKey()
+    {
+        return $"StorageInventory_{StorageID}";
+    }
+
+    /// <summary>
+    /// Сохраняет содержимое хранилища через GameManager
+    /// </summary>
+    private void SaveStorageInventory()
+    {
+        if (_storageContainer == null || _storageContainer.ContainerInventory == null)
+        {
+            Logger.Debug("Cannot save storage inventory - container or inventory is null", true);
+            return;
+        }
+
+        // Получаем GameManager
+        var gameManager = GetNode<GameManager>("/root/GameManager");
+        if (gameManager == null)
+        {
+            Logger.Error("GameManager not found for saving storage inventory");
+            return;
+        }
+
+        // Получаем ключ для текущего хранилища
+        string storageKey = GetStorageInventoryKey();
+
+        // Сериализуем инвентарь контейнера
+        var inventoryData = _storageContainer.ContainerInventory.Serialize();
+
+        // Сохраняем данные в GameManager
+        gameManager.SetData(storageKey, inventoryData);
+
+        Logger.Debug($"Storage inventory for '{StorageID}' saved successfully. Items count: {_storageContainer.ContainerInventory.Items.Count}", true);
+    }
+
+    /// <summary>
+    /// Загружает содержимое хранилища из GameManager
+    /// </summary>
+    private bool LoadStorageInventory()
+    {
+        // Проверяем, что контейнер существует
+        if (_storageContainer == null)
+        {
+            CreateStorageContainer();
+        }
+
+        if (_storageContainer.ContainerInventory == null)
+        {
+            Logger.Debug("Cannot load storage inventory - container inventory is null", true);
+            return false;
+        }
+
+        // Получаем GameManager
+        var gameManager = GetNode<GameManager>("/root/GameManager");
+        if (gameManager == null)
+        {
+            Logger.Error("GameManager not found for loading storage inventory");
+            return false;
+        }
+
+        // Получаем ключ для текущего хранилища
+        string storageKey = GetStorageInventoryKey();
+
+        // Проверяем наличие сохраненных данных
+        if (!gameManager.HasData(storageKey))
+        {
+            Logger.Debug($"No saved storage inventory data found for '{StorageID}'", true);
+            return false;
+        }
+
+        // Получаем сохраненные данные и десериализуем их
+        var inventoryData = gameManager.GetData<Dictionary<string, object>>(storageKey);
+        if (inventoryData != null)
+        {
+            _storageContainer.ContainerInventory.Deserialize(inventoryData);
+            Logger.Debug($"Storage inventory for '{StorageID}' loaded successfully. Items count: {_storageContainer.ContainerInventory.Items.Count}", true);
+            return true;
+        }
+
+        return false;
+    }
+
+
 
 }

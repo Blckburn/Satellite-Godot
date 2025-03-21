@@ -53,6 +53,14 @@ position = Vector2(0, 39.355)
 position = Vector2(831, 457)
 StorageCapacity = 49
 
+[node name="StorageModule2" parent="ModulesContainer" instance=ExtResource("8_ea0wa")]
+position = Vector2(393, 681)
+StorageCapacity = 49
+StorageName = "Second Central Storage"
+StorageModelPath = NodePath("../StorageModule/StorageModel")
+StorageID = "second_storage"
+InteractionAreaPath = NodePath("../StorageModule/InteractionArea")
+
 [node name="UIManager" parent="." instance=ExtResource("8_vm52f")]
 layer = 0
 InteractionSystemPath = NodePath("../InteractionSystem")
