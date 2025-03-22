@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://dk7arq0ta6k33"]
+[gd_scene load_steps=15 format=3 uid="uid://dk7arq0ta6k33"]
 
 [ext_resource type="Script" uid="uid://g0qcls0dppxf" path="res://scripts/SpaceStation.cs" id="1_f3sb1"]
 [ext_resource type="Script" uid="uid://bhja00xilj31x" path="res://scripts/StationGrid.cs" id="3_36ka1"]
@@ -12,6 +12,8 @@
 [ext_resource type="PackedScene" uid="uid://cdpklt0cb7nbq" path="res://scenes/ui/inventory_ui.tscn" id="9_vebmi"]
 [ext_resource type="PackedScene" uid="uid://dvyg2vbhucri0" path="res://scenes/ui/SlotTemplate.tscn" id="11_b1308"]
 [ext_resource type="PackedScene" uid="uid://dvkiae0slh4s3" path="res://scenes/ui/ContainerUI.tscn" id="11_vebmi"]
+[ext_resource type="Script" uid="uid://84p0u17egmo6" path="res://scripts/AutoSave.cs" id="13_yjdnh"]
+[ext_resource type="Script" uid="uid://cb6hul3pwncya" path="res://scripts/ForceSaveSystem.cs" id="14_07biw"]
 
 [node name="SpaceStation" type="Node2D"]
 script = ExtResource("1_f3sb1")
@@ -75,3 +77,9 @@ metadata/_edit_use_anchors_ = true
 [node name="ContainerUI" type="CanvasLayer" parent="."]
 
 [node name="ContainerUI" parent="ContainerUI" instance=ExtResource("11_vebmi")]
+
+[node name="AutoSave" type="Node" parent="."]
+script = ExtResource("13_yjdnh")
+
+[node name="Node" type="Node" parent="."]
+script = ExtResource("14_07biw")

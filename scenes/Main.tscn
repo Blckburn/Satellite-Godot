@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://dgp0p1mfdb25l"]
+[gd_scene load_steps=11 format=3 uid="uid://dgp0p1mfdb25l"]
 
 [ext_resource type="Script" uid="uid://iyb7fjxu7j21" path="res://scripts/LevelGenerator.cs" id="5_c01mt"]
 [ext_resource type="PackedScene" uid="uid://df1fsrm24trwj" path="res://scenes/ui/ui_manager.tscn" id="5_vcsgt"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://bu3h56rpjxyms" path="res://scenes/player/Player.tscn" id="7_jlsqs"]
 [ext_resource type="PackedScene" uid="uid://cycm7sv72virf" path="res://scenes/isometric_tileset.tscn" id="7_nxtc6"]
 [ext_resource type="PackedScene" uid="uid://dvkiae0slh4s3" path="res://scenes/ui/ContainerUI.tscn" id="9_q8u5g"]
+[ext_resource type="Script" uid="uid://84p0u17egmo6" path="res://scripts/AutoSave.cs" id="10_lhr70"]
 
 [node name="Node2D" type="Node2D"]
 
@@ -50,5 +51,8 @@ ResourceDensity = 0.6
 [node name="ContainerUI" type="CanvasLayer" parent="."]
 
 [node name="ContainerUI" parent="ContainerUI" instance=ExtResource("9_q8u5g")]
+
+[node name="AutoSave" type="Node" parent="."]
+script = ExtResource("10_lhr70")
 
 [editable path="isometric_tileset"]

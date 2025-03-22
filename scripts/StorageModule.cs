@@ -61,6 +61,21 @@ public partial class StorageModule : BaseStationModule
         // Создаем контейнер для хранения предметов напрямую (без вызова OpenContainer)
         CreateStorageContainer();
 
+        // Добавляем таймер для отложенной загрузки хранилища
+        var timer = new Timer();
+        timer.WaitTime = 0.5f;  // Достаточная задержка для инициализации
+        timer.OneShot = true;
+        timer.Timeout += () => {
+            Logger.Debug($"Delayed loading of storage '{StorageID}'", true);
+            bool loaded = LoadStorageInventory();
+            Logger.Debug($"Storage '{StorageID}' loaded: {loaded}, Items: {_storageContainer?.ContainerInventory?.Items.Count ?? 0}", true);
+            timer.QueueFree();
+        };
+        AddChild(timer);
+        timer.Start();
+
+        Logger.Debug($"Storage module '{Name}' initialized", true);
+
         // Находим визуальную модель
         if (!string.IsNullOrEmpty(StorageModelPath))
         {
@@ -602,6 +617,9 @@ private void CheckPlayerDistance()
         // Получаем ключ для текущего хранилища
         string storageKey = GetStorageInventoryKey();
 
+        // Подробное логирование
+        Logger.Debug($"Attempting to load storage '{StorageID}' with key '{storageKey}'", true);
+
         // Проверяем наличие сохраненных данных
         if (!gameManager.HasData(storageKey))
         {
@@ -609,13 +627,41 @@ private void CheckPlayerDistance()
             return false;
         }
 
-        // Получаем сохраненные данные и десериализуем их
-        var inventoryData = gameManager.GetData<Dictionary<string, object>>(storageKey);
-        if (inventoryData != null)
+        try
         {
-            _storageContainer.ContainerInventory.Deserialize(inventoryData);
-            Logger.Debug($"Storage inventory for '{StorageID}' loaded successfully. Items count: {_storageContainer.ContainerInventory.Items.Count}", true);
-            return true;
+            // Получаем сохраненные данные и десериализуем их
+            var inventoryData = gameManager.GetData<Dictionary<string, object>>(storageKey);
+            if (inventoryData != null)
+            {
+                // Подробное логирование для отладки
+                int itemCount = 0;
+                if (inventoryData.ContainsKey("items") && inventoryData["items"] is List<Dictionary<string, object>> items)
+                {
+                    itemCount = items.Count;
+                    Logger.Debug($"Found {itemCount} items in saved storage '{StorageID}'", true);
+
+                    // Вывод информации о каждом предмете для отладки
+                    for (int i = 0; i < items.Count; i++)
+                    {
+                        var item = items[i];
+                        string name = item.ContainsKey("display_name") ? item["display_name"].ToString() : "Unknown";
+                        int qty = item.ContainsKey("quantity") ? Convert.ToInt32(item["quantity"]) : 0;
+                        Logger.Debug($"Storage item {i + 1}: {name} x{qty}", true);
+                    }
+                }
+
+                _storageContainer.ContainerInventory.Deserialize(inventoryData);
+
+                // Обновляем UI, если хранилище открыто
+              //  ForceUpdateContainerUI();
+
+                Logger.Debug($"Storage inventory for '{StorageID}' loaded successfully. Items count: {_storageContainer.ContainerInventory.Items.Count}", true);
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error loading storage inventory: {ex.Message}");
         }
 
         return false;

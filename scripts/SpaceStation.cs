@@ -344,20 +344,58 @@ public partial class SpaceStation : Node2D
             Logger.Debug($"Player spawned at position {playerNode.Position}", true);
 
             // Если игрок создан успешно и реализует класс Player,
-            // принудительно загружаем инвентарь
+            // принудительно загружаем инвентарь с явным ожиданием
             if (playerNode is Player player)
             {
-                // Этот вызов произойдет после _Ready(), поэтому мы повторно загружаем инвентарь
-                try
-                {
-                    Logger.Debug("Ensuring player inventory is loaded", true);
-                    bool loaded = player.LoadInventory();
-                    Logger.Debug($"Force load inventory result: {loaded}", true);
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error($"Exception loading player inventory: {ex.Message}");
-                }
+                // Даем время на инициализацию игрока
+                var timer = new Timer();
+                timer.WaitTime = 0.2f;
+                timer.OneShot = true;
+                timer.Timeout += () => {
+                    Logger.Debug("Delayed inventory loading started", true);
+
+                    // Сначала проверим, что GameManager содержит данные инвентаря
+                    var gameManager = GetNode<GameManager>("/root/GameManager");
+                    if (gameManager != null && gameManager.HasData("PlayerInventorySaved"))
+                    {
+                        var inventoryData = gameManager.GetData<Dictionary<string, object>>("PlayerInventorySaved");
+                        int itemCount = 0;
+
+                        if (inventoryData != null &&
+                            inventoryData.ContainsKey("items") &&
+                            inventoryData["items"] is List<Dictionary<string, object>> items)
+                        {
+                            itemCount = items.Count;
+                        }
+
+                        Logger.Debug($"GameManager has inventory data with {itemCount} items", true);
+                    }
+                    else
+                    {
+                        Logger.Debug("GameManager does not have inventory data", true);
+                    }
+
+                    // Теперь загружаем инвентарь игрока
+                    try
+                    {
+                        Logger.Debug("Forcing player inventory load", true);
+                        bool loaded = player.LoadInventory();
+                        Logger.Debug($"Force load inventory result: {loaded}", true);
+
+                        // Дополнительно - явно обновим UI инвентаря через отложенный вызов
+                        CallDeferred("UpdateInventoryUIDeferred");
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"Exception loading player inventory: {ex.Message}");
+                    }
+
+                    // Удаляем таймер
+                    timer.QueueFree();
+                };
+
+                AddChild(timer);
+                timer.Start();
             }
         }
         catch (Exception ex)
@@ -378,6 +416,21 @@ public partial class SpaceStation : Node2D
             catch (Exception ex)
             {
                 Logger.Debug($"Exception in RespawnPlayer: {ex.Message}", true);
+            }
+        }
+    }
+
+    // метод для отложенного обновления UI инвентаря
+    private void UpdateInventoryUIDeferred()
+    {
+        // Ищем все UI инвентаря и обновляем их
+        var inventoryUIs = GetTree().GetNodesInGroup("InventoryUI");
+        foreach (var ui in inventoryUIs)
+        {
+            if (ui is InventoryUI inventoryUI)
+            {
+                inventoryUI.UpdateInventoryUI();
+                Logger.Debug("Forced inventory UI update", true);
             }
         }
     }

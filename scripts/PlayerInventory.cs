@@ -191,23 +191,60 @@ public partial class Player
             return false;
         }
 
-        // Проверяем наличие сохраненных данных
-        if (!gameManager.HasData(INVENTORY_SAVE_KEY))
+        // Проверяем наличие сохраненных данных - УЛУЧШЕННАЯ ПРОВЕРКА
+        if (gameManager.HasData("PlayerInventorySaved"))
+        {
+            // Получаем сохраненные данные инвентаря
+            Logger.Debug("Found saved inventory data, loading...", true);
+
+            try
+            {
+                var inventoryData = gameManager.GetData<Dictionary<string, object>>("PlayerInventorySaved");
+
+                if (inventoryData != null)
+                {
+                    // Подробное логирование для отладки
+                    int itemCount = 0;
+                    if (inventoryData.ContainsKey("items") && inventoryData["items"] is List<Dictionary<string, object>> items)
+                    {
+                        itemCount = items.Count;
+                        Logger.Debug($"Found {itemCount} items in saved inventory", true);
+
+                        // Вывод информации о каждом предмете для отладки
+                        for (int i = 0; i < items.Count; i++)
+                        {
+                            var item = items[i];
+                            string name = item.ContainsKey("display_name") ? item["display_name"].ToString() : "Unknown";
+                            int qty = item.ContainsKey("quantity") ? Convert.ToInt32(item["quantity"]) : 0;
+                            Logger.Debug($"Item {i + 1}: {name} x{qty}", true);
+                        }
+                    }
+
+                    // Десериализуем инвентарь
+                    PlayerInventory.Deserialize(inventoryData);
+                    Logger.Debug($"Successfully deserialized inventory with {itemCount} items", true);
+
+                    // ВАЖНО: Явно вызываем сигнал изменения инвентаря для обновления UI
+                    EmitSignal("PlayerInventoryChanged");
+                }
+                else
+                {
+                    Logger.Debug("Inventory data is null", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error deserializing inventory: {ex.Message}");
+                return false;
+            }
+
+            return true;
+        }
+        else
         {
             Logger.Debug("No saved inventory data found", true);
             return false;
         }
-
-        // Десериализуем и загружаем инвентарь
-        var inventoryData = gameManager.GetData<Dictionary<string, object>>(INVENTORY_SAVE_KEY);
-        if (inventoryData != null)
-        {
-            PlayerInventory.Deserialize(inventoryData);
-            Logger.Debug($"Player inventory loaded. Items count: {PlayerInventory.Items.Count}", true);
-            return true;
-        }
-
-        return false;
     }
 
 }

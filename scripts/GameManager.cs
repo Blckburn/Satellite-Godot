@@ -40,6 +40,8 @@ public partial class GameManager : Node
 
         // Инициализация
         Initialize();
+
+        InitializeSaveSystem();
     }
 
     public override void _ExitTree()
@@ -127,12 +129,14 @@ public partial class GameManager : Node
     }
 
     /// <summary>
-    /// Очищает все данные
+    /// Очищает все сохраненные данные в GameManager
     /// </summary>
     public void ClearData()
     {
         _data.Clear();
+        Logger.Debug("GameManager data cleared", true);
     }
+
 
     /// <summary>
     /// Получает текущую сцену
@@ -196,4 +200,125 @@ public partial class GameManager : Node
         string key = $"StorageInventory_{storageId}";
         return HasData(key);
     }
+
+    /// <summary>
+    /// Инициализирует интеграцию с SaveManager
+    /// </summary>
+    public void InitializeSaveSystem()
+    {
+        // Проверяем, подключен ли уже SaveManager
+        if (HasData("SaveManagerConnected"))
+            return;
+
+        // Подключаемся к сигналам SaveManager
+        var saveManager = GetNode<SaveManager>("/root/SaveManager");
+        if (saveManager != null)
+        {
+            saveManager.Connect("SaveCompleted", Callable.From(OnSaveCompleted));
+            saveManager.Connect("LoadCompleted", Callable.From(OnLoadCompleted));
+
+            // Устанавливаем флаг подключения
+            SetData("SaveManagerConnected", true);
+
+            Logger.Debug("GameManager connected to SaveManager", true);
+        }
+        else
+        {
+            Logger.Error("SaveManager not found");
+        }
+    }
+
+    /// <summary>
+    /// Обработчик завершения сохранения
+    /// </summary>
+    private void OnSaveCompleted()
+    {
+        Logger.Debug("Save completed successfully", true);
+
+        // Здесь можно добавить любую логику, которая должна выполняться после сохранения
+        // Например, показать уведомление пользователю
+    }
+
+    /// <summary>
+    /// Обработчик завершения загрузки
+    /// </summary>
+    private void OnLoadCompleted()
+    {
+        Logger.Debug("Load completed successfully", true);
+
+        // Здесь логика, которая должна выполняться после загрузки
+        // Например, переключение сцены на сохраненную локацию
+        if (HasData("CurrentScene"))
+        {
+            string currentScene = GetData<string>("CurrentScene");
+            if (!string.IsNullOrEmpty(currentScene))
+            {
+                // Проверяем, не находимся ли мы уже на этой сцене
+                if (GetTree().CurrentScene.SceneFilePath != currentScene)
+                {
+                    // Переключаемся на сцену из сохранения
+                    GetTree().ChangeSceneToFile(currentScene);
+                    Logger.Debug($"Changing scene to: {currentScene}", true);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Сохраняет игру
+    /// </summary>
+    /// <returns>Успешность операции</returns>
+    public bool SaveGame()
+    {
+        var saveManager = GetNode<SaveManager>("/root/SaveManager");
+        if (saveManager != null)
+        {
+            return saveManager.SaveGame();
+        }
+        else
+        {
+            Logger.Error("SaveManager not found for saving game");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Загружает игру
+    /// </summary>
+    /// <returns>Успешность операции</returns>
+    public bool LoadGame()
+    {
+        var saveManager = GetNode<SaveManager>("/root/SaveManager");
+        if (saveManager != null)
+        {
+            return saveManager.LoadGame();
+        }
+        else
+        {
+            Logger.Error("SaveManager not found for loading game");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Проверяет, существует ли сохранение
+    /// </summary>
+    /// <returns>True, если сохранение существует</returns>
+    public bool SaveExists()
+    {
+        var saveManager = GetNode<SaveManager>("/root/SaveManager");
+        if (saveManager != null)
+        {
+            return saveManager.SaveExists();
+        }
+        else
+        {
+            Logger.Error("SaveManager not found for checking save existence");
+            return false;
+        }
+    }
+
+
+
+
 }
