@@ -70,6 +70,9 @@ public partial class GameManager : Node
     /// </summary>
     private void OnSceneChanged()
     {
+        // Сохраняем важные данные перед сменой сцены
+        ProtectKeyData();
+
         // Обновляем информацию о текущей сцене
         var currentSceneRoot = GetTree().CurrentScene;
         if (currentSceneRoot != null)
@@ -77,6 +80,9 @@ public partial class GameManager : Node
             _currentScene = currentSceneRoot.SceneFilePath;
             Logger.Debug($"Scene changed to: {_currentScene}", false);
         }
+
+        // Восстанавливаем защищенные данные после смены сцены
+        CallDeferred("RestoreProtectedData");
     }
 
     /// <summary>
@@ -128,14 +134,14 @@ public partial class GameManager : Node
         _data.Remove(key);
     }
 
-    /// <summary>
-    /// Очищает все сохраненные данные в GameManager
-    /// </summary>
-    public void ClearData()
-    {
-        _data.Clear();
-        Logger.Debug("GameManager data cleared", true);
-    }
+/// <summary>
+/// Очищает все сохраненные данные в GameManager
+/// </summary>
+public void ClearData()
+{
+    _data.Clear();
+    Logger.Debug("GameManager data cleared", true);
+}
 
 
     /// <summary>
@@ -240,11 +246,64 @@ public partial class GameManager : Node
     }
 
     /// <summary>
+    /// Принудительно проверяет и восстанавливает данные инвентаря игрока
+    /// </summary>
+    public void EnsurePlayerInventoryLoaded()
+    {
+        // Проверяем наличие данных инвентаря
+        if (!HasData("PlayerInventorySaved"))
+        {
+            Logger.Debug("GameManager: No player inventory data to restore", true);
+            return;
+        }
+
+        // Получаем всех игроков в сцене
+        var players = GetTree().GetNodesInGroup("Player");
+        if (players.Count == 0)
+        {
+            Logger.Debug("GameManager: No player found in scene to restore inventory", true);
+            return;
+        }
+
+        // Для каждого игрока восстанавливаем инвентарь
+        foreach (var playerNode in players)
+        {
+            if (playerNode is Player player)
+            {
+                // Если инвентарь пуст или его нет, загружаем сохраненный
+                if (player.PlayerInventory == null || player.PlayerInventory.Items.Count == 0)
+                {
+                    Logger.Debug("GameManager: Player with empty inventory found, restoring...", true);
+                    bool result = player.LoadInventory();
+                    Logger.Debug($"GameManager: Inventory restore result: {result}", true);
+
+                    // Принудительно обновляем UI инвентаря
+                    var inventoryUIs = GetTree().GetNodesInGroup("InventoryUI");
+                    foreach (var uiNode in inventoryUIs)
+                    {
+                        if (uiNode is InventoryUI ui)
+                        {
+                            ui.UpdateInventoryUI();
+                            Logger.Debug("GameManager: Forced inventory UI update", true);
+                        }
+                    }
+                }
+                else
+                {
+                    Logger.Debug($"GameManager: Player already has inventory with {player.PlayerInventory.Items.Count} items", true);
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Обработчик завершения загрузки
     /// </summary>
     private void OnLoadCompleted()
     {
         Logger.Debug("Load completed successfully", true);
+        // Принудительно восстанавливаем инвентарь игрока
+        EnsurePlayerInventoryLoaded();
 
         // Здесь логика, которая должна выполняться после загрузки
         // Например, переключение сцены на сохраненную локацию
@@ -318,6 +377,92 @@ public partial class GameManager : Node
         }
     }
 
+    /// <summary>
+    /// Защищает ключевые данные от потери при смене сцен
+    /// </summary>
+    public void ProtectKeyData()
+    {
+        // Список критически важных ключей данных
+        string[] protectedKeys = new string[]
+        {
+        "PlayerInventorySaved",
+        "PlayerInventoryLastSaveTime",
+        "LastWorldPosition",
+        "CurrentScene",
+        };
+
+        // Создаем резервные копии данных
+        Dictionary<string, object> backupData = new Dictionary<string, object>();
+
+        foreach (string key in protectedKeys)
+        {
+            if (HasData(key))
+            {
+                backupData[key] = _data[key];
+                Logger.Debug($"GameManager: Protected data '{key}'", true);
+            }
+        }
+
+        // Резервное копирование данных хранилищ
+        List<string> storageKeys = new List<string>();
+        foreach (string key in _data.Keys)
+        {
+            if (key.StartsWith("StorageInventory_"))
+            {
+                backupData[key] = _data[key];
+                storageKeys.Add(key);
+            }
+        }
+
+        if (storageKeys.Count > 0)
+        {
+            Logger.Debug($"GameManager: Protected {storageKeys.Count} storage inventories", true);
+        }
+
+        // Сохраняем резервные копии в специальное хранилище
+        SetData("_BackupData", backupData);
+        SetData("_BackupTime", DateTime.Now.ToString());
+        Logger.Debug("GameManager: Created data backup", true);
+    }
+
+    /// <summary>
+    /// Восстанавливает ключевые данные после смены сцены
+    /// </summary>
+    public void RestoreProtectedData()
+    {
+        if (!HasData("_BackupData"))
+        {
+            Logger.Debug("GameManager: No backup data found", true);
+            return;
+        }
+
+        var backupData = GetData<Dictionary<string, object>>("_BackupData");
+        if (backupData == null || backupData.Count == 0)
+        {
+            Logger.Debug("GameManager: Backup data is empty", true);
+            return;
+        }
+
+        string backupTime = HasData("_BackupTime") ? GetData<string>("_BackupTime") : "unknown";
+        Logger.Debug($"GameManager: Restoring backup data from {backupTime}", true);
+
+        // Восстанавливаем данные
+        int restoredCount = 0;
+        foreach (var entry in backupData)
+        {
+            if (entry.Value != null)
+            {
+                _data[entry.Key] = entry.Value;
+                restoredCount++;
+            }
+        }
+
+        Logger.Debug($"GameManager: Restored {restoredCount} data entries", true);
+
+        // Очищаем резервные копии
+        RemoveData("_BackupData");
+        RemoveData("_BackupTime");
+    }
 
 
 

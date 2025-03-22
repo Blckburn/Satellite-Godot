@@ -180,6 +180,7 @@ public partial class Player
         // Инициализируем инвентарь, если его нет
         if (PlayerInventory == null)
         {
+            Logger.Debug("LoadInventory: Initializing new inventory because it was null", true);
             InitializeInventory();
         }
 
@@ -187,15 +188,21 @@ public partial class Player
         var gameManager = GetNode<GameManager>("/root/GameManager");
         if (gameManager == null)
         {
-            Logger.Error("GameManager not found for loading inventory");
+            Logger.Error("LoadInventory: GameManager not found");
             return false;
         }
 
-        // Проверяем наличие сохраненных данных - УЛУЧШЕННАЯ ПРОВЕРКА
+        // ВАЖНО: Проверка на валидность времени сохранения для отслеживания свежести данных
+        if (gameManager.HasData("PlayerInventoryLastSaveTime"))
+        {
+            string lastSaveTime = gameManager.GetData<string>("PlayerInventoryLastSaveTime");
+            Logger.Debug($"LoadInventory: Last inventory save time: {lastSaveTime}", true);
+        }
+
+        // Проверяем наличие сохраненных данных
         if (gameManager.HasData("PlayerInventorySaved"))
         {
-            // Получаем сохраненные данные инвентаря
-            Logger.Debug("Found saved inventory data, loading...", true);
+            Logger.Debug("LoadInventory: Found saved inventory data, loading...", true);
 
             try
             {
@@ -203,48 +210,78 @@ public partial class Player
 
                 if (inventoryData != null)
                 {
-                    // Подробное логирование для отладки
-                    int itemCount = 0;
-                    if (inventoryData.ContainsKey("items") && inventoryData["items"] is List<Dictionary<string, object>> items)
+                    // Проверяем структуру данных перед десериализацией
+                    if (!inventoryData.ContainsKey("items"))
                     {
-                        itemCount = items.Count;
-                        Logger.Debug($"Found {itemCount} items in saved inventory", true);
-
-                        // Вывод информации о каждом предмете для отладки
-                        for (int i = 0; i < items.Count; i++)
-                        {
-                            var item = items[i];
-                            string name = item.ContainsKey("display_name") ? item["display_name"].ToString() : "Unknown";
-                            int qty = item.ContainsKey("quantity") ? Convert.ToInt32(item["quantity"]) : 0;
-                            Logger.Debug($"Item {i + 1}: {name} x{qty}", true);
-                        }
+                        Logger.Error("LoadInventory: Invalid inventory data structure - 'items' key missing");
+                        return false;
                     }
+
+                    if (!(inventoryData["items"] is List<Dictionary<string, object>>))
+                    {
+                        Logger.Error("LoadInventory: Invalid inventory data structure - 'items' is not a list");
+                        return false;
+                    }
+
+                    var items = inventoryData["items"] as List<Dictionary<string, object>>;
+
+                    // Дополнительная проверка на null
+                    if (items == null)
+                    {
+                        Logger.Error("LoadInventory: Items list is null");
+                        return false;
+                    }
+
+                    Logger.Debug($"LoadInventory: Found {items.Count} items in saved inventory", true);
+
+                    // Вывод информации о каждом предмете для отладки
+                    foreach (var item in items)
+                    {
+                        string name = item.ContainsKey("display_name") ? item["display_name"].ToString() : "Unknown";
+                        int qty = item.ContainsKey("quantity") ? Convert.ToInt32(item["quantity"]) : 0;
+                        string id = item.ContainsKey("id") ? item["id"].ToString() : "Unknown";
+                        Logger.Debug($"LoadInventory: Item: {name} x{qty} (ID: {id})", true);
+                    }
+
+                    // Очищаем текущий инвентарь перед загрузкой
+                    PlayerInventory.Clear();
 
                     // Десериализуем инвентарь
                     PlayerInventory.Deserialize(inventoryData);
-                    Logger.Debug($"Successfully deserialized inventory with {itemCount} items", true);
+                    Logger.Debug($"LoadInventory: Successfully deserialized inventory with {PlayerInventory.Items.Count} items", true);
 
-                    // ВАЖНО: Явно вызываем сигнал изменения инвентаря для обновления UI
-                    EmitSignal("PlayerInventoryChanged");
+                    // Перечисляем предметы после загрузки для проверки
+                    foreach (var item in PlayerInventory.Items)
+                    {
+                        Logger.Debug($"LoadInventory: After loading: {item.DisplayName} x{item.Quantity} (ID: {item.ID})", true);
+                    }
+
+                    // Явно вызываем сигнал изменения инвентаря для обновления UI
+                    EmitSignal(SignalName.PlayerInventoryChanged);
+
+                    // Запрашиваем отложенное обновление UI
+                    CallDeferred("UpdateInventoryUIDeferred");
+
+                    return true;
                 }
                 else
                 {
-                    Logger.Debug("Inventory data is null", true);
+                    Logger.Debug("LoadInventory: Inventory data is null", true);
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error deserializing inventory: {ex.Message}");
+                Logger.Error($"LoadInventory: Error deserializing inventory: {ex.Message}");
                 return false;
             }
-
-            return true;
         }
         else
         {
-            Logger.Debug("No saved inventory data found", true);
-            return false;
+            Logger.Debug("LoadInventory: No saved inventory data found in GameManager", true);
         }
+
+        return false;
     }
+
 
 }

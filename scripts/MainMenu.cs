@@ -134,18 +134,33 @@ public partial class MainMenu : Control
 
         // Загружаем сохраненную игру
         var gameManager = GetNode<GameManager>("/root/GameManager");
-        if (gameManager != null && gameManager.LoadGame())
+        var saveManager = GetNode<SaveManager>("/root/SaveManager");
+
+        if (gameManager != null && saveManager != null)
         {
-            // Успешная загрузка игры
-            Logger.Debug("Game loaded successfully", true);
+            // Используем прямую загрузку вместо стандартной
+            bool loadSuccess = saveManager.LoadGameDirectly();
+
+            if (loadSuccess)
+            {
+                // Успешная загрузка игры
+                Logger.Debug("Game loaded successfully", true);
+
+                // Переходим к сцене после успешной загрузки
+                GetTree().ChangeSceneToFile(FirstScenePath);
+            }
+            else
+            {
+                // Ошибка загрузки - переходим к первой сцене по умолчанию
+                Logger.Error("Failed to load game, starting new game instead");
+                GetTree().ChangeSceneToFile(FirstScenePath);
+            }
         }
         else
         {
-            // Ошибка загрузки - переходим к первой сцене по умолчанию
-            Logger.Error("Failed to load game, starting new game instead");
+            Logger.Error("GameManager or SaveManager not found");
             GetTree().ChangeSceneToFile(FirstScenePath);
         }
-        GetTree().ChangeSceneToFile(FirstScenePath);
     }
 
     /// <summary>

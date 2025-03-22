@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 /// <summary>
 /// Управляет сохранением и загрузкой игровых данных.
@@ -147,6 +148,289 @@ public partial class SaveManager : Node
     }
 
     /// <summary>
+    /// Загружает игру напрямую, минуя проблемную десериализацию SaveData
+    /// </summary>
+    public bool LoadGameDirectly()
+    {
+        try
+        {
+            // Проверяем, существует ли файл сохранения
+            if (!File.Exists(_savePath))
+            {
+                Logger.Debug("Save file not found", true);
+                return false;
+            }
+
+            // Читаем данные напрямую из файла как строку
+            string jsonData = File.ReadAllText(_savePath, Encoding.UTF8);
+            Logger.Debug($"Read save file with length: {jsonData.Length}", true);
+
+            // Парсим JSON напрямую
+            using (JsonDocument document = JsonDocument.Parse(jsonData))
+            {
+                JsonElement root = document.RootElement;
+                var gameManager = GetNode<GameManager>("/root/GameManager");
+
+                if (gameManager == null)
+                {
+                    Logger.Error("GameManager not found for direct loading");
+                    return false;
+                }
+
+                // Обрабатываем PlayerData
+                if (root.TryGetProperty("PlayerData", out JsonElement playerData))
+                {
+                    Logger.Debug("Processing PlayerData section directly", true);
+
+                    // Позиция игрока
+                    if (playerData.TryGetProperty("Position", out JsonElement positionData))
+                    {
+                        float x = positionData.GetProperty("X").GetSingle();
+                        float y = positionData.GetProperty("Y").GetSingle();
+                        Vector2 position = new Vector2(x, y);
+                        gameManager.SetData("LastWorldPosition", position);
+                        Logger.Debug($"Set player position: {position}", true);
+                    }
+
+                    // Текущая сцена
+                    if (playerData.TryGetProperty("CurrentScene", out JsonElement sceneData))
+                    {
+                        string scene = sceneData.GetString();
+                        gameManager.SetData("CurrentScene", scene);
+                        Logger.Debug($"Set current scene: {scene}", true);
+                    }
+
+                    // Здоровье
+                    if (playerData.TryGetProperty("Health", out JsonElement healthData) &&
+                        playerData.TryGetProperty("MaxHealth", out JsonElement maxHealthData))
+                    {
+                        float health = healthData.GetSingle();
+                        float maxHealth = maxHealthData.GetSingle();
+                        gameManager.SetData("PlayerHealth", health);
+                        gameManager.SetData("PlayerMaxHealth", maxHealth);
+                        Logger.Debug($"Set player health: {health}/{maxHealth}", true);
+                    }
+                }
+
+                // Обрабатываем InventoryData - критическое место
+                if (root.TryGetProperty("InventoryData", out JsonElement inventoryData))
+                {
+                    Logger.Debug("Processing InventoryData section directly", true);
+
+                    // Вместо десериализации сохраняем JSON как строку, затем парсим
+                    string inventoryJson = inventoryData.GetRawText();
+
+                    // Парсим инвентарь в отдельный словарь
+                    using (JsonDocument invDoc = JsonDocument.Parse(inventoryJson))
+                    {
+                        Dictionary<string, object> inventoryDict = new Dictionary<string, object>();
+
+                        // Обрабатываем базовые свойства
+                        if (invDoc.RootElement.TryGetProperty("max_slots", out JsonElement maxSlotsEl))
+                        {
+                            inventoryDict["max_slots"] = maxSlotsEl.GetInt32();
+                        }
+
+                        if (invDoc.RootElement.TryGetProperty("max_weight", out JsonElement maxWeightEl))
+                        {
+                            inventoryDict["max_weight"] = maxWeightEl.GetSingle();
+                        }
+
+                        // Ключевая часть - обработка предметов
+                        if (invDoc.RootElement.TryGetProperty("items", out JsonElement itemsEl) &&
+                            itemsEl.ValueKind == JsonValueKind.Array)
+                        {
+                            // Создаем список предметов
+                            var itemsList = new List<Dictionary<string, object>>();
+                            int itemCount = 0;
+
+                            // Обрабатываем каждый предмет
+                            foreach (JsonElement item in itemsEl.EnumerateArray())
+                            {
+                                var itemDict = new Dictionary<string, object>();
+
+                                // Обрабатываем все свойства предмета
+                                foreach (JsonProperty prop in item.EnumerateObject())
+                                {
+                                    switch (prop.Value.ValueKind)
+                                    {
+                                        case JsonValueKind.String:
+                                            itemDict[prop.Name] = prop.Value.GetString();
+                                            break;
+                                        case JsonValueKind.Number:
+                                            // Пробуем получить как int, если не получится, то как float
+                                            try
+                                            {
+                                                itemDict[prop.Name] = prop.Value.GetInt32();
+                                            }
+                                            catch
+                                            {
+                                                itemDict[prop.Name] = prop.Value.GetSingle();
+                                            }
+                                            break;
+                                        case JsonValueKind.True:
+                                            itemDict[prop.Name] = true;
+                                            break;
+                                        case JsonValueKind.False:
+                                            itemDict[prop.Name] = false;
+                                            break;
+                                            // Обработка других типов по необходимости
+                                    }
+                                }
+
+                                // Добавляем предмет в список
+                                itemsList.Add(itemDict);
+                                itemCount++;
+
+                                // Выводим информацию о предмете
+                                string name = itemDict.ContainsKey("display_name") ? itemDict["display_name"].ToString() : "Unknown";
+                                int qty = itemDict.ContainsKey("quantity") ? Convert.ToInt32(itemDict["quantity"]) : 0;
+                                string id = itemDict.ContainsKey("id") ? itemDict["id"].ToString() : "Unknown";
+                                Logger.Debug($"Manually processed item: {name} x{qty} (ID: {id})", true);
+                            }
+
+                            // Добавляем список предметов в словарь инвентаря
+                            inventoryDict["items"] = itemsList;
+                            Logger.Debug($"Manually processed {itemCount} items for inventory", true);
+                        }
+                        else
+                        {
+                            // Если предметов нет, создаем пустой список
+                            inventoryDict["items"] = new List<Dictionary<string, object>>();
+                            Logger.Debug("No items found in inventory data, creating empty list", true);
+                        }
+
+                        // Сохраняем обработанный инвентарь в GameManager
+                        gameManager.SetData("PlayerInventorySaved", inventoryDict);
+                        gameManager.SetData("PlayerInventoryLastSaveTime", DateTime.Now.ToString());
+                        Logger.Debug($"Directly saved inventory with {(inventoryDict["items"] as List<Dictionary<string, object>>)?.Count ?? 0} items", true);
+                    }
+                }
+
+                // Обрабатываем StationData
+                if (root.TryGetProperty("StationData", out JsonElement stationData) &&
+                    stationData.TryGetProperty("StorageData", out JsonElement storageData))
+                {
+                    Logger.Debug("Processing StationData section directly", true);
+
+                    foreach (JsonProperty storage in storageData.EnumerateObject())
+                    {
+                        string storageId = storage.Name;
+                        string storageJson = storage.Value.GetRawText();
+
+                        // Парсим хранилище в отдельный словарь
+                        using (JsonDocument storageDoc = JsonDocument.Parse(storageJson))
+                        {
+                            Dictionary<string, object> storageDict = new Dictionary<string, object>();
+
+                            // Обрабатываем базовые свойства
+                            if (storageDoc.RootElement.TryGetProperty("max_slots", out JsonElement maxSlotsEl))
+                            {
+                                storageDict["max_slots"] = maxSlotsEl.GetInt32();
+                            }
+
+                            if (storageDoc.RootElement.TryGetProperty("max_weight", out JsonElement maxWeightEl))
+                            {
+                                storageDict["max_weight"] = maxWeightEl.GetSingle();
+                            }
+
+                            // Обрабатываем предметы в хранилище
+                            if (storageDoc.RootElement.TryGetProperty("items", out JsonElement itemsEl) &&
+                                itemsEl.ValueKind == JsonValueKind.Array)
+                            {
+                                // Создаем список предметов
+                                var itemsList = new List<Dictionary<string, object>>();
+                                int itemCount = 0;
+
+                                // Обрабатываем каждый предмет
+                                foreach (JsonElement item in itemsEl.EnumerateArray())
+                                {
+                                    var itemDict = new Dictionary<string, object>();
+
+                                    // Обрабатываем все свойства предмета
+                                    foreach (JsonProperty prop in item.EnumerateObject())
+                                    {
+                                        switch (prop.Value.ValueKind)
+                                        {
+                                            case JsonValueKind.String:
+                                                itemDict[prop.Name] = prop.Value.GetString();
+                                                break;
+                                            case JsonValueKind.Number:
+                                                // Пробуем получить как int, если не получится, то как float
+                                                try
+                                                {
+                                                    itemDict[prop.Name] = prop.Value.GetInt32();
+                                                }
+                                                catch
+                                                {
+                                                    itemDict[prop.Name] = prop.Value.GetSingle();
+                                                }
+                                                break;
+                                            case JsonValueKind.True:
+                                                itemDict[prop.Name] = true;
+                                                break;
+                                            case JsonValueKind.False:
+                                                itemDict[prop.Name] = false;
+                                                break;
+                                                // Обработка других типов по необходимости
+                                        }
+                                    }
+
+                                    // Добавляем предмет в список
+                                    itemsList.Add(itemDict);
+                                    itemCount++;
+                                }
+
+                                // Добавляем список предметов в словарь хранилища
+                                storageDict["items"] = itemsList;
+                                Logger.Debug($"Processed {itemCount} items for storage {storageId}", true);
+                            }
+                            else
+                            {
+                                // Если предметов нет, создаем пустой список
+                                storageDict["items"] = new List<Dictionary<string, object>>();
+                                Logger.Debug($"No items found in storage {storageId}, creating empty list", true);
+                            }
+
+                            // Сохраняем обработанное хранилище в GameManager
+                            string key = $"StorageInventory_{storageId}";
+                            gameManager.SetData(key, storageDict);
+                            Logger.Debug($"Directly saved storage {storageId} with {(storageDict["items"] as List<Dictionary<string, object>>)?.Count ?? 0} items", true);
+                        }
+                    }
+                }
+
+                // Обрабатываем ProgressData
+                if (root.TryGetProperty("ProgressData", out JsonElement progressData))
+                {
+                    Logger.Debug("Processing ProgressData section directly", true);
+
+                    // Обрабатываем статистику
+                    if (progressData.TryGetProperty("Stats", out JsonElement statsData))
+                    {
+                        if (statsData.TryGetProperty("playtime_seconds", out JsonElement playtimeData))
+                        {
+                            float playtime = playtimeData.GetSingle();
+                            gameManager.SetData("PlayTime", playtime);
+                            Logger.Debug($"Set play time: {playtime} seconds", true);
+                        }
+                    }
+                }
+            }
+
+            // Сообщаем об успешной загрузке
+            Logger.Debug("Direct load completed successfully", true);
+            EmitSignal("LoadCompleted");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error in direct load: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Проверяет, существует ли файл сохранения
     /// </summary>
     /// <returns>True, если сохранение существует</returns>
@@ -190,22 +474,129 @@ public partial class SaveManager : Node
         {
             // Читаем данные из файла
             string jsonData = File.ReadAllText(_savePath, Encoding.UTF8);
+            Logger.Debug($"Read save file content: {jsonData.Length} bytes", true);
 
-            // Десериализуем JSON в объект SaveData
-            SaveData saveData = JsonSerializer.Deserialize<SaveData>(jsonData);
-
-            // Проверяем версию сохранения
-            if (saveData.Version != SAVE_VERSION)
+            // Создаем опции для десериализации
+            var options = new JsonSerializerOptions
             {
-                Logger.Debug($"Save version mismatch: file version {saveData.Version}, current version {SAVE_VERSION}", true);
-                // В будущем здесь может быть логика миграции данных между версиями
+                PropertyNameCaseInsensitive = true,
+                AllowTrailingCommas = true,
+                ReadCommentHandling = JsonCommentHandling.Skip
+            };
+
+            // Десериализуем JSON в динамический объект для анализа структуры
+            using (JsonDocument document = JsonDocument.Parse(jsonData))
+            {
+                Logger.Debug("Successfully parsed JSON document", true);
+                JsonElement root = document.RootElement;
+
+                // Проверяем корневые элементы
+                bool hasInventoryData = root.TryGetProperty("InventoryData", out JsonElement inventoryElement);
+                Logger.Debug($"Save file has InventoryData section: {hasInventoryData}", true);
+
+                if (hasInventoryData)
+                {
+                    bool hasItems = inventoryElement.TryGetProperty("items", out JsonElement itemsElement);
+                    Logger.Debug($"InventoryData has items array: {hasItems}", true);
+
+                    if (hasItems && itemsElement.ValueKind == JsonValueKind.Array)
+                    {
+                        int itemsCount = itemsElement.GetArrayLength();
+                        Logger.Debug($"Items array contains {itemsCount} elements", true);
+
+                        // Выводим информацию о первых предметах для проверки
+                        int maxToShow = Math.Min(itemsCount, 3);
+                        for (int i = 0; i < maxToShow; i++)
+                        {
+                            JsonElement item = itemsElement[i];
+                            string displayName = "Unknown";
+                            int quantity = 0;
+                            string id = "Unknown";
+
+                            if (item.TryGetProperty("display_name", out JsonElement nameElement))
+                            {
+                                displayName = nameElement.GetString();
+                            }
+
+                            if (item.TryGetProperty("quantity", out JsonElement qtyElement))
+                            {
+                                quantity = qtyElement.GetInt32();
+                            }
+
+                            if (item.TryGetProperty("id", out JsonElement idElement))
+                            {
+                                id = idElement.GetString();
+                            }
+
+                            Logger.Debug($"Item {i + 1} in save file: {displayName} x{quantity} (ID: {id})", true);
+                        }
+                    }
+                }
+
+                // Проверяем раздел StationData
+                bool hasStationData = root.TryGetProperty("StationData", out JsonElement stationElement);
+                Logger.Debug($"Save file has StationData section: {hasStationData}", true);
+
+                if (hasStationData && stationElement.TryGetProperty("StorageData", out JsonElement storageDataElement))
+                {
+                    Logger.Debug("StationData has StorageData section", true);
+
+                    // Проверяем объекты хранилищ
+                    if (storageDataElement.ValueKind == JsonValueKind.Object)
+                    {
+                        foreach (JsonProperty storageProperty in storageDataElement.EnumerateObject())
+                        {
+                            string storageId = storageProperty.Name;
+                            JsonElement storageElement = storageProperty.Value;
+
+                            if (storageElement.TryGetProperty("items", out JsonElement storageItems) &&
+                                storageItems.ValueKind == JsonValueKind.Array)
+                            {
+                                int storageItemsCount = storageItems.GetArrayLength();
+                                Logger.Debug($"Storage '{storageId}' has {storageItemsCount} items in save file", true);
+                            }
+                            else
+                            {
+                                Logger.Debug($"Storage '{storageId}' has no items array or it's invalid", true);
+                            }
+                        }
+                    }
+                }
             }
 
-            return saveData;
+            // Теперь пробуем десериализовать в объект SaveData
+            try
+            {
+                // Используем прямую десериализацию из строки
+                var saveData = JsonSerializer.Deserialize<SaveData>(jsonData, options);
+
+                if (saveData == null)
+                {
+                    Logger.Error("Failed to deserialize save data - result is null");
+                    return null;
+                }
+
+                Logger.Debug($"Successfully deserialized save data (Version: {saveData.Version}, SaveDate: {saveData.SaveDate})", true);
+
+                // Проверяем версию сохранения
+                if (saveData.Version != SAVE_VERSION)
+                {
+                    Logger.Debug($"Save version mismatch: file version {saveData.Version}, current version {SAVE_VERSION}", true);
+                    // В будущем здесь может быть логика миграции данных между версиями
+                }
+
+                return saveData;
+            }
+            catch (JsonException jsonEx)
+            {
+                Logger.Error($"JSON deserialization error: {jsonEx.Message}");
+                return null;
+            }
         }
         catch (Exception ex)
         {
             Logger.Error($"Error loading save file '{_savePath}': {ex.Message}");
+            Logger.Debug($"Exception details: {ex.ToString()}", true);
             return null;
         }
     }
@@ -409,7 +800,15 @@ public partial class SaveManager : Node
         if (gameManager != null)
         {
             // Получаем список всех хранилищ
-            var storageIds = gameManager.GetAllStorageIds();
+            List<string> storageIds = new List<string>();
+            foreach (string key in gameManager.GetType().GetMethod("GetAllKeys")?.Invoke(gameManager, null) as IEnumerable<string> ?? new List<string>())
+            {
+                if (key.StartsWith("StorageInventory_"))
+                {
+                    string storageId = key.Substring("StorageInventory_".Length);
+                    storageIds.Add(storageId);
+                }
+            }
 
             // Создаем словарь для хранения данных хранилищ
             saveData.StationData.StorageData = new Dictionary<string, Dictionary<string, object>>();
@@ -495,7 +894,7 @@ public partial class SaveManager : Node
             gameManager.SetData("LastWorldPosition", position);
 
             // Текущая сцена
-            gameManager.SetData("CurrentScene", "res://scenes/station/space_station.tscn");
+            gameManager.SetData("CurrentScene", saveData.PlayerData.CurrentScene);
 
             // Здоровье игрока (сохраняем для применения после создания)
             gameManager.SetData("PlayerHealth", saveData.PlayerData.Health);
@@ -530,23 +929,103 @@ public partial class SaveManager : Node
     private void ApplyInventoryData(SaveData saveData)
     {
         if (saveData.InventoryData == null)
+        {
+            Logger.Debug("Cannot apply inventory data - InventoryData is null", true);
             return;
+        }
+
+        // Проверим количество предметов в данных
+        int itemsCount = 0;
+        List<Dictionary<string, object>> itemsList = null;
+
+        if (saveData.InventoryData.ContainsKey("items") &&
+            saveData.InventoryData["items"] is List<Dictionary<string, object>> items)
+        {
+            itemsCount = items.Count;
+            itemsList = items;
+
+            Logger.Debug($"ApplyInventoryData: Found {itemsCount} items in save data", true);
+
+            // Вывод первых нескольких предметов для отладки
+            for (int i = 0; i < Math.Min(items.Count, 3); i++)
+            {
+                var item = items[i];
+                string name = item.ContainsKey("display_name") ? item["display_name"].ToString() : "Unknown";
+                int qty = item.ContainsKey("quantity") ? Convert.ToInt32(item["quantity"]) : 0;
+                string id = item.ContainsKey("id") ? item["id"].ToString() : "Unknown";
+                Logger.Debug($"Item to apply: {name} x{qty} (ID: {id})", true);
+            }
+        }
+        else
+        {
+            Logger.Debug("ApplyInventoryData: No valid items list found in save data", true);
+        }
 
         // Сохраняем данные инвентаря в GameManager
         var gameManager = GetNode<GameManager>("/root/GameManager");
         if (gameManager != null)
         {
-            gameManager.SetData("PlayerInventorySaved", saveData.InventoryData);
-            Logger.Debug("Applied inventory data to GameManager", false);
+            // ВАЖНО: Создаем глубокую копию данных инвентаря
+            Dictionary<string, object> inventoryCopy = new Dictionary<string, object>();
+
+            foreach (var key in saveData.InventoryData.Keys)
+            {
+                if (key == "items" && saveData.InventoryData[key] is List<Dictionary<string, object>> originalItems)
+                {
+                    // Копируем список предметов
+                    var itemsCopy = new List<Dictionary<string, object>>();
+
+                    foreach (var originalItem in originalItems)
+                    {
+                        var itemCopy = new Dictionary<string, object>();
+                        foreach (var itemKey in originalItem.Keys)
+                        {
+                            itemCopy[itemKey] = originalItem[itemKey];
+                        }
+                        itemsCopy.Add(itemCopy);
+                    }
+
+                    inventoryCopy[key] = itemsCopy;
+                }
+                else
+                {
+                    inventoryCopy[key] = saveData.InventoryData[key];
+                }
+            }
+
+            // Проверяем итоговое количество предметов в копии
+            int copyItemsCount = 0;
+            if (inventoryCopy.ContainsKey("items") &&
+                inventoryCopy["items"] is List<Dictionary<string, object>> copyItems)
+            {
+                copyItemsCount = copyItems.Count;
+            }
+
+            Logger.Debug($"SaveManager: Saving inventory data to GameManager, items count: {copyItemsCount}", true);
+
+            gameManager.SetData("PlayerInventorySaved", inventoryCopy);
+            gameManager.SetData("PlayerInventoryLastSaveTime", DateTime.Now.ToString());
+            Logger.Debug("Applied inventory data to GameManager with timestamp", true);
+        }
+        else
+        {
+            Logger.Error("GameManager not found for applying inventory data");
         }
 
         // Если игрок уже существует, применяем данные напрямую
         var players = GetTree().GetNodesInGroup("Player");
         if (players.Count > 0 && players[0] is Player player && player.PlayerInventory != null)
         {
-            // Десериализуем инвентарь
-            player.PlayerInventory.Deserialize(saveData.InventoryData);
-            Logger.Debug("Applied inventory data directly to player", false);
+            // Десериализуем инвентарь напрямую
+            try
+            {
+                player.PlayerInventory.Deserialize(saveData.InventoryData);
+                Logger.Debug($"Applied inventory data directly to player, items count: {player.PlayerInventory.Items.Count}", true);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error applying inventory data to player: {ex.Message}");
+            }
         }
     }
 

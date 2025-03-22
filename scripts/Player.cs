@@ -358,4 +358,17 @@ public partial class Player : Character
     {
         base._ExitTree();
     }
+    private void UpdateInventoryUIDeferred()
+    {
+        // Ищем все UI инвентаря и обновляем их
+        var inventoryUIs = GetTree().GetNodesInGroup("InventoryUI");
+        foreach (var ui in inventoryUIs)
+        {
+            if (ui is InventoryUI inventoryUI)
+            {
+                inventoryUI.UpdateInventoryUI();
+                Logger.Debug("Player: Forced inventory UI update from Player", true);
+            }
+        }
+    }
 }
