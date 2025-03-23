@@ -803,4 +803,11 @@ private void CheckPlayerDistance()
         Logger.Debug($"Saved container '{_storageContainer.Name}' with {_storageContainer.ContainerInventory.Items.Count} items using name key", true);
     }
 
+    public void OnContainerInventoryChanged()
+    {
+        // Автоматически сохраняем состояние хранилища при изменении
+        SaveStorageInventory();
+        Logger.Debug($"Auto-saved storage '{StorageID}' after inventory change", false);
+    }
+
 }

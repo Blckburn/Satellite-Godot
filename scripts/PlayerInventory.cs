@@ -104,10 +104,11 @@ public partial class Player
         else
         {
             GD.Print($"Failed to add {item.DisplayName} to inventory");
-        }
+       }
 
-        return result;
-    }
+    
+    return result;
+}
 
     // Добавьте этот новый метод для отложенного вызова UpdateInventoryUI
     private void UpdateInventoryUIDeferred(InventoryUI inventoryUI)

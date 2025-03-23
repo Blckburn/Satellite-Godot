@@ -313,10 +313,20 @@ public partial class SaveManager : Node
                 {
                     Logger.Debug("Processing StationData section directly", true);
 
+                    // Выводим все ключи для отладки
+                    List<string> storageKeys = new List<string>();
+                    foreach (JsonProperty storage in storageData.EnumerateObject())
+                    {
+                        storageKeys.Add(storage.Name);
+                    }
+                    Logger.Debug($"GameManager: Found {storageKeys.Count} storage keys: {string.Join(", ", storageKeys)}", true);
+
                     foreach (JsonProperty storage in storageData.EnumerateObject())
                     {
                         string storageId = storage.Name;
                         string storageJson = storage.Value.GetRawText();
+
+                        Logger.Debug($"GameManager: Processing storage with ID '{storageId}'", true);
 
                         // Парсим хранилище в отдельный словарь
                         using (JsonDocument storageDoc = JsonDocument.Parse(storageJson))
@@ -379,25 +389,44 @@ public partial class SaveManager : Node
                                     // Добавляем предмет в список
                                     itemsList.Add(itemDict);
                                     itemCount++;
+
+                                    // Добавим логирование для отладки
+                                    string displayName = itemDict.ContainsKey("display_name") ? itemDict["display_name"].ToString() : "Unknown";
+                                    int quantity = itemDict.ContainsKey("quantity") ? Convert.ToInt32(itemDict["quantity"]) : 0;
+                                    Logger.Debug($"GameManager: Found item in storage '{storageId}': {displayName} x{quantity}", true);
                                 }
 
                                 // Добавляем список предметов в словарь хранилища
                                 storageDict["items"] = itemsList;
-                                Logger.Debug($"Processed {itemCount} items for storage {storageId}", true);
+                                Logger.Debug($"GameManager: Processed {itemCount} items for storage '{storageId}'", true);
                             }
                             else
                             {
                                 // Если предметов нет, создаем пустой список
                                 storageDict["items"] = new List<Dictionary<string, object>>();
-                                Logger.Debug($"No items found in storage {storageId}, creating empty list", true);
+                                Logger.Debug($"GameManager: No items found in storage '{storageId}', creating empty list", true);
                             }
 
-                            // Сохраняем обработанное хранилище в GameManager
-                            string key = $"StorageInventory_{storageId}";
-                            gameManager.SetData(key, storageDict);
-                            Logger.Debug($"Directly saved storage {storageId} with {(storageDict["items"] as List<Dictionary<string, object>>)?.Count ?? 0} items", true);
+                            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сохраняем обработанное хранилище в GameManager
+                            // ВАЖНО: Используем правильный формат ключа StorageInventory_{storageId}
+                            string saveKey = $"StorageInventory_{storageId}";
+                            gameManager.SetData(saveKey, storageDict);
+                            Logger.Debug($"GameManager: Saved storage '{storageId}' to GameManager with key '{saveKey}'", true);
+
+                            // Дополнительно сохраняем под ключом StorageContainer для совместимости
+                            // Это важно, так как некоторые модули ищут данные по имени контейнера
+                            if (storageId != "StorageContainer")
+                            {
+                                string containerKey = "StorageInventory_StorageContainer";
+                                gameManager.SetData(containerKey, storageDict);
+                                Logger.Debug($"GameManager: Also saved storage '{storageId}' with container key '{containerKey}' for compatibility", true);
+                            }
                         }
                     }
+                }
+                else
+                {
+                    Logger.Debug("GameManager: No StationData or StorageData found in save file", true);
                 }
 
                 // Обрабатываем ProgressData
@@ -791,38 +820,106 @@ public partial class SaveManager : Node
     /// Собирает данные космической станции
     /// </summary>
     /// <param name="saveData">Структура данных сохранения</param>
+    /// <summary>
+    /// Собирает данные космической станции
+    /// </summary>
+    /// <param name="saveData">Структура данных сохранения</param>
     private void CollectSpaceStationData(SaveData saveData)
     {
         // Создаем данные станции
         saveData.StationData = new SpaceStationData();
 
-        // Получаем данные хранилищ из GameManager
+        // ОТЛАДКА: Проверяем все существующие ключи в GameManager
+        Logger.Debug("Checking all keys in GameManager for storage data...", true);
         var gameManager = GetNode<GameManager>("/root/GameManager");
+        List<string> allKeys = new List<string>();
+        string prefix = "StorageInventory_";
+
         if (gameManager != null)
         {
-            // Получаем список всех хранилищ
-            List<string> storageIds = new List<string>();
-            foreach (string key in gameManager.GetType().GetMethod("GetAllKeys")?.Invoke(gameManager, null) as IEnumerable<string> ?? new List<string>())
+            // Получаем список всех ключей через рефлексию или другой метод
+            var keysMethod = gameManager.GetType().GetMethod("GetAllKeys");
+            if (keysMethod != null)
             {
-                if (key.StartsWith("StorageInventory_"))
+                var keys = keysMethod.Invoke(gameManager, null) as IEnumerable<string>;
+                if (keys != null)
                 {
-                    string storageId = key.Substring("StorageInventory_".Length);
-                    storageIds.Add(storageId);
+                    allKeys.AddRange(keys);
+                    Logger.Debug($"All keys in GameManager: {string.Join(", ", allKeys)}", true);
+
+                    // Теперь ищем ключи хранилищ
+                    List<string> storageKeys = new List<string>();
+                    foreach (var key in allKeys)
+                    {
+                        if (key.StartsWith(prefix))
+                        {
+                            storageKeys.Add(key);
+                        }
+                    }
+
+                    Logger.Debug($"Found {storageKeys.Count} storage keys: {string.Join(", ", storageKeys)}", true);
                 }
             }
+        }
 
+        // Получаем данные хранилищ из GameManager
+        if (gameManager != null)
+        {
             // Создаем словарь для хранения данных хранилищ
             saveData.StationData.StorageData = new Dictionary<string, Dictionary<string, object>>();
 
-            // Собираем данные каждого хранилища
-            foreach (var storageId in storageIds)
+            // ПРЯМАЯ ПРОВЕРКА: Проверяем конкретные ключи хранилищ
+            string[] specificIds = new string[] { "main_storage", "second_storage", "StorageContainer" };
+            foreach (var id in specificIds)
             {
-                string key = $"StorageInventory_{storageId}";
+                string key = $"StorageInventory_{id}";
                 if (gameManager.HasData(key))
                 {
-                    var storageInventory = gameManager.GetData<Dictionary<string, object>>(key);
-                    saveData.StationData.StorageData[storageId] = storageInventory;
-                    Logger.Debug($"Collected storage data for '{storageId}'", false);
+                    var inventoryData = gameManager.GetData<Dictionary<string, object>>(key);
+                    if (inventoryData != null)
+                    {
+                        saveData.StationData.StorageData[id] = inventoryData;
+
+                        int itemCount = 0;
+                        if (inventoryData.ContainsKey("items") &&
+                            inventoryData["items"] is List<Dictionary<string, object>> items)
+                        {
+                            itemCount = items.Count;
+                        }
+
+                        Logger.Debug($"Added storage '{id}' with {itemCount} items to save data", true);
+                    }
+                }
+            }
+
+            // НОВЫЙ СПОСОБ: Находим все ключи, начинающиеся с "StorageInventory_"
+            if (saveData.StationData.StorageData.Count == 0)
+            {
+                foreach (string key in allKeys)
+                {
+                    if (key.StartsWith(prefix))
+                    {
+                        string storageId = key.Substring(prefix.Length);
+
+                        // Пропускаем дубликаты
+                        if (saveData.StationData.StorageData.ContainsKey(storageId))
+                            continue;
+
+                        var data = gameManager.GetData<Dictionary<string, object>>(key);
+                        if (data != null)
+                        {
+                            saveData.StationData.StorageData[storageId] = data;
+
+                            int itemCount = 0;
+                            if (data.ContainsKey("items") &&
+                                data["items"] is List<Dictionary<string, object>> items)
+                            {
+                                itemCount = items.Count;
+                            }
+
+                            Logger.Debug($"Found and added storage '{storageId}' with {itemCount} items", true);
+                        }
+                    }
                 }
             }
 

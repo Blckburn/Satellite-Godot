@@ -301,10 +301,18 @@ public void ClearData()
     /// </summary>
     public void EnsureStorageModulesLoaded()
     {
-        Logger.Debug("GameManager: Starting storage modules data check", true);
+        Logger.Debug("GameManager: Starting storage modules data check with ENHANCED logging", true);
 
         // Список всех обнаруженных данных хранилищ и их ключей
         Dictionary<string, Dictionary<string, object>> storageData = new Dictionary<string, Dictionary<string, object>>();
+
+        // Собираем все ключи данных в GameManager для отладки
+        List<string> allKeys = new List<string>();
+        foreach (string key in _data.Keys)
+        {
+            allKeys.Add(key);
+        }
+        Logger.Debug($"GameManager: ALL KEYS in GameManager ({allKeys.Count}): {string.Join(", ", allKeys)}", true);
 
         // Собираем все данные хранилищ
         foreach (string key in _data.Keys)
@@ -321,13 +329,33 @@ public void ClearData()
 
                     // Отображаем количество предметов для отладки
                     int itemCount = 0;
+                    List<Dictionary<string, object>> itemsList = null;
+
                     if (inventoryData.ContainsKey("items") &&
                         inventoryData["items"] is List<Dictionary<string, object>> items)
                     {
                         itemCount = items.Count;
+                        itemsList = items;
                     }
 
                     Logger.Debug($"GameManager: Found storage data for '{storageKey}' with {itemCount} items", true);
+
+                    // Выводим информацию о первых нескольких предметах для отладки
+                    if (itemsList != null && itemsList.Count > 0)
+                    {
+                        for (int i = 0; i < Math.Min(itemsList.Count, 3); i++)
+                        {
+                            var item = itemsList[i];
+                            string name = item.ContainsKey("display_name") ? item["display_name"].ToString() : "Unknown";
+                            int qty = item.ContainsKey("quantity") ? Convert.ToInt32(item["quantity"]) : 0;
+                            string id = item.ContainsKey("id") ? item["id"].ToString() : "Unknown";
+                            Logger.Debug($"GameManager: Item {i + 1} to load: {name} x{qty} (ID: {id})", true);
+                        }
+                    }
+                }
+                else
+                {
+                    Logger.Debug($"GameManager: Found key '{key}' but data is null", true);
                 }
             }
         }
@@ -357,28 +385,49 @@ public void ClearData()
                 string storageId = storageModule.StorageID;
                 string containerName = "StorageContainer"; // Имя по умолчанию для контейнера
 
+                Logger.Debug($"GameManager: Processing storage module '{storageId}' (Node name: {storageModule.Name})", true);
+
                 // Пытаемся получить фактическое имя контейнера
                 var container = storageModule.GetNode<Container>("StorageContainer");
                 if (container != null)
                 {
                     containerName = container.Name;
                     Logger.Debug($"GameManager: Found container '{containerName}' in module '{storageId}'", true);
+
+                    // Проверяем, инициализирован ли инвентарь контейнера
+                    if (container.ContainerInventory == null)
+                    {
+                        Logger.Debug($"GameManager: Container inventory is NULL for '{storageId}'", true);
+                    }
+                    else
+                    {
+                        Logger.Debug($"GameManager: Container inventory exists for '{storageId}', current items: {container.ContainerInventory.Items.Count}", true);
+                    }
+                }
+                else
+                {
+                    Logger.Debug($"GameManager: NO CONTAINER found in module '{storageId}'", true);
                 }
 
                 // Проверяем все возможные ключи, по которым могут быть сохранены данные
                 Dictionary<string, object> dataToLoad = null;
                 string usedKey = null;
 
+                // Выводим все доступные ключи хранилищ для отладки
+                Logger.Debug($"GameManager: Available storage keys: {string.Join(", ", storageData.Keys)}", true);
+
                 // Проверяем сначала StorageID, затем имя контейнера, а потом все остальные ключи
                 if (storageData.ContainsKey(storageId))
                 {
                     dataToLoad = storageData[storageId];
                     usedKey = storageId;
+                    Logger.Debug($"GameManager: Found data by StorageID match: '{storageId}'", true);
                 }
                 else if (storageData.ContainsKey(containerName))
                 {
                     dataToLoad = storageData[containerName];
                     usedKey = containerName;
+                    Logger.Debug($"GameManager: Found data by container name match: '{containerName}'", true);
                 }
                 else
                 {
@@ -389,6 +438,7 @@ public void ClearData()
                         {
                             dataToLoad = entry.Value;
                             usedKey = entry.Key;
+                            Logger.Debug($"GameManager: Using fallback data from key: '{usedKey}'", true);
                             break;
                         }
                     }
@@ -402,30 +452,66 @@ public void ClearData()
                     // Очищаем текущий инвентарь контейнера
                     container.ContainerInventory.Clear();
 
-                    // Загружаем данные
-                    container.ContainerInventory.Deserialize(dataToLoad);
+                    try
+                    {
+                        // Загружаем данные
+                        container.ContainerInventory.Deserialize(dataToLoad);
 
-                    // Подсчитываем количество загруженных предметов
-                    int loadedItems = container.ContainerInventory.Items.Count;
-                    Logger.Debug($"GameManager: Successfully loaded {loadedItems} items into storage '{storageId}'", true);
+                        // Подсчитываем количество загруженных предметов
+                        int loadedItems = container.ContainerInventory.Items.Count;
+                        Logger.Debug($"GameManager: Successfully loaded {loadedItems} items into storage '{storageId}'", true);
 
-                    // Обновляем UI, если хранилище открыто
-                    storageModule.ForceUpdateContainerUI();
+                        // Выводим информацию о первых загруженных предметах
+                        if (loadedItems > 0)
+                        {
+                            for (int i = 0; i < Math.Min(loadedItems, 3); i++)
+                            {
+                                var item = container.ContainerInventory.Items[i];
+                                Logger.Debug($"GameManager: Loaded item {i + 1}: {item.DisplayName} x{item.Quantity}", true);
+                            }
+                        }
+
+                        // Обновляем UI, если хранилище открыто
+                        storageModule.ForceUpdateContainerUI();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error($"GameManager: Error deserializing inventory data: {ex.Message}");
+                    }
 
                     // Удаляем использованные данные, чтобы не использовать их повторно
                     storageData.Remove(usedKey);
                 }
                 else
                 {
-                    Logger.Debug($"GameManager: No suitable data found for storage module '{storageId}'", true);
+                    if (dataToLoad == null)
+                    {
+                        Logger.Debug($"GameManager: No data found for storage module '{storageId}'", true);
+                    }
+                    else if (container == null)
+                    {
+                        Logger.Debug($"GameManager: Container is null for storage module '{storageId}'", true);
+                    }
+                    else
+                    {
+                        Logger.Debug($"GameManager: Container inventory is null for storage module '{storageId}'", true);
+                    }
                 }
+            }
+            else
+            {
+                Logger.Debug($"GameManager: Node {moduleNode.Name} is not a StorageModule", true);
             }
         }
 
         // Если остались неиспользованные данные хранилищ, выводим информацию об этом
         if (storageData.Count > 0)
         {
-            Logger.Debug($"GameManager: {storageData.Count} storage data entries were not applied to any module", true);
+            Logger.Debug($"GameManager: {storageData.Count} storage data entries were not applied to any module:", true);
+            foreach (var key in storageData.Keys)
+            {
+                Logger.Debug($"GameManager: - Unused storage data key: '{key}'", true);
+            }
         }
 
         Logger.Debug("GameManager: Storage modules data check completed", true);
