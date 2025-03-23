@@ -26,6 +26,15 @@ public partial class SaveManager : Node
     // Текущие данные сохранения
     private SaveData _currentSaveData;
 
+    // Счетчик сохранений для контроля логирования
+    private int _saveCounter = 0;
+
+    // Интервал логирования (каждое N-ое сохранение)
+    private const int LOG_INTERVAL = 10;
+
+    // Уровень детализации логов (0-выключены, 1-только важные, 2-стандартные, 3-отладочные)
+    [Export] public int LogLevel { get; set; } = 1;
+
     // Сигналы
     [Signal] public delegate void SaveCompletedEventHandler();
     [Signal] public delegate void LoadCompletedEventHandler();
@@ -47,7 +56,7 @@ public partial class SaveManager : Node
         // Инициализация пути к файлу сохранения
         InitializeSavePath();
 
-        Logger.Debug($"SaveManager initialized, save path: {_savePath}", true);
+        LogInfo($"SaveManager initialized, save path: {_savePath}", 1, true);
     }
 
     public override void _ExitTree()
@@ -55,6 +64,25 @@ public partial class SaveManager : Node
         // Очистка синглтона при удалении
         if (Instance == this)
             Instance = null;
+    }
+
+    /// <summary>
+    /// Логирует информационное сообщение с учетом уровня подробности
+    /// </summary>
+    private void LogInfo(string message, int level, bool forceDisplay = false)
+    {
+        if (level <= LogLevel || forceDisplay)
+        {
+            Logger.Debug(message, false);
+        }
+    }
+
+    /// <summary>
+    /// Логирует ошибку (всегда отображается)
+    /// </summary>
+    private void LogError(string message)
+    {
+        Logger.Error(message);
     }
 
     /// <summary>
@@ -73,7 +101,7 @@ public partial class SaveManager : Node
         // Полный путь к файлу сохранения
         _savePath = Path.Combine(savesDir, SAVE_FILE_NAME);
 
-        Logger.Debug($"Save file path: {_savePath}", false);
+        LogInfo($"Save file path: {_savePath}", 3);
     }
 
     /// <summary>
@@ -84,21 +112,28 @@ public partial class SaveManager : Node
     {
         try
         {
+            // Увеличиваем счетчик сохранений
+            _saveCounter++;
+            bool shouldLog = _saveCounter % LOG_INTERVAL == 0;
+
             // Собираем данные для сохранения
-            _currentSaveData = CollectSaveData();
+            _currentSaveData = CollectSaveData(shouldLog);
 
             // Сохраняем данные в файл
-            SaveToFile(_currentSaveData);
+            SaveToFile(_currentSaveData, shouldLog);
 
             // Отправляем сигнал о завершении сохранения
             EmitSignal("SaveCompleted");
 
-            Logger.Debug("Game saved successfully", true);
+            if (shouldLog)
+            {
+                LogInfo("Game saved successfully", 1);
+            }
             return true;
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error saving game: {ex.Message}");
+            LogError($"Error saving game: {ex.Message}");
             return false;
         }
     }
@@ -114,7 +149,7 @@ public partial class SaveManager : Node
             // Проверяем, существует ли файл сохранения
             if (!File.Exists(_savePath))
             {
-                Logger.Debug("Save file not found", true);
+                LogInfo("Save file not found", 1);
                 return false;
             }
 
@@ -122,7 +157,7 @@ public partial class SaveManager : Node
             _currentSaveData = LoadFromFile();
             if (_currentSaveData == null)
             {
-                Logger.Error("Failed to load save data");
+                LogError("Failed to load save data");
                 return false;
             }
 
@@ -130,19 +165,19 @@ public partial class SaveManager : Node
             bool success = ApplySaveData(_currentSaveData);
             if (!success)
             {
-                Logger.Error("Failed to apply save data");
+                LogError("Failed to apply save data");
                 return false;
             }
 
             // Отправляем сигнал о завершении загрузки
             EmitSignal("LoadCompleted");
 
-            Logger.Debug("Game loaded successfully", true);
+            LogInfo("Game loaded successfully", 1);
             return true;
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error loading game: {ex.Message}");
+            LogError($"Error loading game: {ex.Message}");
             return false;
         }
     }
@@ -157,13 +192,13 @@ public partial class SaveManager : Node
             // Проверяем, существует ли файл сохранения
             if (!File.Exists(_savePath))
             {
-                Logger.Debug("Save file not found", true);
+                LogInfo("Save file not found", 1);
                 return false;
             }
 
             // Читаем данные напрямую из файла как строку
             string jsonData = File.ReadAllText(_savePath, Encoding.UTF8);
-            Logger.Debug($"Read save file with length: {jsonData.Length}", true);
+            LogInfo($"Read save file with length: {jsonData.Length}", 3);
 
             // Парсим JSON напрямую
             using (JsonDocument document = JsonDocument.Parse(jsonData))
@@ -173,14 +208,14 @@ public partial class SaveManager : Node
 
                 if (gameManager == null)
                 {
-                    Logger.Error("GameManager not found for direct loading");
+                    LogError("GameManager not found for direct loading");
                     return false;
                 }
 
                 // Обрабатываем PlayerData
                 if (root.TryGetProperty("PlayerData", out JsonElement playerData))
                 {
-                    Logger.Debug("Processing PlayerData section directly", true);
+                    LogInfo("Processing PlayerData section directly", 3);
 
                     // Позиция игрока
                     if (playerData.TryGetProperty("Position", out JsonElement positionData))
@@ -189,7 +224,7 @@ public partial class SaveManager : Node
                         float y = positionData.GetProperty("Y").GetSingle();
                         Vector2 position = new Vector2(x, y);
                         gameManager.SetData("LastWorldPosition", position);
-                        Logger.Debug($"Set player position: {position}", true);
+                        LogInfo($"Set player position: {position}", 3);
                     }
 
                     // Текущая сцена
@@ -197,7 +232,7 @@ public partial class SaveManager : Node
                     {
                         string scene = sceneData.GetString();
                         gameManager.SetData("CurrentScene", scene);
-                        Logger.Debug($"Set current scene: {scene}", true);
+                        LogInfo($"Set current scene: {scene}", 3);
                     }
 
                     // Здоровье
@@ -208,14 +243,14 @@ public partial class SaveManager : Node
                         float maxHealth = maxHealthData.GetSingle();
                         gameManager.SetData("PlayerHealth", health);
                         gameManager.SetData("PlayerMaxHealth", maxHealth);
-                        Logger.Debug($"Set player health: {health}/{maxHealth}", true);
+                        LogInfo($"Set player health: {health}/{maxHealth}", 3);
                     }
                 }
 
-                // Обрабатываем InventoryData - критическое место
+                // Обрабатываем InventoryData
                 if (root.TryGetProperty("InventoryData", out JsonElement inventoryData))
                 {
-                    Logger.Debug("Processing InventoryData section directly", true);
+                    LogInfo("Processing InventoryData section directly", 3);
 
                     // Вместо десериализации сохраняем JSON как строку, затем парсим
                     string inventoryJson = inventoryData.GetRawText();
@@ -282,28 +317,31 @@ public partial class SaveManager : Node
                                 itemsList.Add(itemDict);
                                 itemCount++;
 
-                                // Выводим информацию о предмете
-                                string name = itemDict.ContainsKey("display_name") ? itemDict["display_name"].ToString() : "Unknown";
-                                int qty = itemDict.ContainsKey("quantity") ? Convert.ToInt32(itemDict["quantity"]) : 0;
-                                string id = itemDict.ContainsKey("id") ? itemDict["id"].ToString() : "Unknown";
-                                Logger.Debug($"Manually processed item: {name} x{qty} (ID: {id})", true);
+                                // Выводим информацию о предмете только на высоком уровне логирования
+                                if (LogLevel >= 3)
+                                {
+                                    string name = itemDict.ContainsKey("display_name") ? itemDict["display_name"].ToString() : "Unknown";
+                                    int qty = itemDict.ContainsKey("quantity") ? Convert.ToInt32(itemDict["quantity"]) : 0;
+                                    string id = itemDict.ContainsKey("id") ? itemDict["id"].ToString() : "Unknown";
+                                    LogInfo($"Manually processed item: {name} x{qty} (ID: {id})", 3);
+                                }
                             }
 
                             // Добавляем список предметов в словарь инвентаря
                             inventoryDict["items"] = itemsList;
-                            Logger.Debug($"Manually processed {itemCount} items for inventory", true);
+                            LogInfo($"Manually processed {itemCount} items for inventory", 2);
                         }
                         else
                         {
                             // Если предметов нет, создаем пустой список
                             inventoryDict["items"] = new List<Dictionary<string, object>>();
-                            Logger.Debug("No items found in inventory data, creating empty list", true);
+                            LogInfo("No items found in inventory data, creating empty list", 2);
                         }
 
                         // Сохраняем обработанный инвентарь в GameManager
                         gameManager.SetData("PlayerInventorySaved", inventoryDict);
                         gameManager.SetData("PlayerInventoryLastSaveTime", DateTime.Now.ToString());
-                        Logger.Debug($"Directly saved inventory with {(inventoryDict["items"] as List<Dictionary<string, object>>)?.Count ?? 0} items", true);
+                        LogInfo($"Directly saved inventory with {(inventoryDict["items"] as List<Dictionary<string, object>>)?.Count ?? 0} items", 2);
                     }
                 }
 
@@ -311,22 +349,30 @@ public partial class SaveManager : Node
                 if (root.TryGetProperty("StationData", out JsonElement stationData) &&
                     stationData.TryGetProperty("StorageData", out JsonElement storageData))
                 {
-                    Logger.Debug("Processing StationData section directly", true);
+                    LogInfo("Processing StationData section directly", 3);
 
-                    // Выводим все ключи для отладки
-                    List<string> storageKeys = new List<string>();
-                    foreach (JsonProperty storage in storageData.EnumerateObject())
+                    // Выводим ключи только при высоком уровне логирования
+                    if (LogLevel >= 3)
                     {
-                        storageKeys.Add(storage.Name);
+                        List<string> storageKeys = new List<string>();
+                        foreach (JsonProperty storage in storageData.EnumerateObject())
+                        {
+                            storageKeys.Add(storage.Name);
+                        }
+                        LogInfo($"Found {storageKeys.Count} storage keys: {string.Join(", ", storageKeys)}", 3);
                     }
-                    Logger.Debug($"GameManager: Found {storageKeys.Count} storage keys: {string.Join(", ", storageKeys)}", true);
 
+                    int processedStorages = 0;
                     foreach (JsonProperty storage in storageData.EnumerateObject())
                     {
                         string storageId = storage.Name;
                         string storageJson = storage.Value.GetRawText();
 
-                        Logger.Debug($"GameManager: Processing storage with ID '{storageId}'", true);
+                        // Подробное логирование только на высоком уровне
+                        if (LogLevel >= 3)
+                        {
+                            LogInfo($"Processing storage with ID '{storageId}'", 3);
+                        }
 
                         // Парсим хранилище в отдельный словарь
                         using (JsonDocument storageDoc = JsonDocument.Parse(storageJson))
@@ -390,49 +436,55 @@ public partial class SaveManager : Node
                                     itemsList.Add(itemDict);
                                     itemCount++;
 
-                                    // Добавим логирование для отладки
-                                    string displayName = itemDict.ContainsKey("display_name") ? itemDict["display_name"].ToString() : "Unknown";
-                                    int quantity = itemDict.ContainsKey("quantity") ? Convert.ToInt32(itemDict["quantity"]) : 0;
-                                    Logger.Debug($"GameManager: Found item in storage '{storageId}': {displayName} x{quantity}", true);
+                                    // Детальное логирование только при высоком уровне логирования
+                                    if (LogLevel >= 3)
+                                    {
+                                        string displayName = itemDict.ContainsKey("display_name") ? itemDict["display_name"].ToString() : "Unknown";
+                                        int quantity = itemDict.ContainsKey("quantity") ? Convert.ToInt32(itemDict["quantity"]) : 0;
+                                        LogInfo($"Found item in storage '{storageId}': {displayName} x{quantity}", 3);
+                                    }
                                 }
 
                                 // Добавляем список предметов в словарь хранилища
                                 storageDict["items"] = itemsList;
-                                Logger.Debug($"GameManager: Processed {itemCount} items for storage '{storageId}'", true);
+                                LogInfo($"Processed {itemCount} items for storage '{storageId}'", 3);
                             }
                             else
                             {
                                 // Если предметов нет, создаем пустой список
                                 storageDict["items"] = new List<Dictionary<string, object>>();
-                                Logger.Debug($"GameManager: No items found in storage '{storageId}', creating empty list", true);
+                                LogInfo($"No items found in storage '{storageId}', creating empty list", 3);
                             }
 
-                            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сохраняем обработанное хранилище в GameManager
-                            // ВАЖНО: Используем правильный формат ключа StorageInventory_{storageId}
+                            // Сохраняем обработанное хранилище в GameManager
                             string saveKey = $"StorageInventory_{storageId}";
                             gameManager.SetData(saveKey, storageDict);
-                            Logger.Debug($"GameManager: Saved storage '{storageId}' to GameManager with key '{saveKey}'", true);
+                            LogInfo($"Saved storage '{storageId}' with key '{saveKey}'", 3);
 
                             // Дополнительно сохраняем под ключом StorageContainer для совместимости
-                            // Это важно, так как некоторые модули ищут данные по имени контейнера
                             if (storageId != "StorageContainer")
                             {
                                 string containerKey = "StorageInventory_StorageContainer";
                                 gameManager.SetData(containerKey, storageDict);
-                                Logger.Debug($"GameManager: Also saved storage '{storageId}' with container key '{containerKey}' for compatibility", true);
+                                LogInfo($"Also saved with container key for compatibility", 3);
                             }
+
+                            processedStorages++;
                         }
                     }
+
+                    // Сводка по хранилищам (средний уровень логирования)
+                    LogInfo($"Processed {processedStorages} storage containers", 2);
                 }
                 else
                 {
-                    Logger.Debug("GameManager: No StationData or StorageData found in save file", true);
+                    LogInfo("No StationData or StorageData found in save file", 2);
                 }
 
                 // Обрабатываем ProgressData
                 if (root.TryGetProperty("ProgressData", out JsonElement progressData))
                 {
-                    Logger.Debug("Processing ProgressData section directly", true);
+                    LogInfo("Processing ProgressData section directly", 3);
 
                     // Обрабатываем статистику
                     if (progressData.TryGetProperty("Stats", out JsonElement statsData))
@@ -441,21 +493,21 @@ public partial class SaveManager : Node
                         {
                             float playtime = playtimeData.GetSingle();
                             gameManager.SetData("PlayTime", playtime);
-                            Logger.Debug($"Set play time: {playtime} seconds", true);
+                            LogInfo($"Set play time: {playtime} seconds", 3);
                         }
                     }
                 }
             }
 
             // Сообщаем об успешной загрузке
-            Logger.Debug("Direct load completed successfully", true);
+            LogInfo("Direct load completed successfully", 1);
 
             EmitSignal("LoadCompleted");
             return true;
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error in direct load: {ex.Message}");
+            LogError($"Error in direct load: {ex.Message}");
             return false;
         }
     }
@@ -473,7 +525,8 @@ public partial class SaveManager : Node
     /// Сохраняет данные в файл
     /// </summary>
     /// <param name="saveData">Данные для сохранения</param>
-    private void SaveToFile(SaveData saveData)
+    /// <param name="shouldLog">Нужно ли логировать процесс</param>
+    private void SaveToFile(SaveData saveData, bool shouldLog)
     {
         // Сериализуем данные в JSON
         string jsonData = JsonSerializer.Serialize(saveData, new JsonSerializerOptions
@@ -484,7 +537,10 @@ public partial class SaveManager : Node
         // Сохраняем в файл
         File.WriteAllText(_savePath, jsonData, Encoding.UTF8);
 
-        Logger.Debug($"Save data written to file: {_savePath}", false);
+        if (shouldLog)
+        {
+            LogInfo($"Save data written to file: {_savePath}", 2);
+        }
     }
 
     /// <summary>
@@ -496,7 +552,7 @@ public partial class SaveManager : Node
         // Проверяем, существует ли файл
         if (!File.Exists(_savePath))
         {
-            Logger.Error($"Save file not found: {_savePath}");
+            LogError($"Save file not found: {_savePath}");
             return null;
         }
 
@@ -504,7 +560,7 @@ public partial class SaveManager : Node
         {
             // Читаем данные из файла
             string jsonData = File.ReadAllText(_savePath, Encoding.UTF8);
-            Logger.Debug($"Read save file content: {jsonData.Length} bytes", true);
+            LogInfo($"Read save file content: {jsonData.Length} bytes", 2);
 
             // Создаем опции для десериализации
             var options = new JsonSerializerOptions
@@ -517,77 +573,51 @@ public partial class SaveManager : Node
             // Десериализуем JSON в динамический объект для анализа структуры
             using (JsonDocument document = JsonDocument.Parse(jsonData))
             {
-                Logger.Debug("Successfully parsed JSON document", true);
-                JsonElement root = document.RootElement;
+                LogInfo("Successfully parsed JSON document", 3);
 
-                // Проверяем корневые элементы
-                bool hasInventoryData = root.TryGetProperty("InventoryData", out JsonElement inventoryElement);
-                Logger.Debug($"Save file has InventoryData section: {hasInventoryData}", true);
-
-                if (hasInventoryData)
+                // Проверяем корневые элементы только при высоком уровне логирования
+                if (LogLevel >= 3)
                 {
-                    bool hasItems = inventoryElement.TryGetProperty("items", out JsonElement itemsElement);
-                    Logger.Debug($"InventoryData has items array: {hasItems}", true);
+                    JsonElement root = document.RootElement;
 
-                    if (hasItems && itemsElement.ValueKind == JsonValueKind.Array)
+                    // Проверяем корневые элементы
+                    bool hasInventoryData = root.TryGetProperty("InventoryData", out JsonElement inventoryElement);
+                    LogInfo($"Save file has InventoryData section: {hasInventoryData}", 3);
+
+                    if (hasInventoryData)
                     {
-                        int itemsCount = itemsElement.GetArrayLength();
-                        Logger.Debug($"Items array contains {itemsCount} elements", true);
+                        bool hasItems = inventoryElement.TryGetProperty("items", out JsonElement itemsElement);
+                        LogInfo($"InventoryData has items array: {hasItems}", 3);
 
-                        // Выводим информацию о первых предметах для проверки
-                        int maxToShow = Math.Min(itemsCount, 3);
-                        for (int i = 0; i < maxToShow; i++)
+                        if (hasItems && itemsElement.ValueKind == JsonValueKind.Array)
                         {
-                            JsonElement item = itemsElement[i];
-                            string displayName = "Unknown";
-                            int quantity = 0;
-                            string id = "Unknown";
+                            int itemsCount = itemsElement.GetArrayLength();
+                            LogInfo($"Items array contains {itemsCount} elements", 3);
 
-                            if (item.TryGetProperty("display_name", out JsonElement nameElement))
+                            // Выводим информацию только о первом предмете для отладки
+                            if (itemsCount > 0)
                             {
-                                displayName = nameElement.GetString();
-                            }
+                                JsonElement item = itemsElement[0];
+                                string displayName = "Unknown";
+                                int quantity = 0;
+                                string id = "Unknown";
 
-                            if (item.TryGetProperty("quantity", out JsonElement qtyElement))
-                            {
-                                quantity = qtyElement.GetInt32();
-                            }
+                                if (item.TryGetProperty("display_name", out JsonElement nameElement))
+                                {
+                                    displayName = nameElement.GetString();
+                                }
 
-                            if (item.TryGetProperty("id", out JsonElement idElement))
-                            {
-                                id = idElement.GetString();
-                            }
+                                if (item.TryGetProperty("quantity", out JsonElement qtyElement))
+                                {
+                                    quantity = qtyElement.GetInt32();
+                                }
 
-                            Logger.Debug($"Item {i + 1} in save file: {displayName} x{quantity} (ID: {id})", true);
-                        }
-                    }
-                }
+                                if (item.TryGetProperty("id", out JsonElement idElement))
+                                {
+                                    id = idElement.GetString();
+                                }
 
-                // Проверяем раздел StationData
-                bool hasStationData = root.TryGetProperty("StationData", out JsonElement stationElement);
-                Logger.Debug($"Save file has StationData section: {hasStationData}", true);
-
-                if (hasStationData && stationElement.TryGetProperty("StorageData", out JsonElement storageDataElement))
-                {
-                    Logger.Debug("StationData has StorageData section", true);
-
-                    // Проверяем объекты хранилищ
-                    if (storageDataElement.ValueKind == JsonValueKind.Object)
-                    {
-                        foreach (JsonProperty storageProperty in storageDataElement.EnumerateObject())
-                        {
-                            string storageId = storageProperty.Name;
-                            JsonElement storageElement = storageProperty.Value;
-
-                            if (storageElement.TryGetProperty("items", out JsonElement storageItems) &&
-                                storageItems.ValueKind == JsonValueKind.Array)
-                            {
-                                int storageItemsCount = storageItems.GetArrayLength();
-                                Logger.Debug($"Storage '{storageId}' has {storageItemsCount} items in save file", true);
-                            }
-                            else
-                            {
-                                Logger.Debug($"Storage '{storageId}' has no items array or it's invalid", true);
+                                LogInfo($"First item in save file: {displayName} x{quantity} (ID: {id})", 3);
                             }
                         }
                     }
@@ -602,16 +632,16 @@ public partial class SaveManager : Node
 
                 if (saveData == null)
                 {
-                    Logger.Error("Failed to deserialize save data - result is null");
+                    LogError("Failed to deserialize save data - result is null");
                     return null;
                 }
 
-                Logger.Debug($"Successfully deserialized save data (Version: {saveData.Version}, SaveDate: {saveData.SaveDate})", true);
+                LogInfo($"Successfully deserialized save data (Version: {saveData.Version}, SaveDate: {saveData.SaveDate})", 2);
 
                 // Проверяем версию сохранения
                 if (saveData.Version != SAVE_VERSION)
                 {
-                    Logger.Debug($"Save version mismatch: file version {saveData.Version}, current version {SAVE_VERSION}", true);
+                    LogInfo($"Save version mismatch: file version {saveData.Version}, current version {SAVE_VERSION}", 2);
                     // В будущем здесь может быть логика миграции данных между версиями
                 }
 
@@ -619,14 +649,17 @@ public partial class SaveManager : Node
             }
             catch (JsonException jsonEx)
             {
-                Logger.Error($"JSON deserialization error: {jsonEx.Message}");
+                LogError($"JSON deserialization error: {jsonEx.Message}");
                 return null;
             }
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error loading save file '{_savePath}': {ex.Message}");
-            Logger.Debug($"Exception details: {ex.ToString()}", true);
+            LogError($"Error loading save file '{_savePath}': {ex.Message}");
+            if (LogLevel >= 3)
+            {
+                LogInfo($"Exception details: {ex.ToString()}", 3);
+            }
             return null;
         }
     }
@@ -634,8 +667,9 @@ public partial class SaveManager : Node
     /// <summary>
     /// Собирает все данные для сохранения
     /// </summary>
+    /// <param name="shouldLog">Нужно ли логировать процесс</param>
     /// <returns>Структура данных сохранения</returns>
-    private SaveData CollectSaveData()
+    private SaveData CollectSaveData(bool shouldLog)
     {
         // Создаем новый объект данных сохранения
         SaveData saveData = new SaveData
@@ -646,16 +680,16 @@ public partial class SaveManager : Node
         };
 
         // Собираем данные игрока
-        CollectPlayerData(saveData);
+        CollectPlayerData(saveData, shouldLog);
 
         // Собираем данные инвентаря
-        CollectInventoryData(saveData);
+        CollectInventoryData(saveData, shouldLog);
 
         // Собираем данные станции
-        CollectSpaceStationData(saveData);
+        CollectSpaceStationData(saveData, shouldLog);
 
         // Собираем данные прогресса
-        CollectProgressData(saveData);
+        CollectProgressData(saveData, shouldLog);
 
         return saveData;
     }
@@ -685,7 +719,7 @@ public partial class SaveManager : Node
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error applying save data: {ex.Message}");
+            LogError($"Error applying save data: {ex.Message}");
             return false;
         }
     }
@@ -713,7 +747,8 @@ public partial class SaveManager : Node
     /// Собирает данные игрока
     /// </summary>
     /// <param name="saveData">Структура данных сохранения</param>
-    private void CollectPlayerData(SaveData saveData)
+    /// <param name="shouldLog">Нужно ли логировать процесс</param>
+    private void CollectPlayerData(SaveData saveData, bool shouldLog)
     {
         // Находим игрока
         var players = GetTree().GetNodesInGroup("Player");
@@ -732,7 +767,10 @@ public partial class SaveManager : Node
                 CurrentScene = "res://scenes/station/space_station.tscn"
             };
 
-            Logger.Debug($"Collected player data: HP {saveData.PlayerData.Health}/{saveData.PlayerData.MaxHealth}, Pos {player.GlobalPosition}", false);
+            if (shouldLog)
+            {
+                LogInfo($"Collected player data: HP {saveData.PlayerData.Health}/{saveData.PlayerData.MaxHealth}, Pos {player.GlobalPosition}", 2);
+            }
         }
         else
         {
@@ -760,7 +798,10 @@ public partial class SaveManager : Node
                     CurrentScene = currentScene
                 };
 
-                Logger.Debug($"Collected player data from GameManager: Pos {lastPosition}, Scene {currentScene}", false);
+                if (shouldLog)
+                {
+                    LogInfo($"Collected player data from GameManager: Pos {lastPosition}", 2);
+                }
             }
             else
             {
@@ -773,7 +814,10 @@ public partial class SaveManager : Node
                     CurrentScene = ""
                 };
 
-                Logger.Debug("Created default player data", false);
+                if (shouldLog)
+                {
+                    LogInfo("Created default player data", 2);
+                }
             }
         }
     }
@@ -782,7 +826,8 @@ public partial class SaveManager : Node
     /// Собирает данные инвентаря
     /// </summary>
     /// <param name="saveData">Структура данных сохранения</param>
-    private void CollectInventoryData(SaveData saveData)
+    /// <param name="shouldLog">Нужно ли логировать процесс</param>
+    private void CollectInventoryData(SaveData saveData, bool shouldLog)
     {
         // Находим игрока для получения инвентаря
         var players = GetTree().GetNodesInGroup("Player");
@@ -790,7 +835,11 @@ public partial class SaveManager : Node
         {
             // Сериализуем инвентарь
             saveData.InventoryData = player.PlayerInventory.Serialize();
-            Logger.Debug($"Collected player inventory: {player.PlayerInventory.Items.Count} items", false);
+
+            if (shouldLog)
+            {
+                LogInfo($"Collected player inventory: {player.PlayerInventory.Items.Count} items", 2);
+            }
         }
         else
         {
@@ -799,7 +848,11 @@ public partial class SaveManager : Node
             if (gameManager != null && gameManager.HasData("PlayerInventorySaved"))
             {
                 saveData.InventoryData = gameManager.GetData<Dictionary<string, object>>("PlayerInventorySaved");
-                Logger.Debug("Collected player inventory from GameManager", false);
+
+                if (shouldLog)
+                {
+                    LogInfo("Collected player inventory from GameManager", 2);
+                }
             }
             else
             {
@@ -811,7 +864,10 @@ public partial class SaveManager : Node
                     ["items"] = new List<Dictionary<string, object>>()
                 };
 
-                Logger.Debug("Created empty inventory data", false);
+                if (shouldLog)
+                {
+                    LogInfo("Created empty inventory data", 2);
+                }
             }
         }
     }
@@ -820,53 +876,35 @@ public partial class SaveManager : Node
     /// Собирает данные космической станции
     /// </summary>
     /// <param name="saveData">Структура данных сохранения</param>
-    /// <summary>
-    /// Собирает данные космической станции
-    /// </summary>
-    /// <param name="saveData">Структура данных сохранения</param>
-    private void CollectSpaceStationData(SaveData saveData)
+    /// <param name="shouldLog">Нужно ли логировать процесс</param>
+    private void CollectSpaceStationData(SaveData saveData, bool shouldLog)
     {
         // Создаем данные станции
         saveData.StationData = new SpaceStationData();
 
-        // ОТЛАДКА: Проверяем все существующие ключи в GameManager
-        Logger.Debug("Checking all keys in GameManager for storage data...", true);
-        var gameManager = GetNode<GameManager>("/root/GameManager");
-        List<string> allKeys = new List<string>();
-        string prefix = "StorageInventory_";
-
-        if (gameManager != null)
-        {
-            // Получаем список всех ключей через рефлексию или другой метод
-            var keysMethod = gameManager.GetType().GetMethod("GetAllKeys");
-            if (keysMethod != null)
-            {
-                var keys = keysMethod.Invoke(gameManager, null) as IEnumerable<string>;
-                if (keys != null)
-                {
-                    allKeys.AddRange(keys);
-                    Logger.Debug($"All keys in GameManager: {string.Join(", ", allKeys)}", true);
-
-                    // Теперь ищем ключи хранилищ
-                    List<string> storageKeys = new List<string>();
-                    foreach (var key in allKeys)
-                    {
-                        if (key.StartsWith(prefix))
-                        {
-                            storageKeys.Add(key);
-                        }
-                    }
-
-                    Logger.Debug($"Found {storageKeys.Count} storage keys: {string.Join(", ", storageKeys)}", true);
-                }
-            }
-        }
-
         // Получаем данные хранилищ из GameManager
+        var gameManager = GetNode<GameManager>("/root/GameManager");
         if (gameManager != null)
         {
             // Создаем словарь для хранения данных хранилищ
             saveData.StationData.StorageData = new Dictionary<string, Dictionary<string, object>>();
+
+            // Получаем список всех ключей (для отладки)
+            List<string> allKeys = new List<string>();
+            if (LogLevel >= 3)
+            {
+                // Получаем список всех ключей через рефлексию
+                var keysMethod = gameManager.GetType().GetMethod("GetAllKeys");
+                if (keysMethod != null)
+                {
+                    var keys = keysMethod.Invoke(gameManager, null) as IEnumerable<string>;
+                    if (keys != null)
+                    {
+                        allKeys.AddRange(keys);
+                        LogInfo($"All keys in GameManager: {string.Join(", ", allKeys)}", 3);
+                    }
+                }
+            }
 
             // ПРЯМАЯ ПРОВЕРКА: Проверяем конкретные ключи хранилищ
             string[] specificIds = new string[] { "main_storage", "second_storage", "StorageContainer" };
@@ -880,36 +918,40 @@ public partial class SaveManager : Node
                     {
                         saveData.StationData.StorageData[id] = inventoryData;
 
-                        int itemCount = 0;
-                        if (inventoryData.ContainsKey("items") &&
-                            inventoryData["items"] is List<Dictionary<string, object>> items)
+                        if (LogLevel >= 3)
                         {
-                            itemCount = items.Count;
-                        }
+                            int itemCount = 0;
+                            if (inventoryData.ContainsKey("items") &&
+                                inventoryData["items"] is List<Dictionary<string, object>> items)
+                            {
+                                itemCount = items.Count;
+                            }
 
-                        Logger.Debug($"Added storage '{id}' with {itemCount} items to save data", true);
+                            LogInfo($"Added storage '{id}' with {itemCount} items to save data", 3);
+                        }
                     }
                 }
             }
 
             // НОВЫЙ СПОСОБ: Находим все ключи, начинающиеся с "StorageInventory_"
-            if (saveData.StationData.StorageData.Count == 0)
+            string prefix = "StorageInventory_";
+            foreach (string key in allKeys)
             {
-                foreach (string key in allKeys)
+                if (key.StartsWith(prefix))
                 {
-                    if (key.StartsWith(prefix))
+                    string storageId = key.Substring(prefix.Length);
+
+                    // Пропускаем дубликаты
+                    if (saveData.StationData.StorageData.ContainsKey(storageId))
+                        continue;
+
+                    var data = gameManager.GetData<Dictionary<string, object>>(key);
+                    if (data != null)
                     {
-                        string storageId = key.Substring(prefix.Length);
+                        saveData.StationData.StorageData[storageId] = data;
 
-                        // Пропускаем дубликаты
-                        if (saveData.StationData.StorageData.ContainsKey(storageId))
-                            continue;
-
-                        var data = gameManager.GetData<Dictionary<string, object>>(key);
-                        if (data != null)
+                        if (LogLevel >= 3)
                         {
-                            saveData.StationData.StorageData[storageId] = data;
-
                             int itemCount = 0;
                             if (data.ContainsKey("items") &&
                                 data["items"] is List<Dictionary<string, object>> items)
@@ -917,13 +959,16 @@ public partial class SaveManager : Node
                                 itemCount = items.Count;
                             }
 
-                            Logger.Debug($"Found and added storage '{storageId}' with {itemCount} items", true);
+                            LogInfo($"Found and added storage '{storageId}' with {itemCount} items", 3);
                         }
                     }
                 }
             }
 
-            Logger.Debug($"Collected data for {saveData.StationData.StorageData.Count} storage modules", false);
+            if (shouldLog)
+            {
+                LogInfo($"Collected data for {saveData.StationData.StorageData.Count} storage modules", 2);
+            }
         }
     }
 
@@ -931,7 +976,8 @@ public partial class SaveManager : Node
     /// Собирает данные прогресса игры
     /// </summary>
     /// <param name="saveData">Структура данных сохранения</param>
-    private void CollectProgressData(SaveData saveData)
+    /// <param name="shouldLog">Нужно ли логировать процесс</param>
+    private void CollectProgressData(SaveData saveData, bool shouldLog)
     {
         // Создаем данные прогресса
         saveData.ProgressData = new ProgressData
@@ -964,7 +1010,10 @@ public partial class SaveManager : Node
                 saveData.ProgressData.VisitedLocations = gameManager.GetData<List<string>>("VisitedLocations");
         }
 
-        Logger.Debug("Collected progress data", false);
+        if (shouldLog)
+        {
+            LogInfo("Collected progress data", 2);
+        }
     }
 
     #endregion
@@ -998,7 +1047,7 @@ public partial class SaveManager : Node
             gameManager.SetData("PlayerHealth", saveData.PlayerData.Health);
             gameManager.SetData("PlayerMaxHealth", saveData.PlayerData.MaxHealth);
 
-            Logger.Debug($"Applied player data to GameManager: Pos {position}, Scene {saveData.PlayerData.CurrentScene}", false);
+            LogInfo($"Applied player data to GameManager", 2);
         }
 
         // Если игрок уже существует, применяем данные напрямую
@@ -1015,7 +1064,7 @@ public partial class SaveManager : Node
             if (damage != 0)
             {
                 player.TakeDamage(damage, player);
-                Logger.Debug($"Set player health to {health}/{maxHealth}", false);
+                LogInfo($"Set player health to {health}/{maxHealth}", 2);
             }
         }
     }
@@ -1028,35 +1077,38 @@ public partial class SaveManager : Node
     {
         if (saveData.InventoryData == null)
         {
-            Logger.Debug("Cannot apply inventory data - InventoryData is null", true);
+            LogInfo("Cannot apply inventory data - InventoryData is null", 2);
             return;
         }
 
-        // Проверим количество предметов в данных
-        int itemsCount = 0;
-        List<Dictionary<string, object>> itemsList = null;
-
-        if (saveData.InventoryData.ContainsKey("items") &&
-            saveData.InventoryData["items"] is List<Dictionary<string, object>> items)
+        // Проверяем количество предметов в данных (только для высокого уровня логов)
+        if (LogLevel >= 3)
         {
-            itemsCount = items.Count;
-            itemsList = items;
+            int itemsCount = 0;
+            List<Dictionary<string, object>> itemsList = null;
 
-            Logger.Debug($"ApplyInventoryData: Found {itemsCount} items in save data", true);
-
-            // Вывод первых нескольких предметов для отладки
-            for (int i = 0; i < Math.Min(items.Count, 3); i++)
+            if (saveData.InventoryData.ContainsKey("items") &&
+                saveData.InventoryData["items"] is List<Dictionary<string, object>> items)
             {
-                var item = items[i];
-                string name = item.ContainsKey("display_name") ? item["display_name"].ToString() : "Unknown";
-                int qty = item.ContainsKey("quantity") ? Convert.ToInt32(item["quantity"]) : 0;
-                string id = item.ContainsKey("id") ? item["id"].ToString() : "Unknown";
-                Logger.Debug($"Item to apply: {name} x{qty} (ID: {id})", true);
+                itemsCount = items.Count;
+                itemsList = items;
+
+                LogInfo($"ApplyInventoryData: Found {itemsCount} items in save data", 3);
+
+                // Вывод первых нескольких предметов для отладки
+                for (int i = 0; i < Math.Min(items.Count, 3); i++)
+                {
+                    var item = items[i];
+                    string name = item.ContainsKey("display_name") ? item["display_name"].ToString() : "Unknown";
+                    int qty = item.ContainsKey("quantity") ? Convert.ToInt32(item["quantity"]) : 0;
+                    string id = item.ContainsKey("id") ? item["id"].ToString() : "Unknown";
+                    LogInfo($"Item to apply: {name} x{qty} (ID: {id})", 3);
+                }
             }
-        }
-        else
-        {
-            Logger.Debug("ApplyInventoryData: No valid items list found in save data", true);
+            else
+            {
+                LogInfo("ApplyInventoryData: No valid items list found in save data", 3);
+            }
         }
 
         // Сохраняем данные инвентаря в GameManager
@@ -1091,23 +1143,26 @@ public partial class SaveManager : Node
                 }
             }
 
-            // Проверяем итоговое количество предметов в копии
-            int copyItemsCount = 0;
-            if (inventoryCopy.ContainsKey("items") &&
-                inventoryCopy["items"] is List<Dictionary<string, object>> copyItems)
+            // Проверяем итоговое количество предметов в копии (только для логов высокого уровня)
+            if (LogLevel >= 3)
             {
-                copyItemsCount = copyItems.Count;
-            }
+                int copyItemsCount = 0;
+                if (inventoryCopy.ContainsKey("items") &&
+                    inventoryCopy["items"] is List<Dictionary<string, object>> copyItems)
+                {
+                    copyItemsCount = copyItems.Count;
+                }
 
-            Logger.Debug($"SaveManager: Saving inventory data to GameManager, items count: {copyItemsCount}", true);
+                LogInfo($"Saving inventory data to GameManager, items count: {copyItemsCount}", 3);
+            }
 
             gameManager.SetData("PlayerInventorySaved", inventoryCopy);
             gameManager.SetData("PlayerInventoryLastSaveTime", DateTime.Now.ToString());
-            Logger.Debug("Applied inventory data to GameManager with timestamp", true);
+            LogInfo("Applied inventory data to GameManager", 2);
         }
         else
         {
-            Logger.Error("GameManager not found for applying inventory data");
+            LogError("GameManager not found for applying inventory data");
         }
 
         // Если игрок уже существует, применяем данные напрямую
@@ -1118,11 +1173,11 @@ public partial class SaveManager : Node
             try
             {
                 player.PlayerInventory.Deserialize(saveData.InventoryData);
-                Logger.Debug($"Applied inventory data directly to player, items count: {player.PlayerInventory.Items.Count}", true);
+                LogInfo($"Applied inventory data directly to player", 2);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error applying inventory data to player: {ex.Message}");
+                LogError($"Error applying inventory data to player: {ex.Message}");
             }
         }
     }
@@ -1149,8 +1204,11 @@ public partial class SaveManager : Node
                 string key = $"StorageInventory_{storageId}";
                 gameManager.SetData(key, storageData);
 
-                Logger.Debug($"Applied storage data for '{storageId}'", false);
+                LogInfo($"Applied storage data for '{storageId}'", 3);
             }
+
+            // Общий лог по всем хранилищам
+            LogInfo($"Applied data for {saveData.StationData.StorageData.Count} storage modules", 2);
         }
     }
 
@@ -1179,7 +1237,7 @@ public partial class SaveManager : Node
             gameManager.SetData("DiscoveredPlanets", saveData.ProgressData.DiscoveredPlanets);
             gameManager.SetData("VisitedLocations", saveData.ProgressData.VisitedLocations);
 
-            Logger.Debug("Applied progress data to GameManager", false);
+            LogInfo("Applied progress data to GameManager", 2);
         }
     }
 
