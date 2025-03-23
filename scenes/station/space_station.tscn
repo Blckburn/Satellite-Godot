@@ -80,9 +80,10 @@ metadata/_edit_use_anchors_ = true
 
 [node name="AutoSave" type="Node" parent="."]
 script = ExtResource("13_yjdnh")
-SaveInterval = 30.0
-MinChangeInterval = 10.0
-InitialDelay = 1.0
+MinChangeInterval = 5.0
+SaveDelay = 0.5
+ActiveMonitoringInterval = 0.3
+MaxWaitTimeBeforeForceSave = 0.5
 
 [node name="ForceSave" type="Node" parent="."]
 script = ExtResource("14_07biw")
