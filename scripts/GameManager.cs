@@ -297,13 +297,160 @@ public void ClearData()
     }
 
     /// <summary>
+    /// Принудительно проверяет и восстанавливает данные хранилищ спутника
+    /// </summary>
+    public void EnsureStorageModulesLoaded()
+    {
+        Logger.Debug("GameManager: Starting storage modules data check", true);
+
+        // Список всех обнаруженных данных хранилищ и их ключей
+        Dictionary<string, Dictionary<string, object>> storageData = new Dictionary<string, Dictionary<string, object>>();
+
+        // Собираем все данные хранилищ
+        foreach (string key in _data.Keys)
+        {
+            if (key.StartsWith("StorageInventory_"))
+            {
+                string storageKey = key.Substring("StorageInventory_".Length);
+
+                // Получаем данные инвентаря
+                Dictionary<string, object> inventoryData = GetData<Dictionary<string, object>>(key);
+                if (inventoryData != null)
+                {
+                    storageData[storageKey] = inventoryData;
+
+                    // Отображаем количество предметов для отладки
+                    int itemCount = 0;
+                    if (inventoryData.ContainsKey("items") &&
+                        inventoryData["items"] is List<Dictionary<string, object>> items)
+                    {
+                        itemCount = items.Count;
+                    }
+
+                    Logger.Debug($"GameManager: Found storage data for '{storageKey}' with {itemCount} items", true);
+                }
+            }
+        }
+
+        if (storageData.Count == 0)
+        {
+            Logger.Debug("GameManager: No storage data found to restore", true);
+            return;
+        }
+
+        // Находим все модули хранилищ в текущей сцене
+        var storageModules = GetTree().GetNodesInGroup("StorageModules");
+        if (storageModules.Count == 0)
+        {
+            Logger.Debug("GameManager: No storage modules found in scene", true);
+            return;
+        }
+
+        Logger.Debug($"GameManager: Found {storageModules.Count} storage modules in scene", true);
+
+        // Для каждого модуля хранилища пытаемся загрузить данные
+        foreach (var moduleNode in storageModules)
+        {
+            if (moduleNode is StorageModule storageModule)
+            {
+                // Получаем ID хранилища и имя контейнера
+                string storageId = storageModule.StorageID;
+                string containerName = "StorageContainer"; // Имя по умолчанию для контейнера
+
+                // Пытаемся получить фактическое имя контейнера
+                var container = storageModule.GetNode<Container>("StorageContainer");
+                if (container != null)
+                {
+                    containerName = container.Name;
+                    Logger.Debug($"GameManager: Found container '{containerName}' in module '{storageId}'", true);
+                }
+
+                // Проверяем все возможные ключи, по которым могут быть сохранены данные
+                Dictionary<string, object> dataToLoad = null;
+                string usedKey = null;
+
+                // Проверяем сначала StorageID, затем имя контейнера, а потом все остальные ключи
+                if (storageData.ContainsKey(storageId))
+                {
+                    dataToLoad = storageData[storageId];
+                    usedKey = storageId;
+                }
+                else if (storageData.ContainsKey(containerName))
+                {
+                    dataToLoad = storageData[containerName];
+                    usedKey = containerName;
+                }
+                else
+                {
+                    // Ищем любое хранилище, которое ещё не использовалось
+                    foreach (var entry in storageData)
+                    {
+                        if (!string.IsNullOrEmpty(entry.Key) && entry.Value != null)
+                        {
+                            dataToLoad = entry.Value;
+                            usedKey = entry.Key;
+                            break;
+                        }
+                    }
+                }
+
+                // Если нашли подходящие данные, загружаем их напрямую в контейнер
+                if (dataToLoad != null && container != null && container.ContainerInventory != null)
+                {
+                    Logger.Debug($"GameManager: Loading data for storage '{storageId}' from key '{usedKey}'", true);
+
+                    // Очищаем текущий инвентарь контейнера
+                    container.ContainerInventory.Clear();
+
+                    // Загружаем данные
+                    container.ContainerInventory.Deserialize(dataToLoad);
+
+                    // Подсчитываем количество загруженных предметов
+                    int loadedItems = container.ContainerInventory.Items.Count;
+                    Logger.Debug($"GameManager: Successfully loaded {loadedItems} items into storage '{storageId}'", true);
+
+                    // Обновляем UI, если хранилище открыто
+                    storageModule.ForceUpdateContainerUI();
+
+                    // Удаляем использованные данные, чтобы не использовать их повторно
+                    storageData.Remove(usedKey);
+                }
+                else
+                {
+                    Logger.Debug($"GameManager: No suitable data found for storage module '{storageId}'", true);
+                }
+            }
+        }
+
+        // Если остались неиспользованные данные хранилищ, выводим информацию об этом
+        if (storageData.Count > 0)
+        {
+            Logger.Debug($"GameManager: {storageData.Count} storage data entries were not applied to any module", true);
+        }
+
+        Logger.Debug("GameManager: Storage modules data check completed", true);
+    }
+
+
+
+    /// <summary>
     /// Обработчик завершения загрузки
     /// </summary>
     private void OnLoadCompleted()
     {
         Logger.Debug("Load completed successfully", true);
+
         // Принудительно восстанавливаем инвентарь игрока
         EnsurePlayerInventoryLoaded();
+
+        // НОВАЯ СТРОКА: Принудительно восстанавливаем данные хранилищ
+        // Получаем GameManager и вызываем его метод напрямую
+        var gameManager = GetNode<GameManager>("/root/GameManager");
+        if (gameManager != null)
+        {
+            // Вызываем метод GameManager для загрузки хранилищ
+            gameManager.EnsureStorageModulesLoaded();
+        }
 
         // Здесь логика, которая должна выполняться после загрузки
         // Например, переключение сцены на сохраненную локацию

@@ -420,6 +420,7 @@ public partial class SaveManager : Node
 
             // Сообщаем об успешной загрузке
             Logger.Debug("Direct load completed successfully", true);
+
             EmitSignal("LoadCompleted");
             return true;
         }

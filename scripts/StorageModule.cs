@@ -561,7 +561,7 @@ private void CheckPlayerDistance()
     /// <summary>
     /// Сохраняет содержимое хранилища через GameManager
     /// </summary>
-    private void SaveStorageInventory()
+    public void SaveStorageInventory()
     {
         if (_storageContainer == null || _storageContainer.ContainerInventory == null)
         {
@@ -583,16 +583,41 @@ private void CheckPlayerDistance()
         // Сериализуем инвентарь контейнера
         var inventoryData = _storageContainer.ContainerInventory.Serialize();
 
-        // Сохраняем данные в GameManager
+        // Сохраняем данные в GameManager по основному ключу (StorageID)
         gameManager.SetData(storageKey, inventoryData);
 
-        Logger.Debug($"Storage inventory for '{StorageID}' saved successfully. Items count: {_storageContainer.ContainerInventory.Items.Count}", true);
+        // ВАЖНО: Также сохраняем по имени контейнера для совместимости
+        string containerKey = $"StorageInventory_{_storageContainer.Name}";
+        gameManager.SetData(containerKey, inventoryData);
+
+        // Для большей надежности, сохраняем также по имени контейнера, если оно есть
+        if (!string.IsNullOrEmpty(_storageContainer.ContainerName))
+        {
+            string nameKey = $"StorageInventory_{_storageContainer.ContainerName.Replace(" ", "")}";
+            gameManager.SetData(nameKey, inventoryData);
+        }
+
+        // Подсчитываем количество предметов для логов
+        int itemCount = _storageContainer.ContainerInventory.Items.Count;
+
+        // Выводим детальную информацию о сохранении
+        Logger.Debug($"Storage inventory for '{StorageID}' saved successfully with {itemCount} items using keys:", true);
+        Logger.Debug($"  - Primary key: {storageKey}", false);
+        Logger.Debug($"  - Container name key: {containerKey}", false);
+
+        // Если есть хотя бы один предмет, выводим информацию о первом предмете для отладки
+        if (itemCount > 0)
+        {
+            var firstItem = _storageContainer.ContainerInventory.Items[0];
+            Logger.Debug($"  First item: {firstItem.DisplayName} x{firstItem.Quantity}", false);
+        }
     }
 
     /// <summary>
     /// Загружает содержимое хранилища из GameManager
     /// </summary>
-    private bool LoadStorageInventory()
+    /// <param name="forceReload">Принудительная перезагрузка, даже если инвентарь уже имеет предметы</param>
+    public bool LoadStorageInventory(bool forceReload = false)
     {
         // Проверяем, что контейнер существует
         if (_storageContainer == null)
@@ -604,6 +629,14 @@ private void CheckPlayerDistance()
         {
             Logger.Debug("Cannot load storage inventory - container inventory is null", true);
             return false;
+        }
+
+        // Если инвентарь уже содержит предметы и не требуется принудительная перезагрузка,
+        // просто возвращаем успех
+        if (!forceReload && _storageContainer.ContainerInventory.Items.Count > 0)
+        {
+            Logger.Debug($"Storage '{StorageID}' already has {_storageContainer.ContainerInventory.Items.Count} items, skipping load", true);
+            return true;
         }
 
         // Получаем GameManager
@@ -620,8 +653,53 @@ private void CheckPlayerDistance()
         // Подробное логирование
         Logger.Debug($"Attempting to load storage '{StorageID}' with key '{storageKey}'", true);
 
-        // Проверяем наличие сохраненных данных
-        if (!gameManager.HasData(storageKey))
+        // Проверяем наличие сохраненных данных по основному ключу
+        bool foundData = false;
+        Dictionary<string, object> inventoryData = null;
+
+        // Сначала проверяем по StorageID
+        if (gameManager.HasData(storageKey))
+        {
+            inventoryData = gameManager.GetData<Dictionary<string, object>>(storageKey);
+            if (inventoryData != null)
+            {
+                foundData = true;
+                Logger.Debug($"Found storage data using StorageID key: '{storageKey}'", true);
+            }
+        }
+
+        // Если данные не найдены по StorageID, проверяем по имени контейнера
+        if (!foundData)
+        {
+            string containerKey = $"StorageInventory_{_storageContainer.Name}";
+            if (gameManager.HasData(containerKey))
+            {
+                inventoryData = gameManager.GetData<Dictionary<string, object>>(containerKey);
+                if (inventoryData != null)
+                {
+                    foundData = true;
+                    Logger.Debug($"Found storage data using container name key: '{containerKey}'", true);
+                }
+            }
+        }
+
+        // Если данные не найдены и контейнер имеет уникальное имя, проверяем по этому имени
+        if (!foundData && !string.IsNullOrEmpty(_storageContainer.ContainerName))
+        {
+            string nameKey = $"StorageInventory_{_storageContainer.ContainerName.Replace(" ", "")}";
+            if (gameManager.HasData(nameKey))
+            {
+                inventoryData = gameManager.GetData<Dictionary<string, object>>(nameKey);
+                if (inventoryData != null)
+                {
+                    foundData = true;
+                    Logger.Debug($"Found storage data using container display name key: '{nameKey}'", true);
+                }
+            }
+        }
+
+        // Если данные не найдены ни по одному ключу
+        if (!foundData)
         {
             Logger.Debug($"No saved storage inventory data found for '{StorageID}'", true);
             return false;
@@ -629,35 +707,34 @@ private void CheckPlayerDistance()
 
         try
         {
-            // Получаем сохраненные данные и десериализуем их
-            var inventoryData = gameManager.GetData<Dictionary<string, object>>(storageKey);
-            if (inventoryData != null)
+            // Подробное логирование для отладки
+            int itemCount = 0;
+            if (inventoryData.ContainsKey("items") && inventoryData["items"] is List<Dictionary<string, object>> items)
             {
-                // Подробное логирование для отладки
-                int itemCount = 0;
-                if (inventoryData.ContainsKey("items") && inventoryData["items"] is List<Dictionary<string, object>> items)
+                itemCount = items.Count;
+                Logger.Debug($"Found {itemCount} items in saved storage'{StorageID}'", true);
+
+                // Вывод информации о каждом предмете для отладки
+                for (int i = 0; i < Math.Min(items.Count, 5); i++)
                 {
-                    itemCount = items.Count;
-                    Logger.Debug($"Found {itemCount} items in saved storage '{StorageID}'", true);
-
-                    // Вывод информации о каждом предмете для отладки
-                    for (int i = 0; i < items.Count; i++)
-                    {
-                        var item = items[i];
-                        string name = item.ContainsKey("display_name") ? item["display_name"].ToString() : "Unknown";
-                        int qty = item.ContainsKey("quantity") ? Convert.ToInt32(item["quantity"]) : 0;
-                        Logger.Debug($"Storage item {i + 1}: {name} x{qty}", true);
-                    }
+                    var item = items[i];
+                    string name = item.ContainsKey("display_name") ? item["display_name"].ToString() : "Unknown";
+                    int qty = item.ContainsKey("quantity") ? Convert.ToInt32(item["quantity"]) : 0;
+                    Logger.Debug($"Storage item {i + 1}: {name} x{qty}", true);
                 }
-
-                _storageContainer.ContainerInventory.Deserialize(inventoryData);
-
-                // Обновляем UI, если хранилище открыто
-              //  ForceUpdateContainerUI();
-
-                Logger.Debug($"Storage inventory for '{StorageID}' loaded successfully. Items count: {_storageContainer.ContainerInventory.Items.Count}", true);
-                return true;
             }
+
+            // Очищаем текущий инвентарь перед загрузкой
+            _storageContainer.ContainerInventory.Clear();
+
+            // Десериализуем данные
+            _storageContainer.ContainerInventory.Deserialize(inventoryData);
+
+            // Обновляем UI, если хранилище открыто
+            ForceUpdateContainerUI();
+
+            Logger.Debug($"Storage inventory for '{StorageID}' loaded successfully. Items count: {_storageContainer.ContainerInventory.Items.Count}", true);
+            return true;
         }
         catch (Exception ex)
         {
@@ -668,7 +745,62 @@ private void CheckPlayerDistance()
     }
 
 
+    /// <summary>
+    /// Принудительно обновляет UI контейнера, если он открыт
+    /// </summary>
+    public void ForceUpdateContainerUI()
+    {
+        if (_storageContainer != null)
+        {
+            // Вызываем метод ForceUpdateContainerUI у контейнера, даже если контейнер не открыт
+            _storageContainer.ForceUpdateContainerUI();
 
+            // Для отладки выводим содержимое инвентаря
+            if (_storageContainer.ContainerInventory != null && _storageContainer.ContainerInventory.Items.Count > 0)
+            {
+                Logger.Debug($"Force updated UI for storage '{StorageID}' with {_storageContainer.ContainerInventory.Items.Count} items:", true);
 
+                // Выводим информацию о первых 5 предметах (для отладки)
+                for (int i = 0; i < Math.Min(_storageContainer.ContainerInventory.Items.Count, 5); i++)
+                {
+                    var item = _storageContainer.ContainerInventory.Items[i];
+                    Logger.Debug($"  Item {i + 1}: {item.DisplayName} x{item.Quantity}", false);
+                }
+            }
+            else
+            {
+                Logger.Debug($"Force updated UI for storage '{StorageID}' (empty or null inventory)", true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Сохраняет контейнер, используя имя узла вместо StorageID
+    /// </summary>
+    public void SaveContainerByName()
+    {
+        if (_storageContainer == null || _storageContainer.ContainerInventory == null)
+        {
+            Logger.Debug("Cannot save container by name - container or inventory is null", true);
+            return;
+        }
+
+        // Получаем GameManager
+        var gameManager = GetNode<GameManager>("/root/GameManager");
+        if (gameManager == null)
+        {
+            Logger.Error("GameManager not found for saving container by name");
+            return;
+        }
+
+        // Сериализуем инвентарь
+        var inventoryData = _storageContainer.ContainerInventory.Serialize();
+
+        // Сохраняем по имени узла
+        string nameKey = $"StorageInventory_{_storageContainer.Name}";
+        gameManager.SetData(nameKey, inventoryData);
+
+        Logger.Debug($"Saved container '{_storageContainer.Name}' with {_storageContainer.ContainerInventory.Items.Count} items using name key", true);
+    }
 
 }
