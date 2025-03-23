@@ -159,6 +159,9 @@ public void ClearData()
     {
         SetData("TeleportPosition", position);
         SetData("TeleportScene", scene);
+
+        // Сразу же обновляем текущую сцену
+        UpdateCurrentScene(scene);
     }
 
     /// <summary>
@@ -537,7 +540,7 @@ public void ClearData()
             // Вызываем метод GameManager для загрузки хранилищ
             gameManager.EnsureStorageModulesLoaded();
         }
-
+        /*
         // Здесь логика, которая должна выполняться после загрузки
         // Например, переключение сцены на сохраненную локацию
         if (HasData("CurrentScene"))
@@ -553,7 +556,7 @@ public void ClearData()
                     Logger.Debug($"Changing scene to: {currentScene}", true);
                 }
             }
-        }
+        }*/
     }
 
     /// <summary>
@@ -697,6 +700,15 @@ public void ClearData()
         RemoveData("_BackupTime");
     }
 
+    // Метод для явного обновления текущей сцены
+    public void UpdateCurrentScene(string scenePath)
+    {
+        if (string.IsNullOrEmpty(scenePath))
+            return;
 
+        _currentScene = scenePath;
+        SetData("CurrentScene", scenePath);
+        Logger.Debug($"GameManager: Current scene explicitly updated to {scenePath}", true);
+    }
 
 }

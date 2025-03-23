@@ -54,5 +54,8 @@ ResourceDensity = 0.6
 
 [node name="AutoSave" type="Node" parent="."]
 script = ExtResource("10_lhr70")
+SaveInterval = 5.0
+MinChangeInterval = 5.0
+InitialDelay = 1.0
 
 [editable path="isometric_tileset"]

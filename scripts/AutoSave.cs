@@ -1,8 +1,10 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 
 /// <summary>
-/// Компонент для автоматического сохранения игры через определенные промежутки времени.
+/// Компонент для автоматического сохранения игры через определенные промежутки времени
+/// и при важных изменениях игрового состояния (событийная модель).
 /// Прикрепите этот узел к корневому узлу игровой сцены.
 /// </summary>
 public partial class AutoSave : Node
@@ -22,6 +24,12 @@ public partial class AutoSave : Node
     // Сохранять при выходе из игры
     [Export] public bool SaveOnQuit { get; set; } = true;
 
+    // Показывать ли уведомление при сохранении
+    [Export] public bool ShowNotification { get; set; } = true;
+
+    // Время задержки перед сохранением после изменения (для группировки изменений)
+    [Export] public float SaveDelay { get; set; } = 0.2f; // 200 мс
+
     // Таймер для регулярных сохранений
     private Timer _autoSaveTimer;
 
@@ -36,6 +44,19 @@ public partial class AutoSave : Node
 
     // Начальное состояние загружено
     private bool _initialStateLoaded = false;
+
+    // Индикатор сохранения (UI)
+    private Panel _saveIndicatorPanel;
+    private Label _saveIndicatorLabel;
+    private Timer _indicatorTimer;
+
+    // Отслеживание изменений для оптимизации сохранений
+    private HashSet<string> _changedSystems = new HashSet<string>();
+
+    // Количество активных процессов сохранения
+    private int _activeSaveCount = 0;
+
+    private static bool _isTeleporting = false;
 
     public override void _Ready()
     {
@@ -52,7 +73,7 @@ public partial class AutoSave : Node
         // Создаем и настраиваем таймер для отложенного сохранения при изменениях
         _changeTimer = new Timer
         {
-            WaitTime = MinChangeInterval,
+            WaitTime = SaveDelay, // Используем короткую задержку для быстрого сохранения
             OneShot = true,
             Autostart = false
         };
@@ -62,10 +83,224 @@ public partial class AutoSave : Node
         // Подключаемся к событию выхода из дерева сцен
         GetTree().Connect("tree_exiting", Callable.From(OnTreeExiting));
 
+        // Создаем индикатор сохранения
+        if (ShowNotification)
+        {
+            CreateSaveIndicator();
+        }
+
         // Запускаем первое автосохранение с задержкой
         StartInitialSave();
 
+        // Подключаемся к сигналам изменения состояния игры
+        ConnectToGameSignals();
+
+        // Отложенное подключение сигналов (после полной загрузки сцены)
+        CallDeferred("ConnectSignalsDeferred");
+
         Logger.Debug($"AutoSave initialized with interval: {SaveInterval}s", true);
+    }
+
+    /// <summary>
+    /// Подключает сигналы после полной загрузки сцены
+    /// </summary>
+    private void ConnectSignalsDeferred()
+    {
+        // Ждем полную загрузку сцены, чтобы найти все объекты
+        ConnectToGameSignals();
+    }
+
+    public static void BlockDuringTeleportation(bool block)
+    {
+        _isTeleporting = block;
+        Logger.Debug($"AutoSave teleportation block: {(block ? "ON" : "OFF")}", true);
+    }
+
+
+    /// <summary>
+    /// Подключается к сигналам изменения состояния игры
+    /// </summary>
+    /// 
+
+    private void ConnectToGameSignals()
+    {
+        // Подписываемся на сигналы изменения инвентаря игрока
+        ConnectToPlayerInventorySignals();
+
+        // Подписываемся на сигналы изменения контейнеров
+        ConnectToContainerSignals();
+
+        // Подписываемся на сигналы изменения модулей хранилищ
+        ConnectToStorageModuleSignals();
+    }
+
+    /// <summary>
+    /// Подключается к сигналам изменения инвентаря игрока
+    /// </summary>
+    private void ConnectToPlayerInventorySignals()
+    {
+        // Находим всех игроков в сцене
+        var players = GetTree().GetNodesInGroup("Player");
+        foreach (var playerNode in players)
+        {
+            if (playerNode is Player player)
+            {
+                // Проверяем, не подключены ли мы уже к сигналу
+                if (!player.IsConnected(Player.SignalName.PlayerInventoryChanged, Callable.From(OnPlayerInventoryChanged)))
+                {
+                    player.Connect(Player.SignalName.PlayerInventoryChanged, Callable.From(OnPlayerInventoryChanged));
+                    Logger.Debug("AutoSave: Connected to player inventory signals", false);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Подключается к сигналам изменения контейнеров
+    /// </summary>
+    private void ConnectToContainerSignals()
+    {
+        // Находим все контейнеры в сцене
+        var containers = GetTree().GetNodesInGroup("Containers");
+        foreach (var containerNode in containers)
+        {
+            if (containerNode is Container container && container.ContainerInventory != null)
+            {
+                // Проверяем, не подключены ли мы уже к сигналу
+                if (!container.ContainerInventory.IsConnected("InventoryChanged", Callable.From(OnContainerInventoryChanged)))
+                {
+                    container.ContainerInventory.Connect("InventoryChanged", Callable.From(OnContainerInventoryChanged));
+                    Logger.Debug($"AutoSave: Connected to container inventory signals: {container.Name}", false);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Подключается к сигналам изменения модулей хранилищ
+    /// </summary>
+    private void ConnectToStorageModuleSignals()
+    {
+        // Находим все модули хранилищ в сцене
+        var storageModules = GetTree().GetNodesInGroup("StorageModules");
+        foreach (var moduleNode in storageModules)
+        {
+            if (moduleNode is StorageModule module)
+            {
+                // Проверяем наличие сигнала StorageChanged
+                if (module.HasSignal("StorageChanged") &&
+                    !module.IsConnected("StorageChanged", Callable.From(OnStorageModuleChanged)))
+                {
+                    module.Connect("StorageChanged", Callable.From(OnStorageModuleChanged));
+                    Logger.Debug($"AutoSave: Connected to storage module signals via StorageChanged: {module.Name}", false);
+                }
+                // Если сигнала нет, находим контейнер внутри модуля и подключаемся к его инвентарю
+                else
+                {
+                    var container = module.GetNode<Container>("StorageContainer");
+                    if (container != null && container.ContainerInventory != null)
+                    {
+                        if (!container.ContainerInventory.IsConnected("InventoryChanged", Callable.From(OnContainerInventoryChanged)))
+                        {
+                            container.ContainerInventory.Connect("InventoryChanged", Callable.From(OnContainerInventoryChanged));
+                            Logger.Debug($"AutoSave: Connected to storage module container signals: {module.Name}", false);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Обработчик изменения инвентаря игрока
+    /// </summary>
+    private void OnPlayerInventoryChanged()
+    {
+        Logger.Debug("AutoSave: Player inventory changed, scheduling save", false);
+        _changedSystems.Add("PlayerInventory");
+        NotifyChange();
+    }
+
+    /// <summary>
+    /// Обработчик изменения инвентаря контейнера
+    /// </summary>
+    private void OnContainerInventoryChanged()
+    {
+        Logger.Debug("AutoSave: Container inventory changed, scheduling save", false);
+        _changedSystems.Add("Containers");
+        NotifyChange();
+    }
+
+    /// <summary>
+    /// Обработчик изменения модуля хранилища
+    /// </summary>
+    private void OnStorageModuleChanged()
+    {
+        Logger.Debug("AutoSave: Storage module changed, scheduling save", false);
+        _changedSystems.Add("StorageModules");
+        NotifyChange();
+    }
+
+    /// <summary>
+    /// Создает визуальный индикатор сохранения
+    /// </summary>
+    private void CreateSaveIndicator()
+    {
+        // Создаем панель для индикатора (если уже не создана в другом месте)
+        if (_saveIndicatorPanel != null)
+            return;
+
+        _saveIndicatorPanel = new Panel();
+        _saveIndicatorPanel.Name = "SaveIndicatorPanel";
+        _saveIndicatorPanel.Position = new Vector2(20, 60); // Чуть ниже, чтобы не перекрывать другие уведомления
+        _saveIndicatorPanel.Size = new Vector2(150, 40);
+        _saveIndicatorPanel.Visible = false;
+
+        // Стиль для панели (полупрозрачный фон)
+        var styleBox = new StyleBoxFlat();
+        styleBox.BgColor = new Color(0.1f, 0.1f, 0.3f, 0.7f); // Синеватый, чтобы отличался от других уведомлений
+        styleBox.CornerRadiusTopLeft = styleBox.CornerRadiusTopRight =
+        styleBox.CornerRadiusBottomLeft = styleBox.CornerRadiusBottomRight = 5;
+        _saveIndicatorPanel.AddThemeStyleboxOverride("panel", styleBox);
+
+        // Текст индикатора
+        _saveIndicatorLabel = new Label();
+        _saveIndicatorLabel.Name = "SaveIndicatorLabel";
+        _saveIndicatorLabel.Text = "Auto-Saving...";
+        _saveIndicatorLabel.HorizontalAlignment = HorizontalAlignment.Center;
+        _saveIndicatorLabel.VerticalAlignment = VerticalAlignment.Center;
+        _saveIndicatorLabel.Size = _saveIndicatorPanel.Size;
+
+        // Стиль для текста
+        _saveIndicatorLabel.AddThemeColorOverride("font_color", Colors.White);
+        _saveIndicatorLabel.AddThemeFontSizeOverride("font_size", 14);
+
+        // Добавляем текст к панели
+        _saveIndicatorPanel.AddChild(_saveIndicatorLabel);
+
+        // Создаем канвас для отображения поверх всего
+        var canvas = new CanvasLayer();
+        canvas.Name = "SaveIndicatorCanvas";
+        canvas.Layer = 10; // Высокий слой для отображения поверх UI
+
+        // Добавляем панель к канвасу
+        canvas.AddChild(_saveIndicatorPanel);
+
+        // Добавляем канвас к ноде
+        AddChild(canvas);
+
+        // Создаем таймер для скрытия уведомления, если его еще нет
+        if (_indicatorTimer == null)
+        {
+            _indicatorTimer = new Timer();
+            _indicatorTimer.WaitTime = 1.0f; // 1 секунда отображения
+            _indicatorTimer.OneShot = true;
+            _indicatorTimer.Timeout += () => {
+                if (_saveIndicatorPanel != null)
+                    _saveIndicatorPanel.Visible = false;
+            };
+            AddChild(_indicatorTimer);
+        }
     }
 
     /// <summary>
@@ -83,10 +318,10 @@ public partial class AutoSave : Node
         initialTimer.Timeout += () =>
         {
             // Загружаем начальное состояние, если оно еще не загружено
-            if (!_initialStateLoaded)
-            {
-                LoadInitialState();
-            }
+           // if (!_initialStateLoaded)
+         //   {
+            //    LoadInitialState();
+          //  }
 
             // Запускаем регулярное автосохранение
             _autoSaveTimer.Start();
@@ -169,30 +404,39 @@ public partial class AutoSave : Node
     {
         if (SaveOnQuit)
         {
-            PerformSave();
+            PerformSave(true); // Принудительное сохранение при выходе
         }
     }
 
     /// <summary>
     /// Выполняет сохранение игры
     /// </summary>
-    private void PerformSave()
+    /// <param name="immediate">Выполнить сохранение немедленно, без проверок интервалов</param>
+    private void PerformSave(bool immediate = false)
     {
+        // Если идет телепортация, и это не принудительное сохранение, пропускаем
+        if (_isTeleporting && !immediate)
+        {
+            Logger.Debug("AutoSave: Skipping save during teleportation", true);
+            return;
+        }
+        // Увеличиваем счетчик активных сохранений
+        _activeSaveCount++;
+
+        // Показываем индикатор сохранения, если включен
+        if (ShowNotification && _saveIndicatorPanel != null)
+        {
+            _saveIndicatorPanel.Visible = true;
+            _saveIndicatorLabel.Text = "Auto-Saving...";
+            if (_indicatorTimer != null)
+                _indicatorTimer.Stop(); // Останавливаем таймер, чтобы индикатор не исчез слишком рано
+        }
+
         var gameManager = GetNode<GameManager>("/root/GameManager");
         if (gameManager != null)
         {
             // Явно сохраняем инвентарь игрока перед основным сохранением
-            var players = GetTree().GetNodesInGroup("Player");
-            if (players.Count > 0 && players[0] is Player player && player.PlayerInventory != null)
-            {
-                Logger.Debug($"Saving player inventory: {player.PlayerInventory.Items.Count} items", false);
-
-                // Сериализуем инвентарь
-                var inventoryData = player.PlayerInventory.Serialize();
-
-                // Сохраняем в GameManager
-                gameManager.SetData("PlayerInventorySaved", inventoryData);
-            }
+            SavePlayerInventory(gameManager);
 
             // Сохраняем данные хранилищ станции, если есть
             SaveStorageData(gameManager);
@@ -205,19 +449,107 @@ public partial class AutoSave : Node
                 // Обновляем время последнего сохранения
                 _lastSaveTime = (float)(Time.GetTicksMsec() / 1000.0);
                 Logger.Debug($"Auto-save successful at {DateTime.Now.ToString("HH:mm:ss")}", true);
+
+                // Обновляем индикатор
+                UpdateSaveIndicator(true);
+
+                // Сбрасываем список измененных систем
+                _changedSystems.Clear();
             }
             else
             {
                 Logger.Error("Auto-save failed");
+
+                // Обновляем индикатор для ошибки
+                UpdateSaveIndicator(false);
             }
         }
+
+        // Уменьшаем счетчик активных сохранений
+        _activeSaveCount--;
     }
+
+    /// <summary>
+    /// Обновляет вид индикатора сохранения
+    /// </summary>
+    /// <param name="success">Было ли сохранение успешным</param>
+    private void UpdateSaveIndicator(bool success)
+    {
+        if (!ShowNotification || _saveIndicatorPanel == null)
+            return;
+
+        if (success)
+        {
+            _saveIndicatorLabel.Text = "Game Saved";
+            var styleBox = _saveIndicatorPanel.GetThemeStylebox("panel", "Panel") as StyleBoxFlat;
+            if (styleBox != null)
+            {
+                styleBox.BgColor = new Color(0.1f, 0.3f, 0.1f, 0.7f); // Зеленоватый для успеха
+            }
+        }
+        else
+        {
+            _saveIndicatorLabel.Text = "Save Failed";
+            var styleBox = _saveIndicatorPanel.GetThemeStylebox("panel", "Panel") as StyleBoxFlat;
+            if (styleBox != null)
+            {
+                styleBox.BgColor = new Color(0.3f, 0.1f, 0.1f, 0.7f); // Красноватый для ошибки
+            }
+        }
+
+        // Запускаем таймер для скрытия индикатора
+        if (_indicatorTimer != null)
+        {
+            _indicatorTimer.Start();
+        }
+    }
+
+    /// <summary>
+    /// Сохраняет инвентарь игрока
+    /// </summary>
+    private void SavePlayerInventory(GameManager gameManager)
+    {
+        if (gameManager == null)
+            return;
+
+        // Сохраняем только если были изменения в инвентаре или это принудительное сохранение
+        if (!_changedSystems.Contains("PlayerInventory") && _changedSystems.Count > 0)
+            return;
+
+        // Находим игрока для получения инвентаря
+        var players = GetTree().GetNodesInGroup("Player");
+        if (players.Count > 0 && players[0] is Player player && player.PlayerInventory != null)
+        {
+            // Сериализуем инвентарь
+            var inventoryData = player.PlayerInventory.Serialize();
+
+            // Сохраняем в GameManager
+            gameManager.SetData("PlayerInventorySaved", inventoryData);
+
+            // Добавляем метку времени для отслеживания актуальности данных
+            gameManager.SetData("PlayerInventoryLastSaveTime", DateTime.Now.ToString());
+
+            int itemCount = 0;
+            if (inventoryData.ContainsKey("items") &&
+                inventoryData["items"] is List<Dictionary<string, object>> items)
+            {
+                itemCount = items.Count;
+            }
+
+            Logger.Debug($"Saved player inventory with {itemCount} items", false);
+        }
+    }
+
     /// <summary>
     /// Сохраняет данные хранилищ станции
     /// </summary>
     private void SaveStorageData(GameManager gameManager)
     {
         if (gameManager == null)
+            return;
+
+        // Сохраняем только если были изменения в хранилищах или это принудительное сохранение
+        if (!_changedSystems.Contains("Containers") && !_changedSystems.Contains("StorageModules") && _changedSystems.Count > 0)
             return;
 
         // Ищем все контейнеры хранилищ и сохраняем их состояние
@@ -306,6 +638,9 @@ public partial class AutoSave : Node
     /// <returns>True, если сохранение успешно</returns>
     public bool ForceSave()
     {
+        // Выполняем сохранение немедленно
+        PerformSave(true);
+
         var gameManager = GetNode<GameManager>("/root/GameManager");
         if (gameManager != null)
         {
@@ -328,6 +663,17 @@ public partial class AutoSave : Node
         return false;
     }
 
+    /// <summary>
+    /// Дополнительный метод для вызова извне (например, при подборе важных предметов)
+    /// </summary>
+    /// <param name="itemId">ID подобранного предмета</param>
+    public void SaveAfterImportantPickup(string itemId)
+    {
+        // Запоминаем, что произошло важное событие
+        Logger.Debug($"AutoSave: Important item pickup: {itemId}, forcing save", true);
+        _changedSystems.Add("ImportantPickup");
 
-
+        // Принудительно сохраняем игру, игнорируя все таймеры и ограничения
+        ForceSave();
+    }
 }

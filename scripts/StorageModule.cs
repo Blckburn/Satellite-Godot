@@ -42,6 +42,8 @@ public partial class StorageModule : BaseStationModule
 
     private const string STORAGE_INVENTORY_KEY = "StorageModuleInventory";
 
+    [Signal] public delegate void StorageChangedEventHandler();
+
     public override void _Ready()
     {
         // Настройка основных параметров модуля
@@ -611,6 +613,8 @@ private void CheckPlayerDistance()
             var firstItem = _storageContainer.ContainerInventory.Items[0];
             Logger.Debug($"  First item: {firstItem.DisplayName} x{firstItem.Quantity}", false);
         }
+        EmitSignal(SignalName.StorageChanged);
+
     }
 
     /// <summary>
@@ -807,6 +811,7 @@ private void CheckPlayerDistance()
     {
         // Автоматически сохраняем состояние хранилища при изменении
         SaveStorageInventory();
+        EmitSignal(SignalName.StorageChanged);
         Logger.Debug($"Auto-saved storage '{StorageID}' after inventory change", false);
     }
 
