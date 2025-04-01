@@ -1,8 +1,8 @@
 [gd_scene load_steps=6 format=3 uid="uid://bu3h56rpjxyms"]
 
 [ext_resource type="Script" uid="uid://djcfkyrofhgqh" path="res://scripts/Player.cs" id="1_gfjak"]
-[ext_resource type="Texture2D" uid="uid://bgyvvfne50cko" path="res://icon.svg" id="2_4kuee"]
 [ext_resource type="Script" uid="uid://d34tup0xvy3g2" path="res://scripts/CameraController.cs" id="3_4kuee"]
+[ext_resource type="SpriteFrames" uid="uid://btf7kr8g0wy4u" path="res://resources/player/player_animations.tres" id="3_524rm"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_gmlin"]
 size = Vector2(20.125, 9.5)
@@ -16,14 +16,7 @@ y_sort_enabled = true
 script = ExtResource("1_gfjak")
 ShowDebugInfo = true
 TileMapPath = NodePath("TileMap")
-
-[node name="Sprite2D" type="Sprite2D" parent="." groups=["Player"]]
-z_as_relative = false
-y_sort_enabled = true
-position = Vector2(-1.66893e-06, 0)
-scale = Vector2(0.1875, 0.460868)
-texture = ExtResource("2_4kuee")
-offset = Vector2(0, -55.535)
+SpritePath = NodePath("")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 z_as_relative = false
@@ -41,3 +34,12 @@ PlayerPath = NodePath("..")
 y_sort_enabled = true
 position = Vector2(0, -23)
 shape = SubResource("CircleShape2D_lvxji")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." groups=["Player"]]
+z_as_relative = false
+y_sort_enabled = true
+position = Vector2(0, -0.277939)
+scale = Vector2(1, 0.994)
+sprite_frames = ExtResource("3_524rm")
+animation = &"walk_down"
+offset = Vector2(0, -31.815)

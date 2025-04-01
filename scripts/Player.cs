@@ -9,11 +9,32 @@ public partial class Player : Character
     private const float INTERACTION_RADIUS = 2.0f;
     [Export] public string StationScenePath { get; set; } = "res://scenes/station/space_station.tscn";
 
+    // Перечисление для хранения направления движения
+    private enum MoveDirection
+    {
+        None,
+        Up,
+        UpRight,
+        Right,
+        DownRight,
+        Down,
+        DownLeft,
+        Left,
+        UpLeft
+    }
+
+    // Текущее направление движения
+    private MoveDirection _currentDirection = MoveDirection.Down;
+    // Предыдущее направление движения (для сохранения при остановке)
+    private MoveDirection _lastDirection = MoveDirection.Down;
+    // Флаг движения
+    private bool _isMoving = false;
+
     private Node2D _teleportEffects;
     private AnimationPlayer _teleportAnimation;
 
-    // Ссылки на компоненты
-    private Sprite2D _sprite;
+    // Ссылки на компоненты - обновлено для AnimatedSprite2D
+    private AnimatedSprite2D _playerSprite;
     private CollisionShape2D _collisionShape;
     private Area2D _interactionArea;
     private CollisionShape2D _interactionCollisionShape;
@@ -27,9 +48,6 @@ public partial class Player : Character
     // Счетчик для обновления отладки
     private int _debugUpdateCounter = 0;
     private const int DEBUG_UPDATE_INTERVAL = 30; // Обновление каждые 30 кадров (0.5 сек при 60 FPS)
-
-    // Удаляем таймер для обновления Z-индекса
-    // private Timer _zIndexTimer;
 
     public override void _Ready()
     {
@@ -57,10 +75,22 @@ public partial class Player : Character
             Logger.Debug("Player inventory updated!", false);
         }));
 
-        // Инициализация компонентов
-        _sprite = GetNodeOrNull<Sprite2D>("Sprite2D");
+        // Инициализация компонентов - обновлено для AnimatedSprite2D
+        _playerSprite = GetNodeOrNull<AnimatedSprite2D>("AnimatedSprite2D");
         _collisionShape = GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
         _interactionArea = GetNodeOrNull<Area2D>("InteractionArea");
+
+        // Проверяем, существует ли спрайт персонажа
+        if (_playerSprite == null)
+        {
+            Logger.Debug("AnimatedSprite2D node not found. Make sure to rename the sprite node.", true);
+        }
+        else
+        {
+            // Инициализируем анимацию покоя
+            UpdatePlayerAnimation();
+            Logger.Debug("AnimatedSprite2D found and animation initialized", true);
+        }
 
         // Проверяем, существует ли интерактивная область, если нет - создаем
         if (_interactionArea == null)
@@ -84,6 +114,9 @@ public partial class Player : Character
         // Обработка ввода
         HandleInput();
 
+        // Обновление анимации персонажа
+        UpdatePlayerAnimation();
+
         // Вызов базового метода, если он существует
         base._Process(delta);
 
@@ -93,6 +126,126 @@ public partial class Player : Character
             TeleportToStation();
         }
     }
+
+    // Новый метод для определения направления движения
+    private MoveDirection GetMoveDirection(Vector2 moveVector)
+    {
+        // Если нет движения, возвращаем None
+        if (moveVector.LengthSquared() < 0.01f)
+            return MoveDirection.None;
+
+        // Получаем угол в радианах
+        float angle = Mathf.Atan2(moveVector.Y, moveVector.X);
+
+        // Преобразуем в градусы и нормализуем (0-360)
+        float degrees = Mathf.RadToDeg(angle);
+        if (degrees < 0) degrees += 360f;
+
+        // Определяем направление по углу
+        // Разделим круг на 8 секторов по 45 градусов
+        if (degrees >= 337.5f || degrees < 22.5f)
+            return MoveDirection.Right;
+        else if (degrees >= 22.5f && degrees < 67.5f)
+            return MoveDirection.DownRight;
+        else if (degrees >= 67.5f && degrees < 112.5f)
+            return MoveDirection.Down;
+        else if (degrees >= 112.5f && degrees < 157.5f)
+            return MoveDirection.DownLeft;
+        else if (degrees >= 157.5f && degrees < 202.5f)
+            return MoveDirection.Left;
+        else if (degrees >= 202.5f && degrees < 247.5f)
+            return MoveDirection.UpLeft;
+        else if (degrees >= 247.5f && degrees < 292.5f)
+            return MoveDirection.Up;
+        else // if (degrees >= 292.5f && degrees < 337.5f)
+            return MoveDirection.UpRight;
+    }
+
+    // Новый метод для обновления анимации персонажа
+    private void UpdatePlayerAnimation()
+    {
+        if (_playerSprite == null)
+            return;
+
+        // Определяем, двигается ли персонаж
+        _isMoving = _movementDirection.LengthSquared() > 0.01f;
+
+        // Если персонаж двигается, обновляем текущее направление
+        if (_isMoving)
+        {
+            _currentDirection = GetMoveDirection(_movementDirection);
+            _lastDirection = _currentDirection;
+        }
+        else
+        {
+            // Если персонаж остановился, используем последнее направление для анимации покоя
+            _currentDirection = _lastDirection;
+        }
+
+        // Получаем базовое имя анимации в зависимости от состояния движения
+        string animBase = _isMoving ? "walk_" : "idle_";
+
+        // Добавляем направление к имени анимации
+        string animDirection = "";
+        switch (_currentDirection)
+        {
+            case MoveDirection.Up:
+                animDirection = "up";
+                break;
+            case MoveDirection.UpRight:
+                animDirection = "up_right";
+                break;
+            case MoveDirection.Right:
+                animDirection = "right";
+                break;
+            case MoveDirection.DownRight:
+                animDirection = "down_right";
+                break;
+            case MoveDirection.Down:
+                animDirection = "down";
+                break;
+            case MoveDirection.DownLeft:
+                animDirection = "down_left";
+                break;
+            case MoveDirection.Left:
+                animDirection = "left";
+                break;
+            case MoveDirection.UpLeft:
+                animDirection = "up_left";
+                break;
+            default:
+                animDirection = "down"; // По умолчанию смотрим вниз
+                break;
+        }
+
+        // Формируем полное имя анимации
+        string animationName = $"{animBase}{animDirection}";
+
+        // Проверяем, есть ли такая анимация в SpriteFrames
+        if (_playerSprite.SpriteFrames != null && _playerSprite.SpriteFrames.HasAnimation(animationName))
+        {
+            // Играем анимацию только если она отличается от текущей или не воспроизводится
+            if (_playerSprite.Animation != animationName || !_playerSprite.IsPlaying())
+            {
+                _playerSprite.Play(animationName);
+                Logger.Debug($"Playing animation: {animationName}", false);
+            }
+        }
+        else
+        {
+            // Если нет такой анимации, используем запасной вариант "idle_down"
+            if (_playerSprite.SpriteFrames != null && _playerSprite.SpriteFrames.HasAnimation("idle_down"))
+            {
+                _playerSprite.Play("idle_down");
+                Logger.Debug($"Animation {animationName} not found, playing idle_down instead", false);
+            }
+            else
+            {
+                Logger.Debug($"No animations found in SpriteFrames or SpriteFrames is null", false);
+            }
+        }
+    }
+
     private void TeleportToStation()
     {
         Logger.Debug("Starting teleportation to station via keyboard shortcut", true);
@@ -358,6 +511,7 @@ public partial class Player : Character
     {
         base._ExitTree();
     }
+
     private void UpdateInventoryUIDeferred()
     {
         // Ищем все UI инвентаря и обновляем их
