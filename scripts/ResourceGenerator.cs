@@ -531,10 +531,8 @@ public class ResourceGenerator
                     (int)worldOffset.Y + position.Y
                 );
 
-                // Устанавливаем позицию
-                // Для изометрической проекции преобразуем координаты тайлов в мировые
-                Vector2 isoPos = MapTileToIsometricWorld(worldPos);
-                resourceNode.Position = isoPos;
+                // Устанавливаем позицию строго по изометрической формуле без дополнительных сдвигов
+                resourceNode.Position = MapTileToIsometricWorld(worldPos);
 
                 // Настраиваем свойства ресурса
                 resourceNode.Type = resourceType;
@@ -575,12 +573,8 @@ public class ResourceGenerator
                 resourceNode.EnablePulsating = true;
                 resourceNode.PulsatingSpeed = 1.0f + (float)_random.NextDouble() * 0.5f; // Немного рандомизируем скорость пульсации
 
-                // Добавляем в родительский узел и гарантируем YSort
+                // Добавляем в родительский узел
                 parentNode.AddChild(resourceNode);
-                if (parentNode is Node2D n2)
-                {
-                    n2.YSortEnabled = true;
-                }
 
                 Logger.Debug($"Placed {resourceType} resource at world position {isoPos}", false);
             }
