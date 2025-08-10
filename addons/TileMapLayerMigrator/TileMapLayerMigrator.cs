@@ -33,26 +33,31 @@ public partial class TileMapLayerMigrator : EditorPlugin
             return;
         }
 
+        Node searchRoot = root;
         var iso = root.GetNodeOrNull<Node2D>("isometric_tileset");
-        if (iso == null)
-        {
-            GD.PrintErr("TileMapLayerMigrator: Node '../isometric_tileset' not found.");
-            return;
-        }
+        if (iso != null)
+            searchRoot = iso;
 
-        ConvertTileMapToLayers(iso, "Floors");
-        ConvertTileMapToLayers(iso, "Walls");
+        // Try convert known names first; if nothing converted, fallback to converting any TileMap under the root
+        bool converted = false;
+        converted |= ConvertTileMapToLayers(searchRoot, "Floors");
+        converted |= ConvertTileMapToLayers(searchRoot, "Walls");
+
+        if (!converted)
+        {
+            GD.Print("TileMapLayerMigrator: Named TileMaps not found, converting all TileMap nodes under the scene root...");
+            ConvertAllTileMaps(searchRoot);
+        }
 
         GD.Print("TileMapLayerMigrator: Done. Please save the scene.");
     }
 
-    private void ConvertTileMapToLayers(Node parent, string tileMapName)
+    private bool ConvertTileMapToLayers(Node parent, string tileMapName)
     {
         var tm = parent.GetNodeOrNull<TileMap>(tileMapName);
         if (tm == null)
         {
-            GD.Print($"TileMapLayerMigrator: TileMap '{tileMapName}' not found, skipping.");
-            return;
+            return false;
         }
 
         // Create a new TileMapLayer and copy basic settings
@@ -81,6 +86,23 @@ public partial class TileMapLayerMigrator : EditorPlugin
 
         // Remove original TileMap
         tm.QueueFree();
+        return true;
+    }
+
+    private void ConvertAllTileMaps(Node parent)
+    {
+        foreach (var child in parent.GetChildren())
+        {
+            if (child is TileMap tm)
+            {
+                // Preserve the original node name
+                ConvertTileMapToLayers(parent, tm.Name);
+            }
+            else
+            {
+                ConvertAllTileMaps(child);
+            }
+        }
     }
 }
 #endif
