@@ -119,6 +119,14 @@ public partial class ResourceNode : InteractiveObject, IInteraction
         // Гарантируем корректную сортировку по Y для изометрии
         YSortEnabled = true; // Для Node2D достаточно включить YSort
 
+        // Отключаем твёрдую коллизию у статического тела, чтобы ресурс не блокировал проходы
+        var staticBody = GetNodeOrNull<StaticBody2D>("StaticBody2D");
+        if (staticBody != null)
+        {
+            staticBody.CollisionLayer = 0;
+            staticBody.CollisionMask = 0;
+        }
+
         Logger.Debug($"ResourceNode '{Name}' initialized with type: {Type}", true);
     }
 
