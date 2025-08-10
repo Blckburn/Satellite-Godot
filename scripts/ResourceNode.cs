@@ -99,13 +99,8 @@ public partial class ResourceNode : InteractiveObject, IInteraction
         {
             _initialScale = _sprite.Scale;
             _sprite.Centered = true; // оставляем центр, корректируем смещением
-            var tex = _sprite.Texture;
-            if (tex != null)
-            {
-                // Центр + смещение вниз на половину высоты даёт нижнюю середину
-                float down = tex.GetHeight() / 2f - FootGroundOffsetPx;
-                _sprite.Offset = new Godot.Vector2(0, down);
-            }
+            // Центрированный спрайт: небольшой сдвиг вниз регулируется FootGroundOffsetPx
+            _sprite.Offset = new Godot.Vector2(0, FootGroundOffsetPx);
         }
 
         // Загружаем предмет, если он не был установлен напрямую

@@ -531,8 +531,10 @@ public class ResourceGenerator
                     (int)worldOffset.Y + position.Y
                 );
 
-                // Устанавливаем позицию строго по изометрической формуле без дополнительных сдвигов
-                resourceNode.Position = MapTileToIsometricWorld(worldPos);
+                // Устанавливаем позицию: изометрическая формула + смещение до "пятки" тайла (tileHeight/2)
+                var iso = MapTileToIsometricWorld(worldPos);
+                iso.Y += 16; // половина высоты тайла (32/2)
+                resourceNode.Position = iso;
 
                 // Настраиваем свойства ресурса
                 resourceNode.Type = resourceType;
