@@ -54,6 +54,8 @@ public partial class ResourceNode : InteractiveObject, IInteraction
     [Export] public float PulsatingSpeed { get; set; } = 1.0f;
     [Export] public float PulsatingStrength { get; set; } = 0.15f;
     [Export] public float RotationSpeed { get; set; } = 30.0f;
+    // Вертикальный сдвиг позиции для согласования Y‑сортировки с TileMapLayer.y_sort_origin
+    [Export] public int SortYOffsetPx { get; set; } = 35;
 
     // Визуальные компоненты
     private Sprite2D _sprite;
@@ -111,7 +113,10 @@ public partial class ResourceNode : InteractiveObject, IInteraction
         UpdateVisuals();
 
         // Гарантируем корректную сортировку по Y для изометрии
-        YSortEnabled = true; // Для Node2D достаточно включить YSort; origin доступен у TileMap/TileMapLayer
+        YSortEnabled = true; // Для Node2D достаточно включить YSort
+
+        // Смещаем позицию вниз на SortYOffsetPx, чтобы линия отсечения совпала с origin тайла
+        Position = new Vector2(Position.X, Position.Y + SortYOffsetPx);
 
         Logger.Debug($"ResourceNode '{Name}' initialized with type: {Type}", true);
     }
