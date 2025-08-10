@@ -833,7 +833,7 @@ public partial class LevelGenerator : Node
                     FloorsTileMap.SetCell(worldPos, FloorsSourceID, floorTile);
 
                     // ВАЖНО: Удаляем все стены и препятствия
-                    WallsTileMap.EraseCell(MAP_LAYER, worldPos);
+                    WallsTileMap.EraseCell(worldPos);
 
                     // Обновляем маску секции
                     if (posX < MapWidth && posY < MapHeight)
@@ -901,7 +901,7 @@ public partial class LevelGenerator : Node
                     FloorsTileMap.SetCell(worldPos, FloorsSourceID, floorTile);
 
                     // ВАЖНО: Удаляем все стены и препятствия
-                    WallsTileMap.EraseCell(MAP_LAYER, worldPos);
+                    WallsTileMap.EraseCell(worldPos);
 
                     // Обновляем маску секции
                     if (posX < MapWidth && posY < MapHeight)
@@ -1451,7 +1451,7 @@ public partial class LevelGenerator : Node
         try
         {
             // Получаем данные тайла
-            TileData tileData = FloorsTileMap.GetCellTileData(MAP_LAYER, new Vector2I(x, y));
+            TileData tileData = FloorsTileMap.GetCellTileData(new Vector2I(x, y));
             if (tileData != null)
             {
                 // Устанавливаем пользовательские данные
@@ -1461,7 +1461,7 @@ public partial class LevelGenerator : Node
                 if (isWalkable)
                 {
                     // Убираем тайл из WallsTileMap, чтобы сделать проходимым
-                    WallsTileMap.EraseCell(MAP_LAYER, new Vector2I(x, y));
+                    WallsTileMap.EraseCell(new Vector2I(x, y));
                 }
                 else
                 {

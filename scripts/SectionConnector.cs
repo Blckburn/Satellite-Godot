@@ -34,14 +34,14 @@ public sealed class SectionConnector
 
         for (int x = 0; x < mapWidth; x++)
         {
-            wallsTileMap.SetCell(mapLayer, new Vector2I((int)leftSection.WorldOffset.X + x, (int)leftSection.WorldOffset.Y + topWallY), wallsSourceId, leftWallTile);
-            wallsTileMap.SetCell(mapLayer, new Vector2I((int)leftSection.WorldOffset.X + x, (int)leftSection.WorldOffset.Y + bottomWallY), wallsSourceId, leftWallTile);
+            wallsTileMap.SetCell(new Vector2I((int)leftSection.WorldOffset.X + x, (int)leftSection.WorldOffset.Y + topWallY), wallsSourceId, leftWallTile);
+            wallsTileMap.SetCell(new Vector2I((int)leftSection.WorldOffset.X + x, (int)leftSection.WorldOffset.Y + bottomWallY), wallsSourceId, leftWallTile);
         }
 
         for (int x = 0; x < mapWidth; x++)
         {
-            wallsTileMap.SetCell(mapLayer, new Vector2I((int)rightSection.WorldOffset.X + x, (int)rightSection.WorldOffset.Y + topWallY), wallsSourceId, rightWallTile);
-            wallsTileMap.SetCell(mapLayer, new Vector2I((int)rightSection.WorldOffset.X + x, (int)rightSection.WorldOffset.Y + bottomWallY), wallsSourceId, rightWallTile);
+            wallsTileMap.SetCell(new Vector2I((int)rightSection.WorldOffset.X + x, (int)rightSection.WorldOffset.Y + topWallY), wallsSourceId, rightWallTile);
+            wallsTileMap.SetCell(new Vector2I((int)rightSection.WorldOffset.X + x, (int)rightSection.WorldOffset.Y + bottomWallY), wallsSourceId, rightWallTile);
         }
     }
 
@@ -66,14 +66,14 @@ public sealed class SectionConnector
 
         for (int y = 0; y < mapHeight; y++)
         {
-            wallsTileMap.SetCell(mapLayer, new Vector2I((int)topSection.WorldOffset.X + leftWallX, (int)topSection.WorldOffset.Y + y), wallsSourceId, topWallTile);
-            wallsTileMap.SetCell(mapLayer, new Vector2I((int)topSection.WorldOffset.X + rightWallX, (int)topSection.WorldOffset.Y + y), wallsSourceId, topWallTile);
+            wallsTileMap.SetCell(new Vector2I((int)topSection.WorldOffset.X + leftWallX, (int)topSection.WorldOffset.Y + y), wallsSourceId, topWallTile);
+            wallsTileMap.SetCell(new Vector2I((int)topSection.WorldOffset.X + rightWallX, (int)topSection.WorldOffset.Y + y), wallsSourceId, topWallTile);
         }
 
         for (int y = 0; y < mapHeight; y++)
         {
-            wallsTileMap.SetCell(mapLayer, new Vector2I((int)bottomSection.WorldOffset.X + leftWallX, (int)bottomSection.WorldOffset.Y + y), wallsSourceId, bottomWallTile);
-            wallsTileMap.SetCell(mapLayer, new Vector2I((int)bottomSection.WorldOffset.X + rightWallX, (int)bottomSection.WorldOffset.Y + y), wallsSourceId, bottomWallTile);
+            wallsTileMap.SetCell(new Vector2I((int)bottomSection.WorldOffset.X + leftWallX, (int)bottomSection.WorldOffset.Y + y), wallsSourceId, bottomWallTile);
+            wallsTileMap.SetCell(new Vector2I((int)bottomSection.WorldOffset.X + rightWallX, (int)bottomSection.WorldOffset.Y + y), wallsSourceId, bottomWallTile);
         }
     }
 
@@ -101,21 +101,21 @@ public sealed class SectionConnector
 
             for (int x = mapWidth - sectionSpacing; x < mapWidth; x++)
             {
-                wallsTileMap.SetCell(mapLayer, new Vector2I((int)leftSection.WorldOffset.X + x, (int)leftSection.WorldOffset.Y + topWallY), wallsSourceId, leftWallTile);
-                wallsTileMap.SetCell(mapLayer, new Vector2I((int)leftSection.WorldOffset.X + x, (int)leftSection.WorldOffset.Y + bottomWallY), wallsSourceId, leftWallTile);
+                wallsTileMap.SetCell(new Vector2I((int)leftSection.WorldOffset.X + x, (int)leftSection.WorldOffset.Y + topWallY), wallsSourceId, leftWallTile);
+                wallsTileMap.SetCell(new Vector2I((int)leftSection.WorldOffset.X + x, (int)leftSection.WorldOffset.Y + bottomWallY), wallsSourceId, leftWallTile);
             }
 
             for (int x = 0; x < sectionSpacing; x++)
             {
-                wallsTileMap.SetCell(mapLayer, new Vector2I((int)rightSection.WorldOffset.X + x, (int)rightSection.WorldOffset.Y + topWallY), wallsSourceId, rightWallTile);
-                wallsTileMap.SetCell(mapLayer, new Vector2I((int)rightSection.WorldOffset.X + x, (int)rightSection.WorldOffset.Y + bottomWallY), wallsSourceId, rightWallTile);
+                wallsTileMap.SetCell(new Vector2I((int)rightSection.WorldOffset.X + x, (int)rightSection.WorldOffset.Y + topWallY), wallsSourceId, rightWallTile);
+                wallsTileMap.SetCell(new Vector2I((int)rightSection.WorldOffset.X + x, (int)rightSection.WorldOffset.Y + bottomWallY), wallsSourceId, rightWallTile);
             }
 
             for (int bridgeX = 0; bridgeX < sectionSpacing; bridgeX++)
             {
                 Vector2I tile = (bridgeX < sectionSpacing / 2) ? leftWallTile : rightWallTile;
-                wallsTileMap.SetCell(mapLayer, new Vector2I((int)leftSection.WorldOffset.X + mapWidth + bridgeX, (int)leftSection.WorldOffset.Y + topWallY), wallsSourceId, tile);
-                wallsTileMap.SetCell(mapLayer, new Vector2I((int)leftSection.WorldOffset.X + mapWidth + bridgeX, (int)leftSection.WorldOffset.Y + bottomWallY), wallsSourceId, tile);
+                wallsTileMap.SetCell(new Vector2I((int)leftSection.WorldOffset.X + mapWidth + bridgeX, (int)leftSection.WorldOffset.Y + topWallY), wallsSourceId, tile);
+                wallsTileMap.SetCell(new Vector2I((int)leftSection.WorldOffset.X + mapWidth + bridgeX, (int)leftSection.WorldOffset.Y + bottomWallY), wallsSourceId, tile);
             }
         }
         catch (Exception e)
@@ -148,21 +148,21 @@ public sealed class SectionConnector
 
             for (int y = mapHeight - sectionSpacing; y < mapHeight; y++)
             {
-                wallsTileMap.SetCell(mapLayer, new Vector2I((int)topSection.WorldOffset.X + leftWallX, (int)topSection.WorldOffset.Y + y), wallsSourceId, topWallTile);
-                wallsTileMap.SetCell(mapLayer, new Vector2I((int)topSection.WorldOffset.X + rightWallX, (int)topSection.WorldOffset.Y + y), wallsSourceId, topWallTile);
+                wallsTileMap.SetCell(new Vector2I((int)topSection.WorldOffset.X + leftWallX, (int)topSection.WorldOffset.Y + y), wallsSourceId, topWallTile);
+                wallsTileMap.SetCell(new Vector2I((int)topSection.WorldOffset.X + rightWallX, (int)topSection.WorldOffset.Y + y), wallsSourceId, topWallTile);
             }
 
             for (int y = 0; y < sectionSpacing; y++)
             {
-                wallsTileMap.SetCell(mapLayer, new Vector2I((int)bottomSection.WorldOffset.X + leftWallX, (int)bottomSection.WorldOffset.Y + y), wallsSourceId, bottomWallTile);
-                wallsTileMap.SetCell(mapLayer, new Vector2I((int)bottomSection.WorldOffset.X + rightWallX, (int)bottomSection.WorldOffset.Y + y), wallsSourceId, bottomWallTile);
+                wallsTileMap.SetCell(new Vector2I((int)bottomSection.WorldOffset.X + leftWallX, (int)bottomSection.WorldOffset.Y + y), wallsSourceId, bottomWallTile);
+                wallsTileMap.SetCell(new Vector2I((int)bottomSection.WorldOffset.X + rightWallX, (int)bottomSection.WorldOffset.Y + y), wallsSourceId, bottomWallTile);
             }
 
             for (int bridgeY = 0; bridgeY < sectionSpacing; bridgeY++)
             {
                 Vector2I tile = (bridgeY < sectionSpacing / 2) ? topWallTile : bottomWallTile;
-                wallsTileMap.SetCell(mapLayer, new Vector2I((int)topSection.WorldOffset.X + leftWallX, (int)topSection.WorldOffset.Y + mapHeight + bridgeY), wallsSourceId, tile);
-                wallsTileMap.SetCell(mapLayer, new Vector2I((int)topSection.WorldOffset.X + rightWallX, (int)topSection.WorldOffset.Y + mapHeight + bridgeY), wallsSourceId, tile);
+                wallsTileMap.SetCell(new Vector2I((int)topSection.WorldOffset.X + leftWallX, (int)topSection.WorldOffset.Y + mapHeight + bridgeY), wallsSourceId, tile);
+                wallsTileMap.SetCell(new Vector2I((int)topSection.WorldOffset.X + rightWallX, (int)topSection.WorldOffset.Y + mapHeight + bridgeY), wallsSourceId, tile);
             }
         }
         catch (Exception e)
@@ -180,7 +180,7 @@ public sealed class SectionConnector
         bool isHorizontal,
         int mapWidth,
         int mapHeight,
-        Godot.TileMap wallsTileMap,
+        Godot.TileMapLayer wallsTileMap,
         int mapLayer,
         int wallsSourceId,
         Func<int, Vector2I, Vector2I> wallTileSelector)
@@ -200,9 +200,9 @@ public sealed class SectionConnector
                     {
                         if (x < 0 || x >= mapWidth) continue;
                         Vector2I topWallPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + topWallY);
-                        wallsTileMap.SetCell(mapLayer, topWallPos, wallsSourceId, wallTile);
+                        wallsTileMap.SetCell(topWallPos, wallsSourceId, wallTile);
                         Vector2I bottomWallPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + bottomWallY);
-                        wallsTileMap.SetCell(mapLayer, bottomWallPos, wallsSourceId, wallTile);
+                        wallsTileMap.SetCell(bottomWallPos, wallsSourceId, wallTile);
                     }
                 }
             }
@@ -216,9 +216,9 @@ public sealed class SectionConnector
                     {
                         if (y < 0 || y >= mapHeight) continue;
                         Vector2I leftWallPos = new Vector2I((int)worldOffset.X + leftWallX, (int)worldOffset.Y + y);
-                        wallsTileMap.SetCell(mapLayer, leftWallPos, wallsSourceId, wallTile);
+                        wallsTileMap.SetCell(leftWallPos, wallsSourceId, wallTile);
                         Vector2I rightWallPos = new Vector2I((int)worldOffset.X + rightWallX, (int)worldOffset.Y + y);
-                        wallsTileMap.SetCell(mapLayer, rightWallPos, wallsSourceId, wallTile);
+                        wallsTileMap.SetCell(rightWallPos, wallsSourceId, wallTile);
                     }
                 }
             }

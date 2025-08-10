@@ -18,7 +18,7 @@ public sealed class SingleMapBuilder
         for (int x = 0; x < mapWidth; x++)
         for (int y = 0; y < mapHeight; y++)
         {
-            floors.SetCell(mapLayer, new Vector2I(x, y), floorsSourceId, backgroundTile);
+            floors.SetCell(new Vector2I(x, y), floorsSourceId, backgroundTile);
             mapMask[x, y] = LevelGenerator.TileType.Background;
         }
     }
@@ -30,7 +30,7 @@ public sealed class SingleMapBuilder
         {
             if (mapMask[x, y] == LevelGenerator.TileType.None)
             {
-                walls.SetCell(mapLayer, new Vector2I(x, y), wallsSourceId, backgroundTile);
+                walls.SetCell(new Vector2I(x, y), wallsSourceId, backgroundTile);
                 mapMask[x, y] = LevelGenerator.TileType.Background;
             }
         }
