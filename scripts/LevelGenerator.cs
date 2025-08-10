@@ -11,8 +11,8 @@ public partial class LevelGenerator : Node
     [Signal] public delegate void MultiSectionMapGeneratedEventHandler();
 
     // Ссылки на раздельные TileMap и контейнеры
-    [Export] public Godot.TileMap FloorsTileMap { get; set; } // Для пола
-    [Export] public Godot.TileMap WallsTileMap { get; set; }  // Для стен и декораций
+    [Export] public Godot.TileMapLayer FloorsTileMap { get; set; } // Для пола
+    [Export] public Godot.TileMapLayer WallsTileMap { get; set; }  // Для стен и декораций
     [Export] public Node2D YSortContainer { get; set; }       // Контейнер для игрока и сортировки
 
     // Ссылка на родительский узел, содержащий все тайлмапы
@@ -183,7 +183,7 @@ public partial class LevelGenerator : Node
         WallsTileMap = _nodeLocator.WallsTileMap;
         YSortContainer = _nodeLocator.YSortContainer;
 
-        Logger.Debug($"TileMap найдены: Floors: {FloorsTileMap?.Name}, Walls: {WallsTileMap?.Name}, YSort: {YSortContainer?.Name}", true);
+        Logger.Debug($"TileMapLayer найдены: Floors: {FloorsTileMap?.Name}, Walls: {WallsTileMap?.Name}, YSort: {YSortContainer?.Name}", true);
 
         // Генерируем мульти-секционную карту сразу с задержкой 0.5 секунды
         GetTree().CreateTimer(0.5).Timeout += () => {
@@ -830,7 +830,7 @@ public partial class LevelGenerator : Node
                     );
 
                     // Размещаем пол
-                    FloorsTileMap.SetCell(MAP_LAYER, worldPos, FloorsSourceID, floorTile);
+                    FloorsTileMap.SetCell(worldPos, FloorsSourceID, floorTile);
 
                     // ВАЖНО: Удаляем все стены и препятствия
                     WallsTileMap.EraseCell(MAP_LAYER, worldPos);
@@ -898,7 +898,7 @@ public partial class LevelGenerator : Node
                     );
 
                     // Размещаем пол
-                    FloorsTileMap.SetCell(MAP_LAYER, worldPos, FloorsSourceID, floorTile);
+                    FloorsTileMap.SetCell(worldPos, FloorsSourceID, floorTile);
 
                     // ВАЖНО: Удаляем все стены и препятствия
                     WallsTileMap.EraseCell(MAP_LAYER, worldPos);
@@ -1015,7 +1015,7 @@ public partial class LevelGenerator : Node
                     Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
 
                     // Размещаем базовый тайл пола на всей секции
-                    FloorsTileMap.SetCell(MAP_LAYER, worldPos, FloorsSourceID, backgroundTile);
+                    FloorsTileMap.SetCell(worldPos, FloorsSourceID, backgroundTile);
                     section.SectionMask[x, y] = TileType.Background;
                     tilesAdded++;
                 }
@@ -1062,7 +1062,7 @@ public partial class LevelGenerator : Node
                     Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
 
                     // Размещаем тайл пола
-                    FloorsTileMap.SetCell(MAP_LAYER, worldPos, FloorsSourceID, floorTile);
+                    FloorsTileMap.SetCell(worldPos, FloorsSourceID, floorTile);
                     section.SectionMask[x, y] = TileType.Room;
                 }
                 catch (Exception e)
@@ -1114,7 +1114,7 @@ public partial class LevelGenerator : Node
                         Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
 
                         // Размещаем фоновый тайл
-                        WallsTileMap.SetCell(MAP_LAYER, worldPos, WallsSourceID, backgroundTile);
+                        WallsTileMap.SetCell(worldPos, WallsSourceID, backgroundTile);
                         if (section.SectionMask[x, y] == TileType.None)
                         {
                             section.SectionMask[x, y] = TileType.Background;
@@ -1466,7 +1466,7 @@ public partial class LevelGenerator : Node
                 else
                 {
                     // Добавляем блокирующий тайл в WallsTileMap
-                    WallsTileMap.SetCell(MAP_LAYER, new Vector2I(x, y), WallsSourceID, Empty);
+                    WallsTileMap.SetCell(new Vector2I(x, y), WallsSourceID, Empty);
                 }
             }
         }

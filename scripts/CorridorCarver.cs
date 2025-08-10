@@ -19,7 +19,7 @@ public sealed class CorridorCarver
         int mapHeight,
         int corridorWidth,
         Func<int, Vector2I> floorTileSelector,
-        Godot.TileMap floorsTileMap,
+        Godot.TileMapLayer floorsTileMap,
         int mapLayer,
         int floorsSourceId)
     {
@@ -55,7 +55,7 @@ public sealed class CorridorCarver
         int mapHeight,
         int corridorWidth,
         Func<int, Vector2I> floorTileSelector,
-        Godot.TileMap floorsTileMap,
+        Godot.TileMapLayer floorsTileMap,
         int mapLayer,
         int floorsSourceId)
     {
@@ -112,7 +112,7 @@ public sealed class CorridorCarver
                     try
                     {
                         Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + yPos);
-                        floorsTileMap.SetCell(mapLayer, worldPos, floorsSourceId, floorTile);
+                        floorsTileMap.SetCell(worldPos, floorsSourceId, floorTile);
                         if (section.SectionMask[x, yPos] != LevelGenerator.TileType.Room)
                         {
                             section.SectionMask[x, yPos] = LevelGenerator.TileType.Corridor;
@@ -153,7 +153,7 @@ public sealed class CorridorCarver
                     try
                     {
                         Vector2I worldPos = new Vector2I((int)worldOffset.X + xPos, (int)worldOffset.Y + y);
-                        floorsTileMap.SetCell(mapLayer, worldPos, floorsSourceId, floorTile);
+                        floorsTileMap.SetCell(worldPos, floorsSourceId, floorTile);
                         if (section.SectionMask[xPos, y] != LevelGenerator.TileType.Room)
                         {
                             section.SectionMask[xPos, y] = LevelGenerator.TileType.Corridor;

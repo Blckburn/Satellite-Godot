@@ -4,14 +4,14 @@ using System;
 public sealed class NodeLocator
 {
     public Node2D IsometricTileset { get; private set; }
-    public Godot.TileMap FloorsTileMap { get; private set; }
-    public Godot.TileMap WallsTileMap { get; private set; }
+    public Godot.TileMapLayer FloorsTileMap { get; private set; }
+    public Godot.TileMapLayer WallsTileMap { get; private set; }
     public Node2D YSortContainer { get; private set; }
 
     public void FindRequiredNodes(Node context,
         Node2D explicitIsometric,
-        Godot.TileMap explicitFloors,
-        Godot.TileMap explicitWalls,
+        Godot.TileMapLayer explicitFloors,
+        Godot.TileMapLayer explicitWalls,
         Node2D explicitYSort)
     {
         IsometricTileset = explicitIsometric;
@@ -27,14 +27,14 @@ public sealed class NodeLocator
 
         if (IsometricTileset != null)
         {
-            FloorsTileMap ??= IsometricTileset.GetNodeOrNull<Godot.TileMap>("Floors");
-            WallsTileMap ??= IsometricTileset.GetNodeOrNull<Godot.TileMap>("Walls");
+            FloorsTileMap ??= IsometricTileset.GetNodeOrNull<Godot.TileMapLayer>("Floors");
+            WallsTileMap ??= IsometricTileset.GetNodeOrNull<Godot.TileMapLayer>("Walls");
             YSortContainer ??= IsometricTileset.GetNodeOrNull<Node2D>("YSortContainer");
         }
         else
         {
-            FloorsTileMap ??= FindNodeRecursive<Godot.TileMap>(context.GetTree().Root, "Floors");
-            WallsTileMap ??= FindNodeRecursive<Godot.TileMap>(context.GetTree().Root, "Walls");
+            FloorsTileMap ??= FindNodeRecursive<Godot.TileMapLayer>(context.GetTree().Root, "Floors");
+            WallsTileMap ??= FindNodeRecursive<Godot.TileMapLayer>(context.GetTree().Root, "Walls");
             YSortContainer ??= FindNodeRecursive<Node2D>(context.GetTree().Root, "YSortContainer");
         }
     }

@@ -14,7 +14,7 @@ public sealed class Decorator
         LevelGenerator.MapSection section,
         int mapWidth,
         int mapHeight,
-        Godot.TileMap wallsTileMap,
+        Godot.TileMapLayer wallsTileMap,
         int mapLayer,
         int wallsSourceId,
         Func<int, Vector2I, Vector2I> wallTileSelector)
@@ -55,7 +55,7 @@ public sealed class Decorator
             {
                 Vector2I worldPos = new Vector2I((int)worldOffset.X + localPos.X, (int)worldOffset.Y + localPos.Y);
                 Vector2I tile = wallTileSelector(section.BiomeType, localPos);
-                wallsTileMap.SetCell(mapLayer, worldPos, wallsSourceId, tile);
+                wallsTileMap.SetCell(worldPos, wallsSourceId, tile);
             }
             catch (Exception e)
             {
@@ -67,7 +67,7 @@ public sealed class Decorator
     public void AddSectionDecorationsAndObstacles(
         LevelGenerator.MapSection section,
         int mapWidth,
-        Godot.TileMap wallsTileMap,
+        Godot.TileMapLayer wallsTileMap,
         int mapLayer,
         int wallsSourceId,
         Func<int, Vector2I> decorationTileSelector)
@@ -105,7 +105,7 @@ public sealed class Decorator
                     if (!canPlace) continue;
 
                     Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
-                    wallsTileMap.SetCell(mapLayer, worldPos, wallsSourceId, decorationTile);
+                    wallsTileMap.SetCell(worldPos, wallsSourceId, decorationTile);
                     section.SectionMask[x, y] = LevelGenerator.TileType.Decoration;
                 }
                 catch (Exception e)
@@ -118,8 +118,8 @@ public sealed class Decorator
 
     public void AddSectionHazards(
         LevelGenerator.MapSection section,
-        Godot.TileMap floorsTileMap,
-        Godot.TileMap wallsTileMap,
+        Godot.TileMapLayer floorsTileMap,
+        Godot.TileMapLayer wallsTileMap,
         int mapLayer,
         int floorsSourceId,
         int wallsSourceId,
@@ -149,10 +149,10 @@ public sealed class Decorator
             for (int y = startY; y < startY + hazardHeight; y++)
             {
                 Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
-                floorsTileMap.SetCell(mapLayer, worldPos, floorsSourceId, hazardTile);
+                floorsTileMap.SetCell(worldPos, floorsSourceId, hazardTile);
                 if (hazardTile == new Vector2I(1,1))
                 {
-                    wallsTileMap.SetCell(mapLayer, worldPos, wallsSourceId, hazardTile);
+                    wallsTileMap.SetCell(worldPos, wallsSourceId, hazardTile);
                 }
             }
 

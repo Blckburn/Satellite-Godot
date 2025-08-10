@@ -33,6 +33,10 @@ project/assembly_name="Satellite"
 
 version_control/autoload_on_startup=true
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/TileMapLayerMigrator/plugin.cfg")
+
 [input]
 
 move_up={

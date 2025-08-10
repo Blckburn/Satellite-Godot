@@ -116,7 +116,7 @@ public sealed class MultiSectionCoordinator
         Vector2I floorTile,
         int mapWidth,
         int mapHeight,
-        Godot.TileMap floorsTileMap,
+        Godot.TileMapLayer floorsTileMap,
         int mapLayer,
         int floorsSourceId,
         Action<LevelGenerator.MapSection, int, int, int, int, Vector2I> connectNearbyRooms)
@@ -131,7 +131,7 @@ public sealed class MultiSectionCoordinator
                     if (y >= 0 && y < mapHeight && x >= 0 && x < mapWidth)
                     {
                         Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
-                        floorsTileMap.SetCell(mapLayer, worldPos, floorsSourceId, floorTile);
+                        floorsTileMap.SetCell(worldPos, floorsSourceId, floorTile);
                         if (section.SectionMask[x, y] != LevelGenerator.TileType.Room)
                         {
                             section.SectionMask[x, y] = LevelGenerator.TileType.Corridor;
@@ -157,7 +157,7 @@ public sealed class MultiSectionCoordinator
         Vector2I floorTile,
         int mapWidth,
         int mapHeight,
-        Godot.TileMap floorsTileMap,
+        Godot.TileMapLayer floorsTileMap,
         int mapLayer,
         int floorsSourceId,
         Action<LevelGenerator.MapSection, int, int, int, int, Vector2I, bool> connectNearbyRooms)
@@ -172,7 +172,7 @@ public sealed class MultiSectionCoordinator
                     if (y >= 0 && y < mapHeight && x >= 0 && x < mapWidth)
                     {
                         Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
-                        floorsTileMap.SetCell(mapLayer, worldPos, floorsSourceId, floorTile);
+                        floorsTileMap.SetCell(worldPos, floorsSourceId, floorTile);
                         if (section.SectionMask[x, y] != LevelGenerator.TileType.Room)
                         {
                             section.SectionMask[x, y] = LevelGenerator.TileType.Corridor;
@@ -196,8 +196,8 @@ public sealed class MultiSectionCoordinator
         int tunnelWidth,
         int sectionSpacing,
         int mapWidth,
-        Godot.TileMap floorsTileMap,
-        Godot.TileMap wallsTileMap,
+        Godot.TileMapLayer floorsTileMap,
+        Godot.TileMapLayer wallsTileMap,
         int mapLayer,
         int floorsSourceId,
         Func<int, Vector2I> getFloorTile)
@@ -215,8 +215,8 @@ public sealed class MultiSectionCoordinator
                         (int)leftSection.WorldOffset.Y + y
                     );
                     Vector2I floorTile = (bridgeX < sectionSpacing / 2) ? leftFloorTile : rightFloorTile;
-                    floorsTileMap.SetCell(mapLayer, bridgeWorldPos, floorsSourceId, floorTile);
-                    wallsTileMap.EraseCell(mapLayer, bridgeWorldPos);
+                    floorsTileMap.SetCell(bridgeWorldPos, floorsSourceId, floorTile);
+                    wallsTileMap.EraseCell(bridgeWorldPos);
                 }
             }
         }
@@ -233,8 +233,8 @@ public sealed class MultiSectionCoordinator
         int tunnelWidth,
         int sectionSpacing,
         int mapHeight,
-        Godot.TileMap floorsTileMap,
-        Godot.TileMap wallsTileMap,
+        Godot.TileMapLayer floorsTileMap,
+        Godot.TileMapLayer wallsTileMap,
         int mapLayer,
         int floorsSourceId,
         Func<int, Vector2I> getFloorTile)
@@ -252,8 +252,8 @@ public sealed class MultiSectionCoordinator
                         (int)topSection.WorldOffset.Y + mapHeight + bridgeY
                     );
                     Vector2I floorTile = (bridgeY < sectionSpacing / 2) ? topFloorTile : bottomFloorTile;
-                    floorsTileMap.SetCell(mapLayer, bridgeWorldPos, floorsSourceId, floorTile);
-                    wallsTileMap.EraseCell(mapLayer, bridgeWorldPos);
+                    floorsTileMap.SetCell(bridgeWorldPos, floorsSourceId, floorTile);
+                    wallsTileMap.EraseCell(bridgeWorldPos);
                 }
             }
         }

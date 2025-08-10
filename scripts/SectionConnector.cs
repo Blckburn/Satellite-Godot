@@ -20,7 +20,7 @@ public sealed class SectionConnector
         int tunnelWidth,
         int mapWidth,
         int mapHeight,
-        Godot.TileMap wallsTileMap,
+        Godot.TileMapLayer wallsTileMap,
         int mapLayer,
         int wallsSourceId,
         Func<int, Vector2I, Vector2I> wallTileSelector)
@@ -52,7 +52,7 @@ public sealed class SectionConnector
         int tunnelWidth,
         int mapWidth,
         int mapHeight,
-        Godot.TileMap wallsTileMap,
+        Godot.TileMapLayer wallsTileMap,
         int mapLayer,
         int wallsSourceId,
         Func<int, Vector2I, Vector2I> wallTileSelector)
@@ -85,7 +85,7 @@ public sealed class SectionConnector
         int mapWidth,
         int mapHeight,
         int sectionSpacing,
-        Godot.TileMap wallsTileMap,
+        Godot.TileMapLayer wallsTileMap,
         int mapLayer,
         int wallsSourceId,
         Func<int, Vector2I, Vector2I> wallTileSelector)
@@ -132,7 +132,7 @@ public sealed class SectionConnector
         int mapWidth,
         int mapHeight,
         int sectionSpacing,
-        Godot.TileMap wallsTileMap,
+        Godot.TileMapLayer wallsTileMap,
         int mapLayer,
         int wallsSourceId,
         Func<int, Vector2I, Vector2I> wallTileSelector)

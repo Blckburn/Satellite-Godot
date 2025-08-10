@@ -13,7 +13,7 @@ public sealed class SingleMapBuilder
         _random = random ?? throw new ArgumentNullException(nameof(random));
     }
 
-    public void FillBaseFloor(int mapWidth, int mapHeight, Vector2I backgroundTile, Godot.TileMap floors, int mapLayer, int floorsSourceId, LevelGenerator.TileType[,] mapMask)
+    public void FillBaseFloor(int mapWidth, int mapHeight, Vector2I backgroundTile, Godot.TileMapLayer floors, int mapLayer, int floorsSourceId, LevelGenerator.TileType[,] mapMask)
     {
         for (int x = 0; x < mapWidth; x++)
         for (int y = 0; y < mapHeight; y++)
@@ -23,7 +23,7 @@ public sealed class SingleMapBuilder
         }
     }
 
-    public void FillDecorBackground(int mapWidth, int mapHeight, Vector2I backgroundTile, Godot.TileMap walls, int mapLayer, int wallsSourceId, LevelGenerator.TileType[,] mapMask)
+    public void FillDecorBackground(int mapWidth, int mapHeight, Vector2I backgroundTile, Godot.TileMapLayer walls, int mapLayer, int wallsSourceId, LevelGenerator.TileType[,] mapMask)
     {
         for (int x = 0; x < mapWidth; x++)
         for (int y = 0; y < mapHeight; y++)
