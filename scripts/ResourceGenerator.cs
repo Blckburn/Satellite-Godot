@@ -575,8 +575,12 @@ public class ResourceGenerator
                 resourceNode.EnablePulsating = true;
                 resourceNode.PulsatingSpeed = 1.0f + (float)_random.NextDouble() * 0.5f; // Немного рандомизируем скорость пульсации
 
-                // Добавляем в родительский узел
+                // Добавляем в родительский узел и гарантируем YSort
                 parentNode.AddChild(resourceNode);
+                if (parentNode is Node2D n2)
+                {
+                    n2.YSortEnabled = true;
+                }
 
                 Logger.Debug($"Placed {resourceType} resource at world position {isoPos}", false);
             }

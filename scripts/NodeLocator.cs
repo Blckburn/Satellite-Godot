@@ -27,9 +27,12 @@ public sealed class NodeLocator
 
         if (IsometricTileset != null)
         {
-            FloorsTileMap ??= IsometricTileset.GetNodeOrNull<Godot.TileMapLayer>("Floors");
-            WallsTileMap ??= IsometricTileset.GetNodeOrNull<Godot.TileMapLayer>("Walls");
-            YSortContainer ??= IsometricTileset.GetNodeOrNull<Node2D>("YSortContainer");
+            FloorsTileMap ??= IsometricTileset.GetNodeOrNull<Godot.TileMapLayer>("Floors")
+                               ?? FindNodeRecursive<Godot.TileMapLayer>(IsometricTileset, "Floors");
+            YSortContainer ??= IsometricTileset.GetNodeOrNull<Node2D>("YSortContainer")
+                               ?? FindNodeRecursive<Node2D>(IsometricTileset, "YSortContainer");
+            WallsTileMap ??= IsometricTileset.GetNodeOrNull<Godot.TileMapLayer>("Walls")
+                               ?? FindNodeRecursive<Godot.TileMapLayer>(IsometricTileset, "Walls");
         }
         else
         {
