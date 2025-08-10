@@ -12,7 +12,22 @@ public partial class Container : InteractiveObject
     [Export] public Inventory ContainerInventory { get; private set; }
 
     // Максимальный размер инвентаря контейнера
-    [Export] public int InventorySize { get; set; } = 10;
+    [Export]
+    public int InventorySize
+    {
+        get => _inventorySize;
+        set
+        {
+            _inventorySize = value;
+            // Обновляем размер инвентаря, если он уже существует
+            if (ContainerInventory != null)
+            {
+                ContainerInventory.MaxSlots = value;
+                Logger.Debug($"Container '{Name}' inventory size updated to {value}", true);
+            }
+        }
+    }
+    private int _inventorySize = 10;
 
     // Название контейнера
     [Export] public string ContainerName { get; set; } = "Storage Container";
@@ -63,6 +78,48 @@ public partial class Container : InteractiveObject
         if (_isOpen && CloseOnDistanceExceeded)
         {
             CheckPlayerDistance();
+        }
+    }
+
+    /// <summary>
+    /// Форсирует обновление UI контейнера
+    /// </summary>
+    public void ForceUpdateContainerUI()
+    {
+        // Вызываем сигнал изменения инвентаря
+        EmitSignal(SignalName.ContainerInventoryChanged);
+
+        // Ищем ContainerUI и обновляем его
+        var containerUIs = GetTree().GetNodesInGroup("ContainerUI");
+        foreach (var ui in containerUIs)
+        {
+            if (ui is ContainerUI containerUI)
+            {
+                // Вызываем методы обновления UI контейнера с помощью CallDeferred
+                CallDeferred(nameof(UpdateContainerUIDeferred), containerUI);
+            }
+        }
+
+        Logger.Debug($"Container '{Name}' force-updated UI", false);
+    }
+
+    /// <summary>
+    /// Отложенное обновление UI контейнера
+    /// </summary>
+    private void UpdateContainerUIDeferred(ContainerUI containerUI)
+    {
+        if (containerUI != null && IsInstanceValid(containerUI))
+        {
+            containerUI.UpdateContainerInventoryUI();
+            containerUI.UpdatePlayerInventoryUI();
+
+            // Также можно вызвать метод обновления всех иконок, если он есть
+            if (containerUI.HasMethod("UpdateAllIconSizes"))
+            {
+                containerUI.Call("UpdateAllIconSizes");
+            }
+
+            Logger.Debug($"Container '{Name}' deferred UI update completed", false);
         }
     }
 
@@ -124,6 +181,8 @@ public partial class Container : InteractiveObject
     // Метод для закрытия контейнера
     public virtual void CloseContainer()
     {
+        Logger.Debug($"CloseContainer called for {Name}", true);
+
         if (_isOpen)
         {
             _isOpen = false;
@@ -131,10 +190,19 @@ public partial class Container : InteractiveObject
             // Вызываем сигнал закрытия контейнера
             EmitSignal(SignalName.ContainerClosed, this);
 
-            Logger.Debug($"Container '{Name}' closed", true);
+            Logger.Debug($"Container '{Name}' closed, signal emitted", true);
 
-            // Закрываем UI контейнера
-            CloseContainerUI();
+            // Непосредственное закрытие UI контейнера - принудительно ищем его
+            var containerUIs = GetTree().GetNodesInGroup("ContainerUI");
+            if (containerUIs.Count > 0 && containerUIs[0] is ContainerUI ui)
+            {
+                ui.CloseContainerUI();
+                Logger.Debug("Called CloseContainerUI directly", true);
+            }
+            else
+            {
+                Logger.Debug("No ContainerUI found to close", true);
+            }
         }
     }
 
@@ -221,7 +289,29 @@ public partial class Container : InteractiveObject
         if (ContainerInventory == null)
             InitializeInventory();
 
-        return ContainerInventory.AddItem(item);
+        bool result = ContainerInventory.AddItem(item);
+
+        // Если предмет был успешно добавлен, обновляем UI
+        if (result)
+        {
+            // Форсируем обновление UI
+            ForceUpdateContainerUI();
+            Logger.Debug($"Added {item.DisplayName} x{item.Quantity} to container '{Name}' and updated UI", false);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Проверяет, есть ли у объекта метод с указанным именем
+    /// </summary>
+    private bool HasMethod(object obj, string methodName)
+    {
+        if (obj == null)
+            return false;
+
+        var type = obj.GetType();
+        return type.GetMethod(methodName) != null;
     }
 
     // Метод для получения предмета из контейнера по индексу

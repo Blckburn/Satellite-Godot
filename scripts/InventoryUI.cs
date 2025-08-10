@@ -47,6 +47,9 @@ public partial class InventoryUI : Control
 
     public override void _Ready()
     {
+        //  Добавляем в группу для легкого поиска
+        AddToGroup("InventoryUI");
+
         // Находим контейнер для слотов
         _slotsContainer = GetNodeOrNull<GridContainer>("%SlotsContainer");
 
@@ -74,6 +77,8 @@ public partial class InventoryUI : Control
 
         // Создаем контекстное меню 
         CreateContextMenu();
+
+        Logger.Debug("InventoryUI initialized and added to InventoryUI group", true);
     }
 
     public override void _Process(double delta)
@@ -357,13 +362,12 @@ public partial class InventoryUI : Control
 
             slot.AddChild(iconRect);
         }
-        else
-        {
-            // Обновляем размер и положение при каждом вызове, если слот изменился
-            iconRect.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-            iconRect.Size = slot.Size;
-            iconRect.Position = Vector2.Zero;
-        }
+
+        // ВАЖНОЕ ИЗМЕНЕНИЕ: Убедимся, что размер и якоря обновлены, даже если TextureRect уже существует
+        iconRect.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+
+        // Отложим установку размера, чтобы дать контролу возможность обновиться
+        CallDeferred(nameof(UpdateIconRectSize), iconRect, slot);
 
         // Создание или обновление QuantityLabel для отображения количества предметов
         if (quantityLabel == null && item.Quantity > 1)
@@ -441,6 +445,32 @@ public partial class InventoryUI : Control
         slot.TooltipText = "";
 
         GD.Print($"Slot updated: {slot.Name}");
+    }
+
+    // Добавьте этот новый метод для отложенного обновления размера иконки
+    private void UpdateIconRectSize(TextureRect iconRect, Control slot)
+    {
+        if (iconRect != null && IsInstanceValid(iconRect) && slot != null && IsInstanceValid(slot))
+        {
+            // Получим актуальные размеры слота
+            float width = slot.Size.X;
+            float height = slot.Size.Y;
+
+            // Иногда размеры могут быть 0, в этом случае используем CustomMinimumSize
+            if (width <= 0) width = slot.CustomMinimumSize.X;
+            if (height <= 0) height = slot.CustomMinimumSize.Y;
+
+            // Если размеры все еще 0, используем значения по умолчанию
+            if (width <= 0) width = 50;
+            if (height <= 0) height = 50;
+
+            // Установим размер и позицию TextureRect
+            iconRect.Size = new Vector2(width, height);
+            iconRect.Position = Vector2.Zero;
+
+            // Дополнительная информация для отладки
+            GD.Print($"UpdateIconRectSize: Icon size set to {width}x{height}");
+        }
     }
 
 

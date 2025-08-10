@@ -233,6 +233,10 @@ public partial class TeleportationModule : BaseStationModule
     /// </summary>
     private void StartTeleportation(string destination)
     {
+        // Блокируем автосохранение на время телепортации
+        AutoSave.BlockDuringTeleportation(true);
+
+        Logger.Debug("Starting teleportation to station, autosave blocked", true);
         Logger.Debug($"Starting teleportation to {destination}", false);
 
         // Отправляем сигнал о начале телепортации
@@ -288,6 +292,9 @@ public partial class TeleportationModule : BaseStationModule
 
         // Отправляем сигнал о завершении телепортации
         EmitSignal("TeleportationCompleted", destination);
+
+        // Отложенное разблокирование автосохранения
+        CallDeferred("UnblockAutosaveDeferred");
     }
 
     /// <summary>

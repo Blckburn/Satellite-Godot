@@ -11,17 +11,27 @@ config_version=5
 [application]
 
 config/name="Satellite"
-run/main_scene="uid://dk7arq0ta6k33"
+run/main_scene="uid://brbrxlc0fdl4i"
 config/features=PackedStringArray("4.4", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
 
 GameManager="*res://scenes/managers/game_manager.tscn"
+SaveManager="*res://scripts/SaveManager.cs"
+GameTimer="*res://scripts/GameTimer.cs"
+
+[debug]
+
+shapes/autoload_on_startup=false
 
 [dotnet]
 
 project/assembly_name="Satellite"
+
+[editor]
+
+version_control/autoload_on_startup=true
 
 [input]
 

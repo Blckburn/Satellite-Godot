@@ -122,6 +122,8 @@ public partial class ResourceNode : InteractiveObject, IInteraction
         progressContainer.Position = new Godot.Vector2(0, -40); // Располагаем над ресурсом
         progressContainer.SetAnchorsPreset(Control.LayoutPreset.Center);
         progressContainer.SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter;
+        // Устанавливаем очень высокий ZIndex, чтобы гарантировать отображение поверх всего
+        progressContainer.ZIndex = 100; // Высокое значение для приоритета отображения
         AddChild(progressContainer);
 
         // Создаем фон для прогресс-бара - теперь он шире для размещения текста

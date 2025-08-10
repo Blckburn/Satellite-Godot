@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://dk7arq0ta6k33"]
+[gd_scene load_steps=15 format=3 uid="uid://dk7arq0ta6k33"]
 
 [ext_resource type="Script" uid="uid://g0qcls0dppxf" path="res://scripts/SpaceStation.cs" id="1_f3sb1"]
 [ext_resource type="Script" uid="uid://bhja00xilj31x" path="res://scripts/StationGrid.cs" id="3_36ka1"]
@@ -6,7 +6,14 @@
 [ext_resource type="PackedScene" uid="uid://djhfs8tnhhmva" path="res://scenes/station/modules/teleportation_module.tscn" id="5_36ka1"]
 [ext_resource type="PackedScene" uid="uid://cpeapi7wqfccg" path="res://scenes/station/modules/starting_module.tscn" id="5_t260c"]
 [ext_resource type="PackedScene" uid="uid://b8tgraoyr5m2b" path="res://scenes/world/objects/station_teleporter.tscn" id="6_a5dhq"]
+[ext_resource type="PackedScene" uid="uid://dfld3ti6xtidv" path="res://scenes/station/modules/storage_module.tscn" id="8_ea0wa"]
+[ext_resource type="PackedScene" uid="uid://df1fsrm24trwj" path="res://scenes/ui/ui_manager.tscn" id="8_vm52f"]
 [ext_resource type="PackedScene" uid="uid://bu3h56rpjxyms" path="res://scenes/player/Player.tscn" id="9_ea0wa"]
+[ext_resource type="PackedScene" uid="uid://cdpklt0cb7nbq" path="res://scenes/ui/inventory_ui.tscn" id="9_vebmi"]
+[ext_resource type="PackedScene" uid="uid://dvyg2vbhucri0" path="res://scenes/ui/SlotTemplate.tscn" id="11_b1308"]
+[ext_resource type="PackedScene" uid="uid://dvkiae0slh4s3" path="res://scenes/ui/ContainerUI.tscn" id="11_vebmi"]
+[ext_resource type="Script" uid="uid://84p0u17egmo6" path="res://scripts/AutoSave.cs" id="13_yjdnh"]
+[ext_resource type="Script" uid="uid://cb6hul3pwncya" path="res://scripts/ForceSaveSystem.cs" id="14_07biw"]
 
 [node name="SpaceStation" type="Node2D"]
 script = ExtResource("1_f3sb1")
@@ -15,6 +22,7 @@ PlayerSpawnPointPath = NodePath("")
 
 [node name="SpaceBackground" type="Sprite2D" parent="."]
 z_index = -100
+position = Vector2(590, 105)
 scale = Vector2(7, 7)
 texture = ExtResource("4_f3sb1")
 
@@ -28,18 +36,66 @@ GridHeight = 100
 [node name="ModulesContainer" type="Node2D" parent="."]
 
 [node name="StartingModule" parent="ModulesContainer" instance=ExtResource("5_t260c")]
+y_sort_enabled = true
 position = Vector2(565, 217)
 RespawnCapsulePath = NodePath("RespawnCapsule")
 
 [node name="RespawnCapsule" type="Node2D" parent="ModulesContainer/StartingModule"]
 
 [node name="TeleportationModule" parent="ModulesContainer" instance=ExtResource("5_36ka1")]
+y_sort_enabled = true
 position = Vector2(186, 28)
 AvailableDestinations = PackedStringArray("Earth", "Earth 2")
 
 [node name="StationTeleporter" parent="ModulesContainer" instance=ExtResource("6_a5dhq")]
+y_sort_enabled = true
 position = Vector2(64, 312)
 WorldScenePath = "res://scenes/Main.tscn"
 
+[node name="Sprite2D" parent="ModulesContainer/StationTeleporter" index="0"]
+y_sort_enabled = true
+
+[node name="Sprite2D2" parent="ModulesContainer/StationTeleporter" index="1"]
+y_sort_enabled = true
+
 [node name="TeleporterSpawnPoint" type="Node2D" parent="ModulesContainer/StationTeleporter"]
 position = Vector2(0, 39.355)
+
+[node name="StorageModule" parent="ModulesContainer" instance=ExtResource("8_ea0wa")]
+position = Vector2(831, 457)
+StorageCapacity = 49
+
+[node name="StorageModule2" parent="ModulesContainer" instance=ExtResource("8_ea0wa")]
+position = Vector2(393, 681)
+StorageCapacity = 49
+StorageName = "Second Central Storage"
+StorageModelPath = NodePath("../StorageModule/StorageModel")
+StorageID = "second_storage"
+InteractionAreaPath = NodePath("../StorageModule/InteractionArea")
+
+[node name="UIManager" parent="." instance=ExtResource("8_vm52f")]
+layer = 0
+InteractionSystemPath = NodePath("../InteractionSystem")
+
+[node name="InventoryUI" parent="UIManager" instance=ExtResource("9_vebmi")]
+z_index = 6
+SlotTemplate = ExtResource("11_b1308")
+DisplaySlots = 28
+SlotsPerRow = 7
+metadata/_edit_use_anchors_ = true
+
+[node name="ContainerUI" type="CanvasLayer" parent="."]
+
+[node name="ContainerUI" parent="ContainerUI" instance=ExtResource("11_vebmi")]
+
+[node name="AutoSave" type="Node" parent="."]
+script = ExtResource("13_yjdnh")
+MinChangeInterval = 5.0
+SaveDelay = 0.5
+ActiveMonitoringInterval = 0.3
+MaxWaitTimeBeforeForceSave = 0.5
+
+[node name="ForceSave" type="Node" parent="."]
+script = ExtResource("14_07biw")
+
+[editable path="ModulesContainer/StationTeleporter"]

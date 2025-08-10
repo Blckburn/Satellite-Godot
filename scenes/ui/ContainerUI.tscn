@@ -78,7 +78,7 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 4
-columns = 5
+columns = 7
 
 [node name="ContainerInventorySection" type="VBoxContainer" parent="Background"]
 layout_mode = 0
@@ -101,7 +101,7 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 4
-columns = 5
+columns = 7
 
 [node name="CloseButton" type="Button" parent="Background"]
 layout_mode = 1

@@ -341,4 +341,104 @@ public partial class Inventory : Resource
 
         return info;
     }
+
+    /// <summary>
+    /// Сериализует инвентарь в словарь для сохранения
+    /// </summary>
+    public Dictionary<string, object> Serialize()
+    {
+        var data = new Dictionary<string, object>();
+
+        // Сохраняем общие данные инвентаря
+        data["max_slots"] = MaxSlots;
+        data["max_weight"] = MaxWeight;
+
+        // Сериализуем предметы
+        var itemsData = new List<Dictionary<string, object>>();
+        foreach (var item in Items)
+        {
+            var itemData = new Dictionary<string, object>
+            {
+                ["id"] = item.ID,
+                ["display_name"] = item.DisplayName,
+                ["description"] = item.Description,
+                ["type"] = (int)item.Type,
+                ["weight"] = item.Weight,
+                ["value"] = item.Value,
+                ["max_stack_size"] = item.MaxStackSize,
+                ["quantity"] = item.Quantity,
+                ["icon_path"] = item.IconPath,
+                ["resource_type_enum"] = item.ResourceTypeEnum
+            };
+
+            itemsData.Add(itemData);
+        }
+
+        data["items"] = itemsData;
+        return data;
+    }
+
+    /// <summary>
+    /// Десериализует инвентарь из сохраненных данных
+    /// </summary>
+    public void Deserialize(Dictionary<string, object> data)
+    {
+        if (data == null)
+            return;
+
+        // Восстанавливаем общие данные инвентаря
+        if (data.ContainsKey("max_slots"))
+            MaxSlots = Convert.ToInt32(data["max_slots"]);
+
+        if (data.ContainsKey("max_weight"))
+            MaxWeight = Convert.ToSingle(data["max_weight"]);
+
+        // Восстанавливаем предметы
+        Items.Clear();
+
+        if (data.ContainsKey("items") && data["items"] is List<Dictionary<string, object>> itemsData)
+        {
+            foreach (var itemData in itemsData)
+            {
+                var item = new Item();
+
+                if (itemData.ContainsKey("id"))
+                    item.ID = itemData["id"].ToString();
+
+                if (itemData.ContainsKey("display_name"))
+                    item.DisplayName = itemData["display_name"].ToString();
+
+                if (itemData.ContainsKey("description"))
+                    item.Description = itemData["description"].ToString();
+
+                if (itemData.ContainsKey("type"))
+                    item.Type = (ItemType)Convert.ToInt32(itemData["type"]);
+
+                if (itemData.ContainsKey("weight"))
+                    item.Weight = Convert.ToSingle(itemData["weight"]);
+
+                if (itemData.ContainsKey("value"))
+                    item.Value = Convert.ToInt32(itemData["value"]);
+
+                if (itemData.ContainsKey("max_stack_size"))
+                    item.MaxStackSize = Convert.ToInt32(itemData["max_stack_size"]);
+
+                if (itemData.ContainsKey("icon_path"))
+                    item.IconPath = itemData["icon_path"].ToString();
+
+                if (itemData.ContainsKey("resource_type_enum"))
+                    item.ResourceTypeEnum = itemData["resource_type_enum"].ToString();
+
+                // Важно: устанавливаем количество последним после всех других свойств
+                if (itemData.ContainsKey("quantity"))
+                    item.Quantity = Convert.ToInt32(itemData["quantity"]);
+
+                Items.Add(item);
+            }
+        }
+
+        // Уведомляем об изменении инвентаря
+        EmitSignal("InventoryChanged");
+    }
+
 }

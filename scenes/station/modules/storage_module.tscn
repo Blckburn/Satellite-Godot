@@ -1,0 +1,27 @@
+[gd_scene load_steps=4 format=3 uid="uid://dfld3ti6xtidv"]
+
+[ext_resource type="Script" uid="uid://day31pahdxg4x" path="res://scripts/StorageModule.cs" id="1_a5e46"]
+[ext_resource type="Texture2D" uid="uid://q1aln4nry02u" path="res://resources/textures/modules/teleport_station.png" id="2_xgbdf"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_h4efm"]
+radius = 148.354
+
+[node name="StorageModule" type="Node2D"]
+script = ExtResource("1_a5e46")
+StorageModelPath = NodePath("StorageModel")
+MaxInteractionDistance = 150.0
+ModuleName = "Storage Module"
+ModuleDescription = "Stores items and resources"
+InteractionRadius = 150.0
+ModuleIcon = ExtResource("2_xgbdf")
+InteractionAreaPath = NodePath("InteractionArea")
+
+[node name="StorageModel" type="Sprite2D" parent="."]
+y_sort_enabled = true
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("2_xgbdf")
+
+[node name="InteractionArea" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionArea"]
+shape = SubResource("CircleShape2D_h4efm")

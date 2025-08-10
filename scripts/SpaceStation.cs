@@ -309,11 +309,11 @@ public partial class SpaceStation : Node2D
 
         // Создаем экземпляр игрока
         Logger.Debug("Instantiating player", true);
-        Node2D player = null;
+        Node2D playerNode = null;
         try
         {
-            player = PlayerScene.Instantiate<Node2D>();
-            if (player == null)
+            playerNode = PlayerScene.Instantiate<Node2D>();
+            if (playerNode == null)
             {
                 Logger.Error("Failed to instantiate player - result is null");
                 return;
@@ -326,22 +326,140 @@ public partial class SpaceStation : Node2D
         }
 
         // Устанавливаем позицию
-        player.Position = spawnPosition;
+        playerNode.Position = spawnPosition;
 
         // Добавляем игрока в сцену
         Logger.Debug("Adding player to scene", true);
         try
         {
-            AddChild(player);
+            AddChild(playerNode);
 
             // Добавляем игрока в группу Player, если он там еще не находится
-            if (!player.IsInGroup("Player"))
+            if (!playerNode.IsInGroup("Player"))
             {
-                player.AddToGroup("Player");
+                playerNode.AddToGroup("Player");
                 Logger.Debug("Added player to 'Player' group", true);
             }
 
-            Logger.Debug($"Player spawned at position {player.Position}", true);
+            Logger.Debug($"Player spawned at position {playerNode.Position}", true);
+
+            // Если игрок создан успешно и реализует класс Player,
+            // принудительно загружаем инвентарь без задержки,
+            // но используя отложенный вызов для правильного порядка выполнения
+            if (playerNode is Player player)
+            {
+                // ВАЖНО: Немедленная загрузка инвентаря дает больше шансов на успех
+                Logger.Debug("Immediately initializing and loading player inventory", true);
+
+                // Инициализируем инвентарь
+                player.InitializeInventory();
+
+                // Пытаемся загрузить инвентарь
+                var gameManager = GetNode<GameManager>("/root/GameManager");
+                if (gameManager != null)
+                {
+                    // Проверяем наличие сохраненных данных инвентаря
+                    if (gameManager.HasData("PlayerInventorySaved"))
+                    {
+                        var inventoryData = gameManager.GetData<Dictionary<string, object>>("PlayerInventorySaved");
+                        if (inventoryData != null)
+                        {
+                            int itemCount = 0;
+                            if (inventoryData.ContainsKey("items") &&
+                                inventoryData["items"] is List<Dictionary<string, object>> items)
+                            {
+                                itemCount = items.Count;
+                            }
+
+                            Logger.Debug($"SpaceStation: Found saved inventory with {itemCount} items", true);
+
+                            // Если есть предметы, принудительно загружаем
+                            if (itemCount > 0)
+                            {
+                                bool loaded = player.LoadInventory();
+                                Logger.Debug($"SpaceStation: Immediate inventory load result: {loaded}", true);
+
+                                if (!loaded)
+                                {
+                                    // План Б: вручную добавляем предметы
+                                    Logger.Debug("SpaceStation: Using manual item addition as backup", true);
+                                    if (inventoryData.ContainsKey("items") &&
+                                        inventoryData["items"] is List<Dictionary<string, object>> itemsList)
+                                    {
+                                        player.PlayerInventory.Clear();
+                                        foreach (var itemData in itemsList)
+                                        {
+                                            // Создаем новый предмет
+                                            Item newItem = new Item();
+
+                                            // Заполняем свойства из данных
+                                            if (itemData.ContainsKey("id"))
+                                                newItem.ID = itemData["id"].ToString();
+                                            if (itemData.ContainsKey("display_name"))
+                                                newItem.DisplayName = itemData["display_name"].ToString();
+                                            if (itemData.ContainsKey("description"))
+                                                newItem.Description = itemData["description"].ToString();
+                                            if (itemData.ContainsKey("type"))
+                                                newItem.Type = (ItemType)Convert.ToInt32(itemData["type"]);
+                                            if (itemData.ContainsKey("weight"))
+                                                newItem.Weight = Convert.ToSingle(itemData["weight"]);
+                                            if (itemData.ContainsKey("value"))
+                                                newItem.Value = Convert.ToInt32(itemData["value"]);
+                                            if (itemData.ContainsKey("max_stack_size"))
+                                                newItem.MaxStackSize = Convert.ToInt32(itemData["max_stack_size"]);
+                                            if (itemData.ContainsKey("icon_path"))
+                                                newItem.IconPath = itemData["icon_path"].ToString();
+                                            if (itemData.ContainsKey("resource_type_enum"))
+                                                newItem.ResourceTypeEnum = itemData["resource_type_enum"].ToString();
+                                            if (itemData.ContainsKey("quantity"))
+                                                newItem.Quantity = Convert.ToInt32(itemData["quantity"]);
+
+                                            // Добавляем предмет
+                                            player.PlayerInventory.AddItem(newItem);
+                                            Logger.Debug($"SpaceStation: Manually added item: {newItem.DisplayName} x{newItem.Quantity}", true);
+                                        }
+
+                                        // Вызываем сигнал изменения
+                                        player.EmitSignal(Player.SignalName.PlayerInventoryChanged);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Logger.Debug("SpaceStation: No PlayerInventorySaved data found in GameManager", true);
+                    }
+                }
+
+                // Дополнительно - отложенная проверка и загрузка инвентаря через таймер
+                var timer = new Timer();
+                timer.WaitTime = 0.5f;
+                timer.OneShot = true;
+                timer.Timeout += () => {
+                    Logger.Debug("SpaceStation: Delayed inventory check started", true);
+
+                    // Проверка инвентаря после небольшой задержки
+                    if (player.PlayerInventory == null || player.PlayerInventory.Items.Count == 0)
+                    {
+                        Logger.Debug("SpaceStation: Player inventory still empty, forcing reload", true);
+                        player.LoadInventory();
+                    }
+                    else
+                    {
+                        Logger.Debug($"SpaceStation: Player inventory already loaded with {player.PlayerInventory.Items.Count} items", true);
+                    }
+
+                    // Обновляем UI
+                    player.CallDeferred("UpdateInventoryUIDeferred");
+
+                    // Удаляем таймер
+                    timer.QueueFree();
+                };
+
+                AddChild(timer);
+                timer.Start();
+            }
         }
         catch (Exception ex)
         {
@@ -361,6 +479,21 @@ public partial class SpaceStation : Node2D
             catch (Exception ex)
             {
                 Logger.Debug($"Exception in RespawnPlayer: {ex.Message}", true);
+            }
+        }
+    }
+
+    // метод для отложенного обновления UI инвентаря
+    private void UpdateInventoryUIDeferred()
+    {
+        // Ищем все UI инвентаря и обновляем их
+        var inventoryUIs = GetTree().GetNodesInGroup("InventoryUI");
+        foreach (var ui in inventoryUIs)
+        {
+            if (ui is InventoryUI inventoryUI)
+            {
+                inventoryUI.UpdateInventoryUI();
+                Logger.Debug("Forced inventory UI update", true);
             }
         }
     }

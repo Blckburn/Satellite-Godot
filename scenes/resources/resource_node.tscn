@@ -20,19 +20,24 @@ InteractionHint = "Press E to harvest resource"
 y_sort_enabled = true
 scale = Vector2(0.5, 0.5)
 texture = ExtResource("2_yrqnr")
+offset = Vector2(0, -2.6)
 
 [node name="ResourceLabel" type="Label" parent="."]
+y_sort_enabled = true
 offset_left = -12.0
-offset_top = -17.0
+offset_top = -41.0
 offset_right = 60.0
-offset_bottom = 6.0
+offset_bottom = -18.0
 scale = Vector2(0.325, 0.325)
 text = "Resource"
 horizontal_alignment = 1
 
 [node name="StaticBody2D" type="StaticBody2D" parent="."]
+y_sort_enabled = true
+position = Vector2(0, -31)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D"]
+position = Vector2(0, 31)
 shape = SubResource("CircleShape2D_4krdk")
 
 [node name="Area2D" type="Area2D" parent="."]
