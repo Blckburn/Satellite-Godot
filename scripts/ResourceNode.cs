@@ -54,7 +54,6 @@ public partial class ResourceNode : InteractiveObject, IInteraction
     [Export] public float PulsatingSpeed { get; set; } = 1.0f;
     [Export] public float PulsatingStrength { get; set; } = 0.15f;
     [Export] public float RotationSpeed { get; set; } = 30.0f;
-    [Export] public int YSortOriginPx { get; set; } = 35;
 
     // Визуальные компоненты
     private Sprite2D _sprite;
@@ -112,8 +111,7 @@ public partial class ResourceNode : InteractiveObject, IInteraction
         UpdateVisuals();
 
         // Гарантируем корректную сортировку по Y для изометрии
-        YSortEnabled = true;
-        YSortOrigin = YSortOriginPx;
+        YSortEnabled = true; // Для Node2D достаточно включить YSort; origin доступен у TileMap/TileMapLayer
 
         Logger.Debug($"ResourceNode '{Name}' initialized with type: {Type}", true);
     }
