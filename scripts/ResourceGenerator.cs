@@ -576,7 +576,7 @@ public class ResourceGenerator
                 // Добавляем в родительский узел
                 parentNode.AddChild(resourceNode);
 
-                Logger.Debug($"Placed {resourceType} resource at world position {isoPos}", false);
+                Logger.Debug($"Placed {resourceType} resource at world position {resourceNode.Position}", false);
             }
         }
         catch (Exception e)
