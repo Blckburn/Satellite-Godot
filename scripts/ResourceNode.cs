@@ -54,8 +54,9 @@ public partial class ResourceNode : InteractiveObject, IInteraction
     [Export] public float PulsatingSpeed { get; set; } = 1.0f;
     [Export] public float PulsatingStrength { get; set; } = 0.15f;
     [Export] public float RotationSpeed { get; set; } = 30.0f;
-    // Вертикальный сдвиг позиции для согласования Y‑сортировки с TileMapLayer.y_sort_origin
-    [Export] public int SortYOffsetPx { get; set; } = 35;
+    // Сдвиг опоры спрайта (нижняя точка контакта с землей).
+    // Спрайт рисуется так, чтобы его нижняя точка совпадала с позицией узла.
+    [Export] public int FootGroundOffsetPx { get; set; } = 0;
 
     // Визуальные компоненты
     private Sprite2D _sprite;
@@ -93,10 +94,20 @@ public partial class ResourceNode : InteractiveObject, IInteraction
             CreateProgressLabel();
         }
 
-        // Сохраняем начальный масштаб для эффектов
+        // Сохраняем начальный масштаб и выставляем опору спрайта по нижней середине
         if (_sprite != null)
         {
             _initialScale = _sprite.Scale;
+            _sprite.Centered = false;
+            var tex = _sprite.Texture;
+            if (tex != null)
+            {
+                _sprite.Offset = new Godot.Vector2(tex.GetWidth() / 2f, tex.GetHeight());
+                if (FootGroundOffsetPx != 0)
+                {
+                    _sprite.Offset -= new Godot.Vector2(0, FootGroundOffsetPx);
+                }
+            }
         }
 
         // Загружаем предмет, если он не был установлен напрямую
@@ -114,9 +125,6 @@ public partial class ResourceNode : InteractiveObject, IInteraction
 
         // Гарантируем корректную сортировку по Y для изометрии
         YSortEnabled = true; // Для Node2D достаточно включить YSort
-
-        // Смещаем позицию вниз на SortYOffsetPx, чтобы линия отсечения совпала с origin тайла
-        Position = new Vector2(Position.X, Position.Y + SortYOffsetPx);
 
         Logger.Debug($"ResourceNode '{Name}' initialized with type: {Type}", true);
     }
