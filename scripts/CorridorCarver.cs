@@ -92,7 +92,7 @@ public sealed class CorridorCarver
         int mapHeight,
         int corridorWidth,
         Func<int, Vector2I> floorTileSelector,
-        Godot.TileMap floorsTileMap,
+        Godot.TileMapLayer floorsTileMap,
         int mapLayer,
         int floorsSourceId)
     {
@@ -133,7 +133,7 @@ public sealed class CorridorCarver
         int mapHeight,
         int corridorWidth,
         Func<int, Vector2I> floorTileSelector,
-        Godot.TileMap floorsTileMap,
+        Godot.TileMapLayer floorsTileMap,
         int mapLayer,
         int floorsSourceId)
     {

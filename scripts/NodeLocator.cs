@@ -37,6 +37,21 @@ public sealed class NodeLocator
             WallsTileMap ??= FindNodeRecursive<Godot.TileMapLayer>(context.GetTree().Root, "Walls");
             YSortContainer ??= FindNodeRecursive<Node2D>(context.GetTree().Root, "YSortContainer");
         }
+
+        // Fallback: if TileMapLayer nodes not found but old TileMap nodes exist, create layers at runtime
+        if (FloorsTileMap == null)
+        {
+            var floorsLegacy = IsometricTileset?.GetNodeOrNull<TileMap>("Floors")
+                               ?? context.GetTree().Root.GetNodeOrNull<TileMap>("Floors");
+            FloorsTileMap = TryCreateLayerFromLegacy(floorsLegacy);
+        }
+
+        if (WallsTileMap == null)
+        {
+            var wallsLegacy = IsometricTileset?.GetNodeOrNull<TileMap>("Walls")
+                              ?? context.GetTree().Root.GetNodeOrNull<TileMap>("Walls");
+            WallsTileMap = TryCreateLayerFromLegacy(wallsLegacy);
+        }
     }
 
     public void EnsureSortingWorks()
@@ -68,6 +83,27 @@ public sealed class NodeLocator
             }
         }
         return null;
+    }
+
+    private Godot.TileMapLayer TryCreateLayerFromLegacy(TileMap legacy)
+    {
+        if (legacy == null)
+        {
+            return null;
+        }
+
+        var parent = legacy.GetParent();
+        var layer = new Godot.TileMapLayer
+        {
+            Name = legacy.Name,
+            TileSet = legacy.TileSet,
+            Transform = legacy.Transform
+        };
+        parent.AddChild(layer);
+
+        // Do not delete legacy node at runtime; just hide to avoid visual overlap
+        legacy.Visible = false;
+        return layer;
     }
 }
 
