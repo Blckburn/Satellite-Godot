@@ -979,22 +979,200 @@ public partial class LevelGenerator : Node
         EmitSignal(SignalName.LevelGenerated, _currentSpawnPosition);
         Logger.Debug($"✅ LevelGenerated signal emitted with spawn position: {_currentSpawnPosition}", true);
         
-        // АВАРИЙНЫЙ FALLBACK: если есть PlayerScene но нет PlayerSpawner  
-        GetTree().CreateTimer(0.5).Timeout += () => {
-            var players = GetTree().GetNodesInGroup("Player");
-            if (players.Count == 0)
+        // 🚀 СОЗДАЕМ ИГРОКА НАПРЯМУЮ ЧЕРЕЗ SPAWN POINTS В УГЛАХ!
+        CreateCornerSpawnPointsAndPlayer(worldMask, worldTilesX, worldTilesY);
+    }
+
+    // 🚀 РЕВОЛЮЦИОННАЯ СИСТЕМА: Создание SpawnPoint узлов в углах карты!
+    private void CreateCornerSpawnPointsAndPlayer(TileType[,] worldMask, int worldTilesX, int worldTilesY)
+    {
+        Logger.Debug("🚀 Creating BADASS corner spawn point system!", true);
+        
+        // Создаем 4 SpawnPoint узла в углах карты
+        var spawnPoints = new List<(string name, Vector2 position, bool isValid)>();
+        
+        // Определяем 4 угловые зоны с ПРАВИЛЬНОЙ логикой
+        int borderOffset = 3; // Небольшой отступ от края
+        int cornerSize = Math.Max(10, Math.Min(worldTilesX, worldTilesY) / 5); // Зона поиска
+        
+        var cornerDefs = new List<(string name, int startX, int startY, int endX, int endY)>
+        {
+            ("TopLeft", borderOffset, borderOffset, borderOffset + cornerSize, borderOffset + cornerSize),
+            ("TopRight", worldTilesX - borderOffset - cornerSize, borderOffset, worldTilesX - borderOffset, borderOffset + cornerSize),
+            ("BottomLeft", borderOffset, worldTilesY - borderOffset - cornerSize, borderOffset + cornerSize, worldTilesY - borderOffset),
+            ("BottomRight", worldTilesX - borderOffset - cornerSize, worldTilesY - borderOffset - cornerSize, worldTilesX - borderOffset, worldTilesY - borderOffset)
+        };
+        
+        Vector2I? bestSpawn = null;
+        string bestCornerName = "";
+        
+        // Ищем ЛУЧШИЙ угол для спавна
+        foreach (var corner in cornerDefs)
+        {
+            Logger.Debug($"🔍 Searching for spawn in corner: {corner.name} ({corner.startX},{corner.startY}) to ({corner.endX},{corner.endY})", false);
+            
+            Vector2I? cornerSpawn = FindBestSpawnInCorner(worldMask, corner.startX, corner.startY, corner.endX, corner.endY, worldTilesX, worldTilesY);
+            
+            if (cornerSpawn.HasValue)
             {
-                Logger.Error("🚨 EMERGENCY: No player found 0.5 second after level generation! Creating emergency player!");
-                CreateEmergencyPlayer();
+                Vector2 worldPos = MapTileToIsometricWorld(cornerSpawn.Value);
+                spawnPoints.Add((corner.name, worldPos, true));
+                
+                if (bestSpawn == null) // Берем первый найденный как лучший
+                {
+                    bestSpawn = cornerSpawn;
+                    bestCornerName = corner.name;
+                }
+                
+                Logger.Debug($"✅ Valid spawn found in {corner.name}: tile ({cornerSpawn.Value.X}, {cornerSpawn.Value.Y}) -> world {worldPos}", true);
             }
             else
             {
-                Logger.Debug($"✅ Player found in scene: {players[0].Name}", true);
+                // Создаем резервный спавн в центре угловой зоны
+                int centerX = (corner.startX + corner.endX) / 2;
+                int centerY = (corner.startY + corner.endY) / 2;
+                Vector2 fallbackPos = MapTileToIsometricWorld(new Vector2I(centerX, centerY));
+                spawnPoints.Add((corner.name, fallbackPos, false));
+                
+                Logger.Debug($"❌ No valid spawn in {corner.name}, created fallback at ({centerX}, {centerY}) -> {fallbackPos}", false);
             }
-        };
+        }
+        
+        // Создаем физические SpawnPoint узлы в сцене
+        CreateSpawnPointNodes(spawnPoints);
+        
+        // Создаем игрока в ЛУЧШЕМ найденном углу
+        if (bestSpawn.HasValue)
+        {
+            Vector2 finalSpawnPos = MapTileToIsometricWorld(bestSpawn.Value);
+            Logger.Debug($"🎯 Creating player in {bestCornerName} at {finalSpawnPos}", true);
+            CreatePlayerAtPosition(finalSpawnPos);
+        }
+        else
+        {
+            // Аварийный спавн в центре карты
+            Vector2 centerPos = new Vector2(worldTilesX * 32, worldTilesY * 16);
+            Logger.Error("🚨 No valid corner spawns found! Using center position.");
+            CreatePlayerAtPosition(centerPos);
+        }
     }
-
-    // 🚨 АВАРИЙНОЕ создание игрока если PlayerSpawner не сработал
+    
+    // Ищет лучшую точку спавна в конкретном углу с детальной проверкой
+    private Vector2I? FindBestSpawnInCorner(TileType[,] worldMask, int startX, int startY, int endX, int endY, int worldTilesX, int worldTilesY)
+    {
+        // Ищем от краев угла к центру (приоритет углам)
+        for (int radius = 0; radius < Math.Max(endX - startX, endY - startY); radius++)
+        {
+            for (int x = startX; x < endX; x++)
+            {
+                for (int y = startY; y < endY; y++)
+                {
+                    // Проверяем только клетки на текущем радиусе
+                    int distanceFromEdge = Math.Min(
+                        Math.Min(x - startX, endX - 1 - x),
+                        Math.Min(y - startY, endY - 1 - y)
+                    );
+                    
+                    if (distanceFromEdge != radius) continue;
+                    
+                    // Проверяем границы
+                    if (x < 0 || x >= worldTilesX || y < 0 || y >= worldTilesY) continue;
+                    
+                    // Проверяем проходимость
+                    if (worldMask[x, y] == TileType.Room)
+                    {
+                        // Проверяем 3x3 область
+                        if (IsAreaWalkable(worldMask, x, y, worldTilesX, worldTilesY, 1))
+                        {
+                            // Проверяем путь к центру карты
+                            Vector2I mapCenter = new Vector2I(worldTilesX / 2, worldTilesY / 2);
+                            if (IsPathToTargetExists(worldMask, new Vector2I(x, y), mapCenter, worldTilesX, worldTilesY))
+                            {
+                                return new Vector2I(x, y);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return null; // Не нашли подходящую точку
+    }
+    
+    // Создает физические SpawnPoint узлы в сцене для каждого угла
+    private void CreateSpawnPointNodes(List<(string name, Vector2 position, bool isValid)> spawnPoints)
+    {
+        Logger.Debug("🏗️ Creating physical SpawnPoint nodes in scene", true);
+        
+        foreach (var spawn in spawnPoints)
+        {
+            // Создаем узел SpawnPoint
+            Node2D spawnNode = new Node2D();
+            spawnNode.Name = $"SpawnPoint_{spawn.name}";
+            spawnNode.Position = spawn.position;
+            
+            // Добавляем в группу для легкого поиска
+            spawnNode.AddToGroup("SpawnPoints");
+            if (spawn.isValid)
+                spawnNode.AddToGroup("ValidSpawnPoints");
+            
+            // Добавляем в YSortContainer если есть, иначе в LevelGenerator
+            if (YSortContainer != null)
+            {
+                YSortContainer.AddChild(spawnNode);
+            }
+            else
+            {
+                AddChild(spawnNode);
+            }
+            
+            Logger.Debug($"✅ Created SpawnPoint: {spawnNode.Name} at {spawn.position} (Valid: {spawn.isValid})", false);
+        }
+    }
+    
+    // Создает игрока в указанной позиции (ЗАМЕНЯЕТ emergency систему)
+    private void CreatePlayerAtPosition(Vector2 position)
+    {
+        if (PlayerScene == null)
+        {
+            Logger.Error("PlayerScene is null! Cannot create player!");
+            return;
+        }
+        
+        try
+        {
+            Logger.Debug($"🎮 Creating player at position: {position}", true);
+            
+            // Создаем игрока
+            Node2D player = PlayerScene.Instantiate<Node2D>();
+            if (player == null)
+            {
+                Logger.Error("Failed to instantiate player!");
+                return;
+            }
+            
+            player.Position = position;
+            player.AddToGroup("Player");
+            
+            // Добавляем в YSortContainer если есть, иначе в сцену
+            if (YSortContainer != null)
+            {
+                YSortContainer.AddChild(player);
+                Logger.Debug($"✅ Player created in YSortContainer at {position}", true);
+            }
+            else
+            {
+                AddChild(player);
+                Logger.Debug($"✅ Player created in LevelGenerator at {position}", true);
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Failed to create player: {e.Message}");
+        }
+    }
+    
+    // 🚨 АВАРИЙНОЕ создание игрока если PlayerSpawner не сработал (УСТАРЕЛО)
     private void CreateEmergencyPlayer()
     {
         if (PlayerScene == null)
