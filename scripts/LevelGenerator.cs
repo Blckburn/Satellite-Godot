@@ -1033,16 +1033,32 @@ public partial class LevelGenerator : Node
         // 🎲 РАНДОМНО выбираем один из ВАЛИДНЫХ углов!
         if (validSpawns.Count > 0)
         {
+            // ОТЛАДКА: показываем ВСЕ доступные углы
+            Logger.Debug($"🔍 Available spawn corners ({validSpawns.Count}):", true);
+            for (int i = 0; i < validSpawns.Count; i++)
+            {
+                Logger.Debug($"  [{i}] {validSpawns[i].name} at tile {validSpawns[i].tilePos} -> world {validSpawns[i].worldPos}", true);
+            }
+            
             // ИСПОЛЬЗУЕМ СИСТЕМНОЕ ВРЕМЯ для истинной рандомизации!
-            Random random = new Random((int)DateTime.Now.Ticks);
+            long ticks = DateTime.Now.Ticks;
+            int seed = (int)(ticks % int.MaxValue); // Безопасное приведение
+            Random random = new Random(seed);
             int randomIndex = random.Next(validSpawns.Count);
             var selectedSpawn = validSpawns[randomIndex];
             
             bestSpawn = selectedSpawn.tilePos;
             bestCornerName = selectedSpawn.name;
             
-            Logger.Debug($"🎲 TRULY RANDOM CORNER SELECTED: {bestCornerName} (index {randomIndex}) from {validSpawns.Count} valid options!", true);
-            Logger.Debug($"🎲 Random seed: {(int)DateTime.Now.Ticks}, selected corner: {bestCornerName}", true);
+            Logger.Debug($"🎲 RANDOM SELECTION PROCESS:", true);
+            Logger.Debug($"  Ticks: {ticks}", true);
+            Logger.Debug($"  Seed: {seed}", true);
+            Logger.Debug($"  Random index: {randomIndex} (from 0-{validSpawns.Count-1})", true);
+            Logger.Debug($"  🎯 SELECTED: {bestCornerName} at {selectedSpawn.worldPos}", true);
+        }
+        else
+        {
+            Logger.Error("🚨 NO VALID SPAWN CORNERS FOUND! This should not happen!", true);
         }
         
         // Создаем физические SpawnPoint узлы в сцене
