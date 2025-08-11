@@ -459,9 +459,6 @@ public partial class LevelGenerator : Node
             // Соединяем комнаты в секции коридорами
             ConnectSectionRooms(section);
 
-            // Гарантируем, что каждая комната имеет выход к сети коридоров
-            EnsureSectionRoomConnectivity(section);
-
             // Заполняем фоновыми тайлами пустые области
             FillSectionWithBackgroundTiles(section);
 
@@ -497,9 +494,6 @@ public partial class LevelGenerator : Node
                 biome => biome >= 4 ? new Vector2I(1,1) : new Vector2I(5,0)
             );
 
-            // Гарантируем соединение комнат с коридорами
-            EnsureSectionRoomConnectivity(section);
-
             // Выбираем точку спавна для секции
             section.SpawnPosition = GetSectionSpawnPosition(section);
 
@@ -507,6 +501,9 @@ public partial class LevelGenerator : Node
             AddSectionResources(section);
 
             AddSectionContainers(section);
+
+            // На САМОМ конце пайплайна: гарантируем связность комнат с коридорами
+            EnsureSectionRoomConnectivity(section);
 
             Logger.Debug($"Section level generated at ({section.GridX}, {section.GridY}) with {section.Rooms.Count} rooms", false);
         }
