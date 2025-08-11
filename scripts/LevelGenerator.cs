@@ -957,7 +957,7 @@ public partial class LevelGenerator : Node
     // КРУТАЯ система толстых стен с привязкой к биомам! 💪
     private void AddBiomeBasedBorderWalls(TileType[,] worldMask, int[,] worldBiome, int worldTilesX, int worldTilesY)
     {
-        const int WALL_THICKNESS = 10; // Толщина стены x10!
+        const int WALL_THICKNESS = 3; // Разумная толщина стены!
         Logger.Debug($"Adding THICK biome-based border walls around map {worldTilesX}x{worldTilesY}, thickness: {WALL_THICKNESS}", true);
         
         // Добавляем ТОЛСТЫЕ стены по периметру карты
@@ -973,20 +973,29 @@ public partial class LevelGenerator : Node
                 
                 if (distanceFromEdge < WALL_THICKNESS)
                 {
-                    // Устанавливаем стену в маске
-                    worldMask[x, y] = TileType.Wall;
-                    
-                    // Определяем ближайший биом для выбора стены
-                    int biomeForWall = GetNearestBiomeForWall(worldBiome, x, y, worldTilesX, worldTilesY, WALL_THICKNESS);
-                    
-                    // Устанавливаем тайл стены в TileMap с привязкой к биому
-                    if (WallsTileMap != null)
+                    // ТОЛЬКО если тайл пустой или уже стена - не перезаписываем Room тайлы!
+                    if (worldMask[x, y] == TileType.Wall || worldMask[x, y] == TileType.None)
                     {
-                        Vector2I tilePos = new Vector2I(x, y);
-                        Vector2I wallTile = _biome.GetWallTileForBiome(biomeForWall, tilePos);
-                        WallsTileMap.SetCell(tilePos, WallsSourceID, wallTile);
+                        // Устанавливаем стену в маске
+                        worldMask[x, y] = TileType.Wall;
                         
-                        Logger.Debug($"Wall at ({x}, {y}) uses biome {biomeForWall} -> tile {wallTile}", false);
+                        // Определяем ближайший биом для выбора стены
+                        int biomeForWall = GetNearestBiomeForWall(worldBiome, x, y, worldTilesX, worldTilesY, WALL_THICKNESS);
+                        
+                        // Устанавливаем тайл стены в TileMap с привязкой к биому
+                        if (WallsTileMap != null)
+                        {
+                            Vector2I tilePos = new Vector2I(x, y);
+                            Vector2I wallTile = _biome.GetWallTileForBiome(biomeForWall, tilePos);
+                            WallsTileMap.SetCell(tilePos, WallsSourceID, wallTile);
+                            
+                            Logger.Debug($"Border wall at ({x}, {y}) uses biome {biomeForWall} -> tile {wallTile}", false);
+                        }
+                    }
+                    else
+                    {
+                        // Логируем что мы НЕ перезаписываем существующий контент
+                        Logger.Debug($"Skipping wall at ({x}, {y}) - already has content: {worldMask[x, y]}", false);
                     }
                 }
             }
@@ -1043,7 +1052,7 @@ public partial class LevelGenerator : Node
     {
         Logger.Debug($"Finding corner spawn position for map {worldTilesX}x{worldTilesY}", true);
         
-        const int WALL_THICKNESS = 10; // Та же толщина что и в стенах!
+        const int WALL_THICKNESS = 3; // Та же толщина что и в стенах!
         
         // Определяем размеры угловых зон с учетом ТОЛСТЫХ стен
         int cornerSize = Math.Max(8, Math.Min(worldTilesX, worldTilesY) / 6); // Больше зона для поиска
