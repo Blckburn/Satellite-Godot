@@ -417,12 +417,13 @@ public partial class LevelGenerator : Node
 
             // Эмитим сигнал о завершении генерации мульти-секции
             EmitSignal("MultiSectionMapGenerated");
-
-            // Спавним или перемещаем игрока
-            if (CreatePlayerOnGeneration)
-            {
-                HandlePlayerSpawn();
-            }
+            
+            // 🚀 ЭМИТИМ ГЛАВНЫЙ СИГНАЛ О ЗАВЕРШЕНИИ ГЕНЕРАЦИИ УРОВНЯ!
+            // PlayerSpawner подхватит этот сигнал и создаст игрока в правильном месте
+            EmitSignal(SignalName.LevelGenerated, _currentSpawnPosition);
+            Logger.Debug($"LevelGenerated signal emitted from multi-section generation with spawn: {_currentSpawnPosition}", true);
+            
+            // УБИРАЕМ старый HandlePlayerSpawn() - теперь PlayerSpawner сделает это через сигнал!
         }
         catch (Exception e)
         {
@@ -949,7 +950,14 @@ public partial class LevelGenerator : Node
         GenerateWorldResources(worldMask, worldBiome, worldTilesX, worldTilesY);
         GenerateWorldContainers(worldMask, worldBiome, worldTilesX, worldTilesY);
         
+        // Отмечаем что уровень сгенерирован
+        _levelGenerated = true;
+        
         Logger.Debug($"WorldBiomes generation completed. Spawn position: {_currentSpawnPosition}", true);
+        
+        // 🚀 ЭМИТИМ СИГНАЛ О ЗАВЕРШЕНИИ ГЕНЕРАЦИИ С ПРАВИЛЬНОЙ ПОЗИЦИЕЙ СПАВНА!
+        EmitSignal(SignalName.LevelGenerated, _currentSpawnPosition);
+        Logger.Debug($"LevelGenerated signal emitted with spawn position: {_currentSpawnPosition}", true);
     }
 
     // Удалено: GenerateVirtualRoomsFromWorldMask - заменено на прямую генерацию по мировой маске
@@ -957,7 +965,7 @@ public partial class LevelGenerator : Node
     // КРУТАЯ система толстых стен с привязкой к биомам! 💪
     private void AddBiomeBasedBorderWalls(TileType[,] worldMask, int[,] worldBiome, int worldTilesX, int worldTilesY)
     {
-        const int WALL_THICKNESS = 3; // Разумная толщина стены!
+        const int WALL_THICKNESS = 15; // ТОЛСТЫЕ стены для epic borders!
         Logger.Debug($"Adding THICK biome-based border walls around map {worldTilesX}x{worldTilesY}, thickness: {WALL_THICKNESS}", true);
         
         // Добавляем ТОЛСТЫЕ стены по периметру карты
@@ -1052,7 +1060,7 @@ public partial class LevelGenerator : Node
     {
         Logger.Debug($"Finding corner spawn position for map {worldTilesX}x{worldTilesY}", true);
         
-        const int WALL_THICKNESS = 3; // Та же толщина что и в стенах!
+        const int WALL_THICKNESS = 15; // Та же толщина что и в стенах!
         
         // Определяем размеры угловых зон с учетом ТОЛСТЫХ стен
         int cornerSize = Math.Max(8, Math.Min(worldTilesX, worldTilesY) / 6); // Больше зона для поиска
