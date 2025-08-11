@@ -1,0 +1,101 @@
+using Godot;
+using System;
+
+public static class GeneratedAtlasBuilder
+{
+    // Simple procedural atlas for planet surface. Iso-diamond tiles with subtle noise and shading.
+    private static int _cachedSourceId = -1;
+
+    public static int EnsureFloorSource(TileMapLayer floors, int currentSourceId)
+    {
+        if (floors == null || floors.TileSet == null) return currentSourceId;
+        if (_cachedSourceId >= 0) return _cachedSourceId;
+
+        int tileW = 64, tileH = 32;
+        int cols = 8, rows = 1; // [0]grass, [1]sand, [2]snow, [3]stone, [4]water, [5]ice, [6]bridgeH, [7]bridgeV
+        int imgW = cols * tileW;
+        int imgH = rows * tileH;
+
+        Image img = Image.Create(imgW, imgH, false, Image.Format.Rgba8);
+        img.Fill(new Color(0,0,0,0));
+
+        DrawIso(img, 0,           0, tileW, tileH, new Color(0.24f, 0.55f, 0.28f)); // grass
+        DrawIso(img, tileW*1,     0, tileW, tileH, new Color(0.82f, 0.75f, 0.45f)); // sand
+        DrawIso(img, tileW*2,     0, tileW, tileH, new Color(0.90f, 0.93f, 0.96f)); // snow
+        DrawIso(img, tileW*3,     0, tileW, tileH, new Color(0.50f, 0.52f, 0.56f)); // stone
+        DrawIso(img, tileW*4,     0, tileW, tileH, new Color(0.12f, 0.38f, 0.68f)); // water
+        DrawIso(img, tileW*5,     0, tileW, tileH, new Color(0.72f, 0.86f, 0.94f)); // ice
+        DrawBridge(img, tileW*6,  0, tileW, tileH, true);  // natural bridge horizontal
+        DrawBridge(img, tileW*7,  0, tileW, tileH, false); // natural bridge vertical
+
+        // Register atlas source into TileSet and return id
+        var ts = floors.TileSet;
+        var tex = ImageTexture.CreateFromImage(img);
+        var atlas = new TileSetAtlasSource();
+        atlas.Texture = tex;
+        atlas.TextureRegionSize = new Vector2I(tileW, tileH);
+        atlas.UseTexturePadding = true;
+
+        // Create tiles for all atlas coordinates we use
+        for (int x = 0; x < cols; x++)
+        {
+            atlas.CreateTile(new Vector2I(x, 0));
+        }
+
+        int newId = ts.AddSource(atlas);
+        _cachedSourceId = newId;
+        return _cachedSourceId;
+    }
+
+    private static void DrawIso(Image img, int ox, int oy, int w, int h, Color baseCol)
+    {
+        int cx = ox + w/2;
+        int cy = oy + h/2;
+        float halfW = w * 0.5f - 1;
+        float halfH = h * 0.5f - 1;
+        var rng = new Random(ox*73856093 ^ oy*19349663);
+        for (int y = oy; y < oy + h; y++)
+        {
+            for (int x = ox; x < ox + w; x++)
+            {
+                float dx = Math.Abs(x - cx) / halfW;
+                float dy = Math.Abs(y - cy) / halfH;
+                if (dx + dy <= 1.0f)
+                {
+                    float noise = (float)(rng.NextDouble()*0.08 - 0.04);
+                    float shade = 0.06f * (y - oy) / h; // light gradient
+                    var c = new Color(
+                        Math.Clamp(baseCol.R + noise - shade, 0, 1),
+                        Math.Clamp(baseCol.G + noise - shade, 0, 1),
+                        Math.Clamp(baseCol.B + noise - shade, 0, 1),
+                        1
+                    );
+                    img.SetPixel(x, y, c);
+                }
+            }
+        }
+    }
+
+    private static void DrawBridge(Image img, int ox, int oy, int w, int h, bool horizontal)
+    {
+        // base: water-like blue background, with stone stepping stripe
+        DrawIso(img, ox, oy, w, h, new Color(0.18f, 0.44f, 0.72f));
+        int cx = ox + w/2; int cy = oy + h/2;
+        int len = horizontal ? w : h;
+        for (int i = -len/3; i <= len/3; i += (horizontal ? 10 : 6))
+        {
+            for (int t = -3; t <= 3; t++)
+            {
+                int px = horizontal ? cx + i : cx + t;
+                int py = horizontal ? cy + t : cy + i;
+                // set stone color if inside
+                if (px >= ox && px < ox + w && py >= oy && py < oy + h)
+                {
+                    img.SetPixel(px, py, new Color(0.60f, 0.60f, 0.62f, 1));
+                }
+            }
+        }
+    }
+}
+
+

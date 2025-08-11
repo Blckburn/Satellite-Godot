@@ -25,6 +25,15 @@ GameTimer="*res://scripts/GameTimer.cs"
 
 shapes/autoload_on_startup=false
 
+[display]
+
+window/size/viewport_width=2560
+window/size/viewport_height=1440
+window/size/window_width_override=2560
+window/size/window_height_override=1440
+window/stretch/mode="canvas_items"
+window/size/fullscreen=false
+
 [dotnet]
 
 project/assembly_name="Satellite"
@@ -36,17 +45,6 @@ version_control/autoload_on_startup=true
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/TileMapLayerMigrator/plugin.cfg")
-
-[display]
-
-window/size/viewport_width=2560
-window/size/viewport_height=1440
-window/size/window_width_override=2560
-window/size/window_height_override=1440
-window/size/resizable=true
-window/size/fullscreen=false
-window/stretch/mode="canvas_items"
-window/stretch/aspect="keep"
 
 [input]
 

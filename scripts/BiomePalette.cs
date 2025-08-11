@@ -65,6 +65,13 @@ public sealed class BiomePalette
             default: return useVariation && _random.Next(0, 100) < 40 ? new Vector2I(2, 0) : new Vector2I(0, 0); // Ground / Grass
         }
     }
+
+    public Vector2I GetBridgeTile(bool horizontal, int width)
+    {
+        // Используем сгенерированные в процедурном атласе индексы:
+        // 6 — горизонтальный мост, 7 — вертикальный мост
+        return new Vector2I(horizontal ? 6 : 7, 0);
+    }
 }
 
 

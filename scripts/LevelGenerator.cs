@@ -4,12 +4,7 @@ using System.Collections.Generic;
 
 public partial class LevelGenerator : Node
 {
-    public enum GenerationAlgorithm
-    {
-        RoomsCorridors = 0,
-        CaveTrails = 1,
-        WorldBiomes = 2
-    }
+    public enum GenerationAlgorithm { WorldBiomes = 0 }
     // Сигнал о завершении генерации уровня с передачей точки спавна
     [Signal] public delegate void LevelGeneratedEventHandler(Vector2 spawnPosition);
 
@@ -79,22 +74,22 @@ public partial class LevelGenerator : Node
     // Клавиша для генерации мульти-секционной карты
     [Export] public Key MultiSectionGenerationKey { get; set; } = Key.M;
 
-    // Переключатель алгоритма генерации и параметры Cave+Trails
-    [Export] public GenerationAlgorithm Algorithm { get; set; } = GenerationAlgorithm.RoomsCorridors;
+    // Алгоритм всегда WorldBiomes (убраны другие варианты из инспектора)
+    private readonly GenerationAlgorithm Algorithm = GenerationAlgorithm.WorldBiomes;
 
-    // Cave (Cellular Automata) params
-    [Export(PropertyHint.Range, "0,1,0.01")] public float CaveInitialFill { get; set; } = 0.42f;
-    [Export] public int CaveSmoothSteps { get; set; } = 5;
-    [Export] public int CaveBirthLimit { get; set; } = 4;
-    [Export] public int CaveDeathLimit { get; set; } = 3;
-    [Export] public bool CavePreserveLargest { get; set; } = true;
+    // Cave (Cellular Automata) params (оставлены как внутренние, без экспорта)
+    public float CaveInitialFill { get; set; } = 0.42f;
+    public int CaveSmoothSteps { get; set; } = 5;
+    public int CaveBirthLimit { get; set; } = 4;
+    public int CaveDeathLimit { get; set; } = 3;
+    public bool CavePreserveLargest { get; set; } = true;
 
-    // Trails params
-    [Export] public int TrailNodeCount { get; set; } = 8;
-    [Export] public int TrailMinSpacing { get; set; } = 6;
-    [Export] public int TrailWidth { get; set; } = 3;
-    [Export] public bool TrailConnectAllComponents { get; set; } = true;
-    [Export] public int TrailExtraEdges { get; set; } = 2;
+    // Trails params (внутренние, без экспорта)
+    public int TrailNodeCount { get; set; } = 8;
+    public int TrailMinSpacing { get; set; } = 6;
+    public int TrailWidth { get; set; } = 3;
+    public bool TrailConnectAllComponents { get; set; } = true;
+    public int TrailExtraEdges { get; set; } = 2;
 
     // WorldBiomes params
     [Export] public int WorldBiomeCount { get; set; } = 6; // сколько регионов биомов
@@ -105,15 +100,20 @@ public partial class LevelGenerator : Node
     [Export(PropertyHint.Range, "0,1,0.01")] public float WorldOpenTarget { get; set; } = 0.38f; // целевая доля проходимых тайлов внутри мира
     [Export] public int CarveGlobalTrailsWidth { get; set; } = 4; // ширина глобальных троп (МСТ)
     [Export] public int BiomeHallRadius { get; set; } = 10;       // радиус «зала» вокруг центра биома
-    [Export] public int RiverCount { get; set; } = 2;             // кол-во «рек/лавы» как открытых полос
+    [Export] public int RiverCount { get; set; } = 3;             // кол-во «рек/лавы» как открытых полос
     [Export] public int RiverWidth { get; set; } = 6;             // ширина полосы
     [Export(PropertyHint.Range, "0,0.2,0.005")] public float RiverNoiseFreq { get; set; } = 0.045f; // частота синус-шума
     [Export] public float RiverNoiseAmp { get; set; } = 8f;       // амплитуда синус-шума (в тайлах)
+    [Export] public Vector2I BridgeTileHorizontal { get; set; } = new Vector2I(1,0); // временно: камень
+    [Export] public Vector2I BridgeTileVertical { get; set; } = new Vector2I(1,0);   // временно: камень
+    [Export] public int LocalCorridorWidth { get; set; } = 3;     // ширина локальных связок «комнаты → центр биома»
+    [Export] public bool RandomizeWorldParams { get; set; } = true; // лёгкая рандомизация параметров при каждой генерации
+    [Export] public int RandomSeed { get; set; } = -1;              // -1 = случайный сид, иначе фиксированный
 
     // Псевдослучайный генератор
     private Random _random;
     private BiomePalette _biome;
-    private SingleMapBuilder _singleMap;
+    // private SingleMapBuilder _singleMap; // одно-секционный билдер удалён
     private NodeLocator _nodeLocator;
 
     // Удалено: локальный список комнат больше не используется в мультисекции (оставлено для совместимости, но не используется)
@@ -206,7 +206,10 @@ public partial class LevelGenerator : Node
     public override void _Ready()
     {
         // Инициализируем генератор случайных чисел
-        _random = new Random();
+        if (RandomSeed >= 0)
+            _random = new Random(RandomSeed);
+        else
+            _random = new Random();
 
         // Инициализируем маску карты
         _mapMask = new TileType[MapWidth, MapHeight];
@@ -221,6 +224,9 @@ public partial class LevelGenerator : Node
         YSortContainer = _nodeLocator.YSortContainer;
 
         Logger.Debug($"TileMapLayer найдены: Floors: {FloorsTileMap?.Name}, Walls: {WallsTileMap?.Name}, YSort: {YSortContainer?.Name}", true);
+
+        // Уберём визуальные швы: используем padding в атласе (включено) и nearest-фильтр на текстуре
+        // Замечание: в C# API Godot список источников не всегда доступен. Полагаться на padding атласа.
 
         // Генерируем мульти-секционную карту сразу с задержкой 0.5 секунды
         GetTree().CreateTimer(0.5).Timeout += () => {
@@ -266,8 +272,10 @@ public partial class LevelGenerator : Node
         _sectionConnector = new SectionConnector(_random);
         _decorator = new Decorator(_random);
         _multiSectionCoordinator = new MultiSectionCoordinator(_random);
+        // Гарантируем наличие сгенерированного источника пола (минимальный процедурный атлас)
+        int genId = GeneratedAtlasBuilder.EnsureFloorSource(FloorsTileMap, FloorsSourceID);
+        if (genId >= 0) FloorsSourceID = genId;
         _biome = new BiomePalette(_random, () => UseVariedWalls);
-        _singleMap = new SingleMapBuilder(_random);
 
     }
 
@@ -417,21 +425,7 @@ public partial class LevelGenerator : Node
             // Генерируем все секции карты
             GenerateAllSections();
 
-            // Соединяем секции
-            if (ConnectSections && Algorithm == GenerationAlgorithm.RoomsCorridors)
-            {
-                _multiSectionCoordinator.ConnectAdjacentSections(
-                    GridWidth,
-                    GridHeight,
-                    _mapSections,
-                    (left, right) => ConnectSectionsHorizontally(left, right),
-                    (top, bottom) => ConnectSectionsVertically(top, bottom)
-                );
-            }
-            else if (ConnectSections && Algorithm == GenerationAlgorithm.CaveTrails)
-            {
-                ConnectSectionsCaveStyle();
-            }
+            // Соединяем секции (WorldBiomes используют собственные глобальные тропы/мосты)
 
             // Выбираем секцию для спавна игрока через координатор (получаем МИРОВЫЕ пиксели)
             _multiSectionCoordinator.SelectSpawnSection(_mapSections, out _currentSpawnPosition);
@@ -467,20 +461,8 @@ public partial class LevelGenerator : Node
             // Устанавливаем тип биома для генерации
             BiomeType = section.BiomeType;
 
-            // Генерируем уровень для этой секции (по выбранному алгоритму)
-            switch (Algorithm)
-            {
-                case GenerationAlgorithm.RoomsCorridors:
-                    GenerateSectionLevel(section);
-                    break;
-                case GenerationAlgorithm.CaveTrails:
-                    GenerateSectionLevelCaveTrails(section);
-                    break;
-                case GenerationAlgorithm.WorldBiomes:
-                    // WorldBiomes отрисуем поверх сетки: каждая секция станет частью одного огромного мира
-                    GenerateSectionLevelWorldBiomes(section);
-                    break;
-            }
+            // WorldBiomes: каждая секция становится частью одного общего мира
+            GenerateSectionLevelWorldBiomes(section);
 
             Logger.Debug($"Generated section at ({section.GridX},{section.GridY}) with biome {GetBiomeName(section.BiomeType)}", false);
         }
@@ -605,7 +587,8 @@ public partial class LevelGenerator : Node
     }
 
     // НОВОЕ: Метод для генерации уровня для конкретной секции
-    private void GenerateSectionLevel(MapSection section)
+    // УДАЛЕНО: RoomsCorridors генератор
+    /* private void GenerateSectionLevel(MapSection section)
     {
         try
         {
@@ -682,10 +665,11 @@ public partial class LevelGenerator : Node
         {
             Logger.Error($"Error generating section level: {e.Message}\n{e.StackTrace}");
         }
-    }
+    } */
 
     // Черновой генератор Cave+Trails
-    private void GenerateSectionLevelCaveTrails(MapSection section)
+    // УДАЛЕНО: Cave+Trails генератор
+    /* private void GenerateSectionLevelCaveTrails(MapSection section)
     {
         try
         {
@@ -767,7 +751,7 @@ public partial class LevelGenerator : Node
         {
             Logger.Error($"Error generating section level (Cave+Trails): {e.Message}\n{e.StackTrace}");
         }
-    }
+    } */
 
     // Черновой каркас WorldBiomes: одна большая карта на сетке секций; размещаем центры биомов и для каждого региона вызываем Cave+Trails с его параметрами
     private void GenerateSectionLevelWorldBiomes(MapSection section)
@@ -786,6 +770,22 @@ public partial class LevelGenerator : Node
 
         // 1) Выберем центры регионов (простейшая Poisson-замена: отбраковка по минимальному расстоянию)
         var rng = _random;
+
+        // Мягкая рандомизация параметров (если включена). Не влияет на инспектор напрямую.
+        if (RandomizeWorldParams)
+        {
+            int rivers = rng.Next(System.Math.Max(1, RiverCount - 1), RiverCount + 2); // минимум 1
+            RiverCount = System.Math.Max(1, rivers);
+            RiverWidth = System.Math.Clamp(RiverWidth + rng.Next(-1, 2), 4, 10);
+            CarveGlobalTrailsWidth = System.Math.Clamp(CarveGlobalTrailsWidth + rng.Next(-1, 2), 3, 8);
+            BiomeHallRadius = System.Math.Clamp(BiomeHallRadius + rng.Next(-2, 3), 8, 14);
+            LocalCorridorWidth = System.Math.Clamp(LocalCorridorWidth + rng.Next(-1, 2), 2, 5);
+            // варьируем форму русел
+            RiverNoiseFreq = Math.Clamp(RiverNoiseFreq + (float)((rng.NextDouble()-0.5)*0.01), 0.02f, 0.08f);
+            RiverNoiseAmp  = Math.Clamp(RiverNoiseAmp  + (float)((rng.NextDouble()-0.5)*2.0), 6f, 12f);
+            // Немного варьируем открытость
+            WorldOpenTarget = System.Math.Clamp(WorldOpenTarget + (float)((rng.NextDouble()-0.5)*0.06), 0.30f, 0.50f);
+        }
         var centers = new System.Collections.Generic.List<(Vector2I pos, int biome)>();
         int attempts = 0; int maxAttempts = WorldBiomeCount * 200;
         int spacing = System.Math.Max(2, BiomeMinSpacing);
@@ -827,6 +827,7 @@ public partial class LevelGenerator : Node
 
         // 3) Инициализация надежной маски мира шумом внутри каждого региона + «залы» вокруг центров
         var worldMask = new TileType[worldTilesX, worldTilesY];
+        var waterMask = new bool[worldTilesX, worldTilesY]; // отмечаем клетки воды/льда для мостов
         for (int x = 0; x < worldTilesX; x++)
         for (int y = 0; y < worldTilesY; y++)
         {
@@ -939,7 +940,7 @@ public partial class LevelGenerator : Node
         {
             var path = FindWorldPathOrganic(centers[c.a].pos, centers[c.b].pos);
             if (path == null) continue;
-            var tile = _biome.GetFloorTileForBiome(centers[c.a].biome);
+            var tile = _biome.GetBridgeTile(true, CarveGlobalTrailsWidth);
             foreach (var wp in path)
             {
                 for (int w = -(CarveGlobalTrailsWidth/2); w <= (CarveGlobalTrailsWidth/2); w++)
@@ -954,7 +955,76 @@ public partial class LevelGenerator : Node
             }
         }
 
-        // 5b) Реки/лава: W синусоиды по миру
+        // 4b) Локальные связки: из центральной «залы» каждого биома в близкие комнаты
+        // Локальная функция A* с ограничением на тот же биом
+        System.Collections.Generic.List<Vector2I> FindWorldPathConstrainedLocal(Vector2I start, Vector2I goal, int allowedBiome)
+        {
+            var open = new System.Collections.Generic.SortedSet<(int,int,Vector2I)>(System.Collections.Generic.Comparer<(int,int,Vector2I)>.Create((a,b)=> a.Item1!=b.Item1? a.Item1-b.Item1 : a.Item2!=b.Item2? a.Item2-b.Item2 : a.Item3.X!=b.Item3.X? a.Item3.X-b.Item3.X : a.Item3.Y-b.Item3.Y));
+            var came = new System.Collections.Generic.Dictionary<Vector2I, Vector2I>();
+            var gScore = new System.Collections.Generic.Dictionary<Vector2I, int>();
+            int H(Vector2I p) => System.Math.Abs(p.X - goal.X) + System.Math.Abs(p.Y - goal.Y);
+            open.Add((H(start), 0, start)); gScore[start] = 0;
+            var dirs = new[]{ new Vector2I(1,0), new Vector2I(-1,0), new Vector2I(0,1), new Vector2I(0,-1) };
+            while (open.Count > 0)
+            {
+                var cur = open.Min; open.Remove(cur);
+                var p = cur.Item3;
+                if (p == goal)
+                {
+                    var path = new System.Collections.Generic.List<Vector2I>();
+                    while (came.ContainsKey(p)) { path.Add(p); p = came[p]; }
+                    path.Reverse(); return path;
+                }
+                foreach (var d in dirs)
+                {
+                    var n = new Vector2I(p.X + d.X, p.Y + d.Y);
+                    if (n.X < 0 || n.X >= worldTilesX || n.Y < 0 || n.Y >= worldTilesY) continue;
+                    if (worldBiome[n.X, n.Y] != allowedBiome) continue; // ходим только внутри своего биома
+                    int ng = cur.Item2 + 1;
+                    if (!gScore.TryGetValue(n, out var old) || ng < old)
+                    {
+                        gScore[n] = ng; came[n] = p; open.Add((ng + H(n), ng, n));
+                    }
+                }
+            }
+            return null;
+        }
+
+        foreach (var c in centers)
+        {
+            var hub = c.pos;
+            int searchR = System.Math.Max(8, BiomeHallRadius + 18);
+            for (int x = System.Math.Max(0, hub.X - searchR); x < System.Math.Min(worldTilesX, hub.X + searchR); x++)
+            {
+                for (int y = System.Math.Max(0, hub.Y - searchR); y < System.Math.Min(worldTilesY, hub.Y + searchR); y++)
+                {
+                    if (worldBiome[x, y] != c.biome) continue;
+                    if (worldMask[x, y] != TileType.Room) continue;
+                    int dx0 = x - hub.X, dy0 = y - hub.Y; if (dx0*dx0 + dy0*dy0 <= BiomeHallRadius*BiomeHallRadius) continue;
+                    // Редкий отбор, чтобы не перегружать
+                    if (((x + y) % 11) != 0) continue;
+                    var path = FindWorldPathConstrainedLocal(hub, new Vector2I(x, y), c.biome);
+                    if (path == null) continue;
+                    var tile = _biome.GetFloorTileForBiome(c.biome);
+                    foreach (var wp in path)
+                    {
+                        for (int w = -(LocalCorridorWidth/2); w <= (LocalCorridorWidth/2); w++)
+                        {
+                            foreach (var d in new[]{new Vector2I(1,0), new Vector2I(0,1)})
+                            {
+                                var p = new Vector2I(wp.X + d.X*w, wp.Y + d.Y*w);
+                                FloorsTileMap.SetCell(p, FloorsSourceID, tile);
+                                WallsTileMap.EraseCell(p);
+                                if (p.X >= 0 && p.X < worldTilesX && p.Y >= 0 && p.Y < worldTilesY)
+                                    worldMask[p.X, p.Y] = TileType.Room;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 5b) Реки (вода/лёд на полу): синусоиды по миру. Для снежного биома используем лёд (0,1)
         for (int ri = 0; ri < RiverCount; ri++)
         {
             // случайная ориентация
@@ -968,9 +1038,12 @@ public partial class LevelGenerator : Node
                     for (int w = -RiverWidth/2; w <= RiverWidth/2; w++)
                     {
                         int yy = y + w; if (yy < 0 || yy >= worldTilesY) continue;
-                        FloorsTileMap.EraseCell(new Vector2I(x, yy));
-                        WallsTileMap.SetCell(new Vector2I(x, yy), WallsSourceID, GetBackgroundTileForBiome(6)); // 6=Lava Springs / заглушка
-                        worldMask[x, yy] = TileType.Background;
+                        // Если клетка принадлежит снежному биому — рисуем лёд (0,1), иначе воду (5,0)
+                        var liquidTile = (worldBiome[x, yy] == 3 /* Ice */) ? new Vector2I(0,1) : new Vector2I(5,0);
+                        FloorsTileMap.SetCell(new Vector2I(x, yy), FloorsSourceID, liquidTile);
+                        WallsTileMap.EraseCell(new Vector2I(x, yy));
+                        worldMask[x, yy] = TileType.Background; // непроходимо
+                        waterMask[x, yy] = true;
                     }
                 }
             }
@@ -983,9 +1056,61 @@ public partial class LevelGenerator : Node
                     for (int w = -RiverWidth/2; w <= RiverWidth/2; w++)
                     {
                         int xx = x + w; if (xx < 0 || xx >= worldTilesX) continue;
-                        FloorsTileMap.EraseCell(new Vector2I(xx, y));
-                        WallsTileMap.SetCell(new Vector2I(xx, y), WallsSourceID, GetBackgroundTileForBiome(6));
+                        var liquidTile = (worldBiome[xx, y] == 3 /* Ice */) ? new Vector2I(0,1) : new Vector2I(5,0);
+                        FloorsTileMap.SetCell(new Vector2I(xx, y), FloorsSourceID, liquidTile);
+                        WallsTileMap.EraseCell(new Vector2I(xx, y));
                         worldMask[xx, y] = TileType.Background;
+                        waterMask[xx, y] = true;
+                    }
+                }
+            }
+        }
+
+        // 5c) Мосты поверх рек: только в точках реального пересечения
+        foreach (var c in chosen)
+        {
+            var path = FindWorldPathOrganic(centers[c.a].pos, centers[c.b].pos);
+            if (path == null) continue;
+            var tile = _biome.GetBridgeTile(false, CarveGlobalTrailsWidth);
+            for (int i = 0; i < path.Count; i++)
+            {
+                var wp = path[i];
+                if (wp.X < 1 || wp.X >= worldTilesX-1 || wp.Y < 1 || wp.Y >= worldTilesY-1) continue;
+                if (!waterMask[wp.X, wp.Y] && !waterMask[wp.X+1, wp.Y] && !waterMask[wp.X-1, wp.Y] && !waterMask[wp.X, wp.Y+1] && !waterMask[wp.X, wp.Y-1])
+                    continue; // нет воды рядом — мост не нужен
+
+                // Определим направление реки (продольная ось воды) по локальному окружению
+                int waterRunX = 0; for (int dx=-6; dx<=6; dx++) if (wp.X+dx>=0 && wp.X+dx<worldTilesX && waterMask[wp.X+dx, wp.Y]) waterRunX++;
+                int waterRunY = 0; for (int dy=-6; dy<=6; dy++) if (wp.Y+dy>=0 && wp.Y+dy<worldTilesY && waterMask[wp.X, wp.Y+dy]) waterRunY++;
+                bool riverVertical = waterRunY >= waterRunX; // если больше по Y — река идёт вертикально ⇒ мост горизонтальный
+
+                int halfBridge = System.Math.Max((CarveGlobalTrailsWidth+2)/2, 3);
+                int halfSpan = System.Math.Max(RiverWidth/2 + 2, 5); // перекрыть всю реку с запасом
+
+                if (riverVertical)
+                {
+                    // мост горизонтальный: расширяем по X через всю ширину реки
+                    for (int ox = -halfSpan; ox <= halfSpan; ox++)
+                    for (int w = -halfBridge; w <= halfBridge; w++)
+                    {
+                        var p = new Vector2I(wp.X + ox, wp.Y + w);
+                        if (p.X < 0 || p.X >= worldTilesX || p.Y < 0 || p.Y >= worldTilesY) continue;
+                        FloorsTileMap.SetCell(p, FloorsSourceID, tile);
+                        WallsTileMap.EraseCell(p);
+                        worldMask[p.X, p.Y] = TileType.Room; waterMask[p.X, p.Y] = false;
+                    }
+                }
+                else
+                {
+                    // мост вертикальный: расширяем по Y
+                    for (int oy = -halfSpan; oy <= halfSpan; oy++)
+                    for (int w = -halfBridge; w <= halfBridge; w++)
+                    {
+                        var p = new Vector2I(wp.X + w, wp.Y + oy);
+                        if (p.X < 0 || p.X >= worldTilesX || p.Y < 0 || p.Y >= worldTilesY) continue;
+                        FloorsTileMap.SetCell(p, FloorsSourceID, tile);
+                        WallsTileMap.EraseCell(p);
+                        worldMask[p.X, p.Y] = TileType.Room; waterMask[p.X, p.Y] = false;
                     }
                 }
             }
@@ -2390,10 +2515,12 @@ public partial class LevelGenerator : Node
 
     // Метод для заполнения базового пола (вся карта)
     // Обновленный метод для базового пола
-    private void FillBaseFloor() => _singleMap.FillBaseFloor(MapWidth, MapHeight, GetBackgroundTileForBiome(), FloorsTileMap, MAP_LAYER, FloorsSourceID, _mapMask);
+    // Single-map удалён: метод не используется
+    // private void FillBaseFloor() => _singleMap.FillBaseFloor(MapWidth, MapHeight, GetBackgroundTileForBiome(), FloorsTileMap, MAP_LAYER, FloorsSourceID, _mapMask);
 
     // Метод для добавления декоративных фоновых тайлов только в пустых областях
-    private void FillMapWithBackgroundTiles() => _singleMap.FillDecorBackground(MapWidth, MapHeight, GetBackgroundTileForBiome(), WallsTileMap, MAP_LAYER, WallsSourceID, _mapMask);
+    // Single-map удалён: метод не используется
+    // private void FillMapWithBackgroundTiles() => _singleMap.FillDecorBackground(MapWidth, MapHeight, GetBackgroundTileForBiome(), WallsTileMap, MAP_LAYER, WallsSourceID, _mapMask);
 
     // Вынесено: RoomPlacer (single-map удалён)
 

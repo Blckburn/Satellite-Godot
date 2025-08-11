@@ -22,7 +22,7 @@ PlayerSpawnPointPath = NodePath("")
 
 [node name="SpaceBackground" type="Sprite2D" parent="."]
 z_index = -100
-position = Vector2(590, 105)
+position = Vector2(490, -51)
 scale = Vector2(7, 7)
 texture = ExtResource("4_f3sb1")
 
