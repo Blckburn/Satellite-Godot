@@ -23,8 +23,8 @@ public static class GeneratedAtlasBuilder
         DrawIso(img, tileW*1,     0, tileW, tileH, new Color(0.82f, 0.75f, 0.45f)); // sand
         DrawIso(img, tileW*2,     0, tileW, tileH, new Color(0.90f, 0.93f, 0.96f)); // snow
         DrawIso(img, tileW*3,     0, tileW, tileH, new Color(0.50f, 0.52f, 0.56f)); // stone
-        DrawIso(img, tileW*4,     0, tileW, tileH, new Color(0.12f, 0.38f, 0.68f)); // water
-        DrawIso(img, tileW*5,     0, tileW, tileH, new Color(0.72f, 0.86f, 0.94f)); // ice
+        DrawIso(img, tileW*4,     0, tileW, tileH, new Color(0.10f, 0.42f, 0.78f)); // water richer
+        DrawIso(img, tileW*5,     0, tileW, tileH, new Color(0.80f, 0.92f, 0.97f)); // ice brighter
         DrawBridge(img, tileW*6,  0, tileW, tileH, true);  // natural bridge horizontal
         DrawBridge(img, tileW*7,  0, tileW, tileH, false); // natural bridge vertical
         // extra grass variants to break grid
@@ -59,6 +59,8 @@ public static class GeneratedAtlasBuilder
         float halfW = w * 0.5f - 1;
         float halfH = h * 0.5f - 1;
         var rng = new Random(ox*73856093 ^ oy*19349663);
+        // Periodic texture basis (tileable): combination of cosines
+        float freqU = 4f, freqV = 3f;
         for (int y = oy; y < oy + h; y++)
         {
             for (int x = ox; x < ox + w; x++)
@@ -67,15 +69,21 @@ public static class GeneratedAtlasBuilder
                 float dy = Math.Abs(y - cy) / halfH;
                 if (dx + dy <= 1.0f)
                 {
-                    // плавно затухающий шум к центру, у краёв = 0 (чтобы не было швов)
+                    // u,v в [0,1] внутри изо-ромба для создания плиточной текстуры без швов
+                    float u = (x - ox) / (float)w;
+                    float v = (y - oy) / (float)h;
+                    // периодическая «зернистость» без швов (косинусы обнуляются на краях)
+                    float tex = 0.25f * (MathF.Cos(2*MathF.PI*freqU*u) * MathF.Cos(2*MathF.PI*freqV*v))
+                               + 0.15f * (MathF.Cos(2*MathF.PI*(freqU*0.5f)*(u+v)));
+                    // плавно затухающий случайный шум, у краёв = 0
                     float k = MathF.Max(0f, 1f - (dx + dy));
-                    float noiseAmp = 0.02f * k * k; // было 0.08
-                    float noise = (float)(rng.NextDouble()*2 - 1) * noiseAmp;
-                    float shade = 0f; // без направленного градиента, чтобы не проявлялась сетка
+                    float noiseAmp = 0.03f * k * k;
+                    float rnd = (float)(rng.NextDouble()*2 - 1) * noiseAmp;
+                    float shade = 0f;
                     var c = new Color(
-                        Math.Clamp(baseCol.R + noise - shade, 0, 1),
-                        Math.Clamp(baseCol.G + noise - shade, 0, 1),
-                        Math.Clamp(baseCol.B + noise - shade, 0, 1),
+                        Math.Clamp(baseCol.R + tex + rnd - shade, 0, 1),
+                        Math.Clamp(baseCol.G + tex + rnd - shade, 0, 1),
+                        Math.Clamp(baseCol.B + tex + rnd - shade, 0, 1),
                         1
                     );
                     img.SetPixel(x, y, c);
