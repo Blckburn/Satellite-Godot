@@ -32,3 +32,6 @@ mono_crash.*.json
 /Дорожная карта проекта Satellite на Godot Engine 4.4 (.NET) 0.2.txt
 /Items evolved
 /Расширенная система повреждений и статусных эффектов в Satellite.txt
+
+# Local dev journal
+/dev_journal/

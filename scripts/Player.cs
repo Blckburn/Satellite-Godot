@@ -54,6 +54,23 @@ public partial class Player : Character
         // Вызываем базовый метод для остальной инициализации
         base._Ready();
 
+        // Короткий однократный лог через наш Logger
+        Logger.Debug("[Player] _Ready() reached, script is active", true);
+
+        // Мини-экранный HUD для диагностики ввода (только при включённом ShowDebugInfo)
+        if (ShowDebugInfo)
+        {
+            if (GetNodeOrNull<Label>("DebugLabel") == null)
+            {
+                var label = new Label();
+                label.Name = "DebugLabel";
+                label.ZIndex = 1000;
+                label.Position = new Vector2(10, -40);
+                label.AddThemeColorOverride("font_color", Colors.Lime);
+                AddChild(label);
+            }
+        }
+
         // Инициализация инвентаря
         InitializeInventory();
 
@@ -329,6 +346,7 @@ public partial class Player : Character
     // Дополнительно обрабатываем физический процесс
     public override void _PhysicsProcess(double delta)
     {
+        // Базовый процесс движения теперь дергает QueryMovementInput() у потомка
         base._PhysicsProcess(delta);
     }
 
@@ -338,6 +356,22 @@ public partial class Player : Character
         Vector2 inputDirection = GetIsometricInput();
         SetMovementDirection(inputDirection);
 
+        // Временная диагностика управления (каждые ~0.5 сек при 60 FPS)
+        _debugUpdateCounter++;
+        if (_debugUpdateCounter >= DEBUG_UPDATE_INTERVAL)
+        {
+            _debugUpdateCounter = 0;
+            bool up = Input.IsActionPressed("move_up");
+            bool down = Input.IsActionPressed("move_down");
+            bool left = Input.IsActionPressed("move_left");
+            bool right = Input.IsActionPressed("move_right");
+            var lbl = GetNodeOrNull<Label>("DebugLabel");
+            if (lbl != null)
+            {
+                lbl.Text = $"U:{up} D:{down} L:{left} R:{right}\nDir:{inputDirection}";
+            }
+        }
+
         // Взаимодействие
         if (Input.IsActionJustPressed("interact"))
         {
@@ -345,34 +379,56 @@ public partial class Player : Character
         }
     }
 
-    // Метод для получения вектора направления с учетом изометрической проекции
+    // Переопределяем запрос направления движения для базового класса
+    protected override Vector2 QueryMovementInput()
+    {
+        return _movementDirection;
+    }
+
+    // Метод для получения вектора направления с учётом желаемой схемы управления:
+    // одиночные клавиши дают диагонали (A=NW, W=NE, D=SE, S=SW),
+    // пары соседних клавиш дают кардинальные направления (AW=N, WD=E, SD=S, SA=W).
     private Vector2 GetIsometricInput()
     {
-        Vector2 input = Vector2.Zero;
+        bool up = Input.IsActionPressed("move_up");
+        bool down = Input.IsActionPressed("move_down");
+        bool left = Input.IsActionPressed("move_left");
+        bool right = Input.IsActionPressed("move_right");
 
-        // Получаем стандартный ввод
-        if (Input.IsActionPressed("move_right"))
-            input.X += 1;
-        if (Input.IsActionPressed("move_left"))
-            input.X -= 1;
-        if (Input.IsActionPressed("move_down"))
-            input.Y += 1;
-        if (Input.IsActionPressed("move_up"))
-            input.Y -= 1;
+        // Возвращаем сразу изометрические векторы движения:
+        // Кардинальные: N(0,-1), E(1,0), S(0,1), W(-1,0)
+        // Диагональные (ось тайла 2:1):
+        //  NE (W)  -> ( 1, -0.5)
+        //  SE (D)  -> ( 1,  0.5)
+        //  SW (S)  -> (-1,  0.5)
+        //  NW (A)  -> (-1, -0.5)
 
-        // Если ввод отсутствует, возвращаем нулевой вектор
-        if (input == Vector2.Zero)
-            return Vector2.Zero;
+        // Противоположные пары гасим (будем дальше учитывать 3‑клавишные варианты)
+        bool horizontalOpposite = left && right;
+        bool verticalOpposite = up && down;
 
-        // Преобразуем ввод в изометрический
-        // Для стандартной изометрии (2:1)
-        Vector2 isoInput = new Vector2(
-            input.X - input.Y,  // X-компонент
-            (input.X + input.Y) / 2  // Y-компонент
-        );
+        // 1) Точные кардинальные направления по одиночным клавишам (экранные оси):
+        //    W↑, S↓, D→, A←
+        if (!left && !right && !down && up)    return new Vector2(0, -1);  // W → North (вверх)
+        if (!left && !right && !up && down)    return new Vector2(0, 1);   // S → South (вниз)
+        if (!up && !down && !right && left)    return new Vector2(-1, 0);  // A → West (влево)
+        if (!up && !down && !left && right)    return new Vector2(1, 0);   // D → East (вправо)
 
-        // Нормализуем вектор, чтобы диагональное движение не было быстрее
-        return isoInput.Normalized();
+        // 2) Диагонали из двух соседних клавиш с соотношением 2:1 (нормализованный вектор (±2, ±1))
+        //    Значения приблизительно (±0.894, ±0.447)
+        if (up && right && !left && !down)   return new Vector2( 0.894f, -0.447f);  // W + D → NE
+        if (up && left  && !right && !down)  return new Vector2(-0.894f, -0.447f);  // W + A → NW
+        if (down && right && !left && !up)   return new Vector2( 0.894f,  0.447f);  // S + D → SE
+        if (down && left  && !right && !up)  return new Vector2(-0.894f,  0.447f);  // S + A → SW
+
+        // 3) Три клавиши: если есть противоположная пара — оставляем направление третьей
+        if (horizontalOpposite && up && !down)   return new Vector2(0, -1);  // W → North
+        if (horizontalOpposite && down && !up)   return new Vector2(0, 1);   // S → South
+        if (verticalOpposite && right && !left)  return new Vector2(1, 0);   // D → East
+        if (verticalOpposite && left && !right)  return new Vector2(-1, 0);  // A → West
+
+        // 4) Прочее (4 клавиши или конфликт) — стоим
+        return Vector2.Zero;
     }
 
     // Создание области взаимодействия

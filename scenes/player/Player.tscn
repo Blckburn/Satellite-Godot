@@ -41,5 +41,5 @@ y_sort_enabled = true
 position = Vector2(0, -0.277939)
 scale = Vector2(1, 0.994)
 sprite_frames = ExtResource("3_524rm")
-animation = &"walk_down"
+animation = &"walk_up_right"
 offset = Vector2(0, -31.815)
