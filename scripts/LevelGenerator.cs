@@ -93,6 +93,7 @@ public partial class LevelGenerator : Node
     [Export] public int TrailMinSpacing { get; set; } = 6;
     [Export] public int TrailWidth { get; set; } = 3;
     [Export] public bool TrailConnectAllComponents { get; set; } = true;
+    [Export] public int TrailExtraEdges { get; set; } = 2;
 
     // Псевдослучайный генератор
     private Random _random;
@@ -679,10 +680,44 @@ public partial class LevelGenerator : Node
     private void CarveTrailsBetweenNodes(MapSection section, System.Collections.Generic.List<Vector2I> nodes, int width)
     {
         if (nodes == null || nodes.Count < 2) return;
-        // Простая последовательная связь + утолщение пути
-        for (int i = 0; i < nodes.Count - 1; i++)
+
+        // Строим MST по эвклидовой дистанции между узлами
+        var edges = new System.Collections.Generic.List<(int a, int b, int w)>();
+        for (int i = 0; i < nodes.Count; i++)
+        for (int j = i + 1; j < nodes.Count; j++)
         {
-            var path = FindPathOverRooms(section, nodes[i], nodes[i+1]);
+            int dx = nodes[i].X - nodes[j].X;
+            int dy = nodes[i].Y - nodes[j].Y;
+            int w2 = dx*dx + dy*dy;
+            edges.Add((i, j, w2));
+        }
+        edges.Sort((e1,e2) => e1.w.CompareTo(e2.w));
+
+        var parent = new int[nodes.Count];
+        for (int i = 0; i < parent.Length; i++) parent[i] = i;
+        int Find(int x){ while (parent[x]!=x) x = parent[x] = parent[parent[x]]; return x; }
+        bool Union(int x,int y){ x=Find(x); y=Find(y); if (x==y) return false; parent[y]=x; return true; }
+
+        var chosen = new System.Collections.Generic.List<(int a,int b)>();
+        foreach (var e in edges)
+            if (Union(e.a, e.b)) chosen.Add((e.a, e.b));
+
+        // Доп. рёбра для вариативности
+        int extras = System.Math.Min(TrailExtraEdges, edges.Count);
+        int idx = 0;
+        for (int k = 0; k < extras && idx < edges.Count; idx++)
+        {
+            var e = edges[idx];
+            // пропускаем уже выбранные
+            bool exists = false; foreach (var c in chosen) if ((c.a==e.a && c.b==e.b) || (c.a==e.b && c.b==e.a)) { exists = true; break; }
+            if (exists) continue;
+            chosen.Add((e.a, e.b)); k++;
+        }
+
+        // Карвим пути для выбранных пар
+        foreach (var c in chosen)
+        {
+            var path = FindPathOverRooms(section, nodes[c.a], nodes[c.b]);
             if (path == null) continue;
             Vector2I worldOffset = new Vector2I((int)section.WorldOffset.X, (int)section.WorldOffset.Y);
             var floorTile = _biome.GetFloorTileForBiome(section.BiomeType);
