@@ -1127,60 +1127,44 @@ public partial class LevelGenerator : Node
 
             if (connected) continue;
 
-            // 1) Пытаемся провести прямой выход от границы комнаты до ближайшего коридора
+            // 1) Пытаемся провести выход от границы комнаты до ближайшего коридора через BFS по непроходимым для комнаты клеткам
             Vector2I worldOffset = new Vector2I((int)section.WorldOffset.X, (int)section.WorldOffset.Y);
             Vector2I floorTile = _biome.GetFloorTileForBiome(section.BiomeType);
             int halfWidth = Math.Max(1, CorridorWidth / 2);
 
-            // Кандидаты стартов: середины каждой стороны комнаты (на 1 клетку ВНЕ комнаты)
-            var doorStarts = new System.Collections.Generic.List<(Vector2I start, Vector2I dir)>
+            // Кандидатные старты: середины каждой стороны (на 1 тайл вне комнаты)
+            var starts = new System.Collections.Generic.List<Vector2I>
             {
-                (new Vector2I(room.Position.X + room.Size.X/2, room.Position.Y - 1), new Vector2I(0, -1)), // вверх
-                (new Vector2I(room.Position.X + room.Size.X/2, room.Position.Y + room.Size.Y), new Vector2I(0, 1)), // вниз
-                (new Vector2I(room.Position.X - 1, room.Position.Y + room.Size.Y/2), new Vector2I(-1, 0)), // влево
-                (new Vector2I(room.Position.X + room.Size.X, room.Position.Y + room.Size.Y/2), new Vector2I(1, 0)), // вправо
+                new Vector2I(room.Position.X + room.Size.X/2, room.Position.Y - 1),
+                new Vector2I(room.Position.X + room.Size.X/2, room.Position.Y + room.Size.Y),
+                new Vector2I(room.Position.X - 1, room.Position.Y + room.Size.Y/2),
+                new Vector2I(room.Position.X + room.Size.X, room.Position.Y + room.Size.Y/2),
             };
 
+            System.Collections.Generic.List<Vector2I> bfsPath = FindPathToNearestCorridor(section, starts);
             bool carved = false;
-            foreach (var (start, dir) in doorStarts)
+            if (bfsPath != null && bfsPath.Count > 0)
             {
-                // Идём по прямой, пока не встретим коридор или границы секции
-                System.Collections.Generic.List<Vector2I> path = new System.Collections.Generic.List<Vector2I>();
-                Vector2I p = start;
-                while (p.X >= 0 && p.X < MapWidth && p.Y >= 0 && p.Y < MapHeight)
+                carved = true;
+                foreach (var cell in bfsPath)
                 {
-                    if (section.SectionMask[p.X, p.Y] == TileType.Corridor)
+                    // Вычисляем ориентир по соседям, чтобы расширять в правильную сторону
+                    foreach (var dir in new Vector2I[]{ new Vector2I(1,0), new Vector2I(-1,0), new Vector2I(0,1), new Vector2I(0,-1) })
                     {
-                        carved = true;
+                        for (int w = -halfWidth; w <= halfWidth; w++)
+                        {
+                            int cx = cell.X + (dir.Y != 0 ? w : 0);
+                            int cy = cell.Y + (dir.X != 0 ? w : 0);
+                            if (cx < 0 || cx >= MapWidth || cy < 0 || cy >= MapHeight) continue;
+                            FloorsTileMap.SetCell(worldOffset + new Vector2I(cx, cy), FloorsSourceID, floorTile);
+                            WallsTileMap.EraseCell(worldOffset + new Vector2I(cx, cy));
+                            if (section.SectionMask[cx, cy] != TileType.Room)
+                                section.SectionMask[cx, cy] = TileType.Corridor;
+                        }
+                        // Расширяем только в одном направлении
                         break;
                     }
-                    // Разрешаем прорезание сквозь фон/стены/декор, но не через другие комнаты
-                    if (section.SectionMask[p.X, p.Y] == TileType.Room)
-                    {
-                        path.Clear();
-                        break;
-                    }
-                    path.Add(p);
-                    p += dir;
                 }
-
-                if (!carved || path.Count == 0) continue;
-
-                // Прорезаем путь как коридор
-                foreach (var cell in path)
-                {
-                    for (int w = -halfWidth; w <= halfWidth; w++)
-                    {
-                        int cx = cell.X + (dir.Y != 0 ? w : 0);
-                        int cy = cell.Y + (dir.X != 0 ? w : 0);
-                        if (cx < 0 || cx >= MapWidth || cy < 0 || cy >= MapHeight) continue;
-                        FloorsTileMap.SetCell(worldOffset + new Vector2I(cx, cy), FloorsSourceID, floorTile);
-                        WallsTileMap.EraseCell(worldOffset + new Vector2I(cx, cy));
-                        if (section.SectionMask[cx, cy] != TileType.Room)
-                            section.SectionMask[cx, cy] = TileType.Corridor;
-                    }
-                }
-                break;
             }
 
             if (!carved)
@@ -1274,6 +1258,58 @@ public partial class LevelGenerator : Node
                 }
             }
         }
+    }
+
+    // Поиск кратчайшего пути от множества стартов до ближайшего тайла коридора (BFS)
+    private System.Collections.Generic.List<Vector2I> FindPathToNearestCorridor(MapSection section, System.Collections.Generic.IEnumerable<Vector2I> starts)
+    {
+        var queue = new System.Collections.Generic.Queue<Vector2I>();
+        var came = new System.Collections.Generic.Dictionary<Vector2I, Vector2I>();
+        var visited = new System.Collections.Generic.HashSet<Vector2I>();
+
+        foreach (var s in starts)
+        {
+            if (s.X < 0 || s.X >= MapWidth || s.Y < 0 || s.Y >= MapHeight) continue;
+            if (section.SectionMask[s.X, s.Y] == TileType.Room) continue;
+            queue.Enqueue(s);
+            visited.Add(s);
+        }
+
+        Vector2I? goal = null;
+        var dirs = new Vector2I[] { new Vector2I(1,0), new Vector2I(-1,0), new Vector2I(0,1), new Vector2I(0,-1) };
+
+        while (queue.Count > 0)
+        {
+            var p = queue.Dequeue();
+            if (section.SectionMask[p.X, p.Y] == TileType.Corridor)
+            {
+                goal = p; break;
+            }
+            foreach (var d in dirs)
+            {
+                var n = new Vector2I(p.X + d.X, p.Y + d.Y);
+                if (n.X < 0 || n.X >= MapWidth || n.Y < 0 || n.Y >= MapHeight) continue;
+                if (visited.Contains(n)) continue;
+                // Можно идти через фон/стены/декор/коридор, но не через другие комнаты
+                var t = section.SectionMask[n.X, n.Y];
+                if (t == TileType.Room) continue;
+                visited.Add(n);
+                came[n] = p;
+                queue.Enqueue(n);
+            }
+        }
+
+        if (goal == null) return null;
+
+        var path = new System.Collections.Generic.List<Vector2I>();
+        var cur = goal.Value;
+        while (came.ContainsKey(cur))
+        {
+            path.Add(cur);
+            cur = came[cur];
+        }
+        path.Reverse();
+        return path;
     }
 
     // НОВОЕ: Метод для соединения двух комнат в секции
