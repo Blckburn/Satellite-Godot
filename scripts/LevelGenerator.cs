@@ -1108,40 +1108,20 @@ public partial class LevelGenerator : Node
                     // Проверяем проходимость
                     if (worldMask[x, y] == TileType.Room)
                     {
-                        // ДЕТАЛЬНАЯ отладка координат спавна
-                        Logger.Debug($"🔍 Checking spawn candidate at tile ({x}, {y})", false);
-                        
-                        // Проверяем 3x3 область
+                        // Проверяем 3x3 область (без детального логирования для скорости)
                         if (IsAreaWalkable(worldMask, x, y, worldTilesX, worldTilesY, 1))
                         {
-                            Logger.Debug($"✅ 3x3 area is walkable at ({x}, {y})", false);
-                            
                             // Проверяем путь к центру карты
                             Vector2I mapCenter = new Vector2I(worldTilesX / 2, worldTilesY / 2);
                             if (IsPathToTargetExists(worldMask, new Vector2I(x, y), mapCenter, worldTilesX, worldTilesY))
                             {
-                                Logger.Debug($"✅ Path to center exists from ({x}, {y})", false);
-                                
                                 // ⚠️ ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: не в зоне outer walls!
                                 Vector2 worldPos = MapTileToIsometricWorld(new Vector2I(x, y));
-                                Logger.Debug($"🎯 SPAWN CANDIDATE: tile ({x}, {y}) -> world {worldPos}", true);
-                                Logger.Debug($"🗺️ Map bounds: 0-{worldTilesX-1} x 0-{worldTilesY-1}, walls extend -15 to +15", true);
+                                Logger.Debug($"🎯 SPAWN FOUND: tile ({x}, {y}) -> world {worldPos}", true);
                                 
                                 return new Vector2I(x, y);
                             }
-                            else
-                            {
-                                Logger.Debug($"❌ No path to center from ({x}, {y})", false);
-                            }
                         }
-                        else
-                        {
-                            Logger.Debug($"❌ 3x3 area not walkable at ({x}, {y})", false);
-                        }
-                    }
-                    else
-                    {
-                        Logger.Debug($"❌ Not Room tile at ({x}, {y}), type: {worldMask[x, y]}", false);
                     }
                 }
             }
@@ -3432,13 +3412,18 @@ public partial class LevelGenerator : Node
     // Вспомогательный метод для преобразования координат тайла в мировые координаты
     private Vector2 MapTileToIsometricWorld(Vector2I tilePos)
     {
-        // Получаем размер ячейки из TileMap, если возможно
-        Vector2I tileSize = FloorsTileMap?.TileSet?.TileSize ?? new Vector2I(64, 32);
-
-        // Для изометрии 2:1 (обычное соотношение в изометрических играх)
-        float x = (tilePos.X - tilePos.Y) * tileSize.X / 2.0f;
-        float y = (tilePos.X + tilePos.Y) * tileSize.Y / 2.0f;
-
+        // 🔧 ИСПРАВЛЕННАЯ ИЗОМЕТРИЧЕСКАЯ ФОРМУЛА!
+        // Простая 2D формула вместо изометрии - для начала
+        int tileWidth = 64;  // Ширина тайла
+        int tileHeight = 32; // Высота тайла
+        
+        // Простая 2D сетка (не изометрия пока что)
+        float x = tilePos.X * tileWidth;
+        float y = tilePos.Y * tileHeight;
+        
+        // Убираем спам логов для ускорения
+        // Logger.Debug($"🔧 Tile ({tilePos.X}, {tilePos.Y}) -> World ({x}, {y})", false);
+        
         return new Vector2(x, y);
     }
 
