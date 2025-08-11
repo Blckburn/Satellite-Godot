@@ -32,13 +32,20 @@ public sealed class SectionConnector
         int bottomWallY = passageY + tunnelWidth / 2 + 1;
         if (topWallY < 0 || bottomWallY >= mapHeight) return;
 
-        for (int x = 0; x < mapWidth; x++)
+        // Рисуем только у краёв секций, где коридоры подходят к стыку
+        int edgeRange = 12; // ширина декоративной зоны у края секции
+        int leftStart = Math.Max(0, mapWidth - edgeRange);
+        int leftEnd = mapWidth - 1;
+        int rightStart = 0;
+        int rightEnd = Math.Min(mapWidth - 1, edgeRange - 1);
+
+        for (int x = leftStart; x <= leftEnd; x++)
         {
             wallsTileMap.SetCell(new Vector2I((int)leftSection.WorldOffset.X + x, (int)leftSection.WorldOffset.Y + topWallY), wallsSourceId, leftWallTile);
             wallsTileMap.SetCell(new Vector2I((int)leftSection.WorldOffset.X + x, (int)leftSection.WorldOffset.Y + bottomWallY), wallsSourceId, leftWallTile);
         }
 
-        for (int x = 0; x < mapWidth; x++)
+        for (int x = rightStart; x <= rightEnd; x++)
         {
             wallsTileMap.SetCell(new Vector2I((int)rightSection.WorldOffset.X + x, (int)rightSection.WorldOffset.Y + topWallY), wallsSourceId, rightWallTile);
             wallsTileMap.SetCell(new Vector2I((int)rightSection.WorldOffset.X + x, (int)rightSection.WorldOffset.Y + bottomWallY), wallsSourceId, rightWallTile);
@@ -64,13 +71,20 @@ public sealed class SectionConnector
         int rightWallX = passageX + tunnelWidth / 2 + 1;
         if (leftWallX < 0 || rightWallX >= mapWidth) return;
 
-        for (int y = 0; y < mapHeight; y++)
+        // Рисуем только у нижней/верхней кромки секций, где вертикальные коридоры подходят к стыку
+        int edgeRange = 12;
+        int topStartY = Math.Max(0, mapHeight - edgeRange);
+        int topEndY = mapHeight - 1;
+        int bottomStartY = 0;
+        int bottomEndY = Math.Min(mapHeight - 1, edgeRange - 1);
+
+        for (int y = topStartY; y <= topEndY; y++)
         {
             wallsTileMap.SetCell(new Vector2I((int)topSection.WorldOffset.X + leftWallX, (int)topSection.WorldOffset.Y + y), wallsSourceId, topWallTile);
             wallsTileMap.SetCell(new Vector2I((int)topSection.WorldOffset.X + rightWallX, (int)topSection.WorldOffset.Y + y), wallsSourceId, topWallTile);
         }
 
-        for (int y = 0; y < mapHeight; y++)
+        for (int y = bottomStartY; y <= bottomEndY; y++)
         {
             wallsTileMap.SetCell(new Vector2I((int)bottomSection.WorldOffset.X + leftWallX, (int)bottomSection.WorldOffset.Y + y), wallsSourceId, bottomWallTile);
             wallsTileMap.SetCell(new Vector2I((int)bottomSection.WorldOffset.X + rightWallX, (int)bottomSection.WorldOffset.Y + y), wallsSourceId, bottomWallTile);
