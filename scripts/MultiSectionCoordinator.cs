@@ -310,6 +310,7 @@ public sealed class MultiSectionCoordinator
             mapWidth,
             mapHeight,
             floorsTileMap,
+            wallsTileMap,
             mapLayer,
             floorsSourceId,
             (section, x1, x2, y, width, floor) => corridorCarver.FindAndConnectToNearbyRooms(
@@ -330,6 +331,7 @@ public sealed class MultiSectionCoordinator
             mapWidth,
             mapHeight,
             floorsTileMap,
+            wallsTileMap,
             mapLayer,
             floorsSourceId,
             (section, x1, x2, y, width, floor) => corridorCarver.FindAndConnectToNearbyRooms(
@@ -416,6 +418,7 @@ public sealed class MultiSectionCoordinator
             mapWidth,
             mapHeight,
             floorsTileMap,
+            wallsTileMap,
             mapLayer,
             floorsSourceId,
             (section, x, width, y1, y2, floor, isHorizontal) => corridorCarver.FindAndConnectToNearbyRooms(
@@ -436,6 +439,7 @@ public sealed class MultiSectionCoordinator
             mapWidth,
             mapHeight,
             floorsTileMap,
+            wallsTileMap,
             mapLayer,
             floorsSourceId,
             (section, x, width, y1, y2, floor, isHorizontal) => corridorCarver.FindAndConnectToNearbyRooms(
