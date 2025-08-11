@@ -943,15 +943,203 @@ public partial class LevelGenerator : Node
         GenerateWorldResources(worldMask, worldBiome, worldTilesX, worldTilesY);
         GenerateWorldContainers(worldMask, worldBiome, worldTilesX, worldTilesY);
 
-        // Выбираем точку спавна игрока в центральной области мира
-        _currentSpawnPosition = FindWorldSpawnPosition(worldMask, worldTilesX, worldTilesY);
-        
-        Logger.Debug($"WorldBiomes generation completed. Spawn position: {_currentSpawnPosition}", true);
+            // Добавляем стены вокруг карты
+    AddMapBorderWalls(worldMask, worldTilesX, worldTilesY);
+    
+    // Выбираем точку спавна игрока в одном из углов с проверкой проходимости
+    _currentSpawnPosition = FindCornerSpawnPosition(worldMask, worldTilesX, worldTilesY);
+    
+    Logger.Debug($"WorldBiomes generation completed. Spawn position: {_currentSpawnPosition}", true);
     }
 
     // Удалено: GenerateVirtualRoomsFromWorldMask - заменено на прямую генерацию по мировой маске
 
-    // Находит подходящую точку спавна игрока в сгенерированном мире
+    // Добавляет стены вокруг всей карты для создания границ
+    private void AddMapBorderWalls(TileType[,] worldMask, int worldTilesX, int worldTilesY)
+    {
+        Logger.Debug($"Adding border walls around map {worldTilesX}x{worldTilesY}", true);
+        
+        // Добавляем стены по периметру карты
+        for (int x = 0; x < worldTilesX; x++)
+        {
+            for (int y = 0; y < worldTilesY; y++)
+            {
+                // Проверяем, находимся ли на границе карты
+                bool isBorder = (x == 0 || x == worldTilesX - 1 || y == 0 || y == worldTilesY - 1);
+                
+                if (isBorder)
+                {
+                    // Устанавливаем стену на границе
+                    worldMask[x, y] = TileType.Wall;
+                    
+                    // Устанавливаем тайл стены в TileMap
+                    if (WallsTileMap != null)
+                    {
+                        Vector2I tilePos = new Vector2I(x, y);
+                        // Используем стандартную стену (можно сделать специальную border wall)
+                        Vector2I wallTile = new Vector2I(2, 0); // Ground wall как основная граница
+                        WallsTileMap.SetCell(tilePos, WallsSourceID, wallTile);
+                    }
+                }
+            }
+        }
+        
+        Logger.Debug("Border walls added successfully", false);
+    }
+    
+    // BADASS система поиска спавна в углах карты с проверкой проходимости к центру! 🚀
+    private Vector2 FindCornerSpawnPosition(TileType[,] worldMask, int worldTilesX, int worldTilesY)
+    {
+        Logger.Debug($"Finding corner spawn position for map {worldTilesX}x{worldTilesY}", true);
+        
+        // Определяем размеры угловых зон (адаптивно в зависимости от размера карты)
+        int cornerSize = Math.Max(5, Math.Min(worldTilesX, worldTilesY) / 8); // Минимум 5, максимум 1/8 от карты
+        int borderOffset = 2; // Отступ от края (где стены)
+        
+        Logger.Debug($"Corner zone size: {cornerSize}x{cornerSize}, border offset: {borderOffset}", false);
+        
+        // Определяем 4 угловые зоны с учетом границ
+        var corners = new List<(string name, int startX, int startY, int endX, int endY)>
+        {
+            ("Top-Left", borderOffset, borderOffset, borderOffset + cornerSize, borderOffset + cornerSize),
+            ("Top-Right", worldTilesX - borderOffset - cornerSize, borderOffset, worldTilesX - borderOffset, borderOffset + cornerSize),
+            ("Bottom-Left", borderOffset, worldTilesY - borderOffset - cornerSize, borderOffset + cornerSize, worldTilesY - borderOffset),
+            ("Bottom-Right", worldTilesX - borderOffset - cornerSize, worldTilesY - borderOffset - cornerSize, worldTilesX - borderOffset, worldTilesY - borderOffset)
+        };
+        
+        // Центр карты для проверки проходимости
+        Vector2I mapCenter = new Vector2I(worldTilesX / 2, worldTilesY / 2);
+        
+        // Ищем лучший угол с проходимостью к центру
+        foreach (var corner in corners)
+        {
+            Logger.Debug($"Checking corner: {corner.name} ({corner.startX},{corner.startY}) to ({corner.endX},{corner.endY})", false);
+            
+            Vector2I? spawnPoint = FindValidSpawnInCorner(worldMask, corner.startX, corner.startY, corner.endX, corner.endY, mapCenter);
+            
+            if (spawnPoint.HasValue)
+            {
+                Vector2 worldPosition = MapTileToIsometricWorld(spawnPoint.Value);
+                Logger.Debug($"Found BADASS spawn position in {corner.name} at tile ({spawnPoint.Value.X}, {spawnPoint.Value.Y}) -> world {worldPosition}", true);
+                return worldPosition;
+            }
+        }
+        
+        // Если не нашли подходящий угол, используем fallback к центру
+        Logger.Debug("No suitable corner found, falling back to center spawn", true);
+        return FindWorldSpawnPosition(worldMask, worldTilesX, worldTilesY);
+    }
+    
+    // Ищет подходящую точку спавна в конкретном углу с проверкой проходимости
+    private Vector2I? FindValidSpawnInCorner(TileType[,] worldMask, int startX, int startY, int endX, int endY, Vector2I mapCenter)
+    {
+        int worldTilesX = worldMask.GetLength(0);
+        int worldTilesY = worldMask.GetLength(1);
+        
+        // Ищем проходимые клетки в углу, начиная от краев к центру угла
+        for (int radius = 0; radius < Math.Max(endX - startX, endY - startY); radius++)
+        {
+            for (int x = startX; x < endX; x++)
+            {
+                for (int y = startY; y < endY; y++)
+                {
+                    // Проверяем только клетки на текущем радиусе (сначала края угла)
+                    int distanceFromCornerEdge = Math.Min(
+                        Math.Min(x - startX, endX - 1 - x),
+                        Math.Min(y - startY, endY - 1 - y)
+                    );
+                    
+                    if (distanceFromCornerEdge != radius) continue;
+                    
+                    // Проверяем границы
+                    if (x < 0 || x >= worldTilesX || y < 0 || y >= worldTilesY) continue;
+                    
+                    // Проверяем, что клетка проходима
+                    if (worldMask[x, y] == TileType.Room)
+                    {
+                        // Проверяем 3x3 область вокруг точки спавна
+                        if (IsAreaWalkable(worldMask, x, y, worldTilesX, worldTilesY, 1))
+                        {
+                            // САМОЕ ВАЖНОЕ: проверяем проходимость к центру карты!
+                            if (IsPathToTargetExists(worldMask, new Vector2I(x, y), mapCenter, worldTilesX, worldTilesY))
+                            {
+                                Logger.Debug($"Valid spawn found at ({x}, {y}) with path to center ({mapCenter.X}, {mapCenter.Y})", false);
+                                return new Vector2I(x, y);
+                            }
+                            else
+                            {
+                                Logger.Debug($"Spawn at ({x}, {y}) rejected: no path to center", false);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return null; // Не нашли подходящую точку в этом углу
+    }
+    
+    // BADASS проверка проходимости между двумя точками (простой флудфилл)
+    private bool IsPathToTargetExists(TileType[,] worldMask, Vector2I start, Vector2I target, int worldTilesX, int worldTilesY)
+    {
+        // Простая BFS проверка проходимости
+        var visited = new bool[worldTilesX, worldTilesY];
+        var queue = new Queue<Vector2I>();
+        
+        queue.Enqueue(start);
+        visited[start.X, start.Y] = true;
+        
+        // Направления для движения (4-направленная связность)
+        var directions = new Vector2I[]
+        {
+            new Vector2I(0, 1),   // Вниз
+            new Vector2I(0, -1),  // Вверх  
+            new Vector2I(1, 0),   // Вправо
+            new Vector2I(-1, 0)   // Влево
+        };
+        
+        int iterations = 0;
+        int maxIterations = worldTilesX * worldTilesY; // Предотвращаем бесконечные циклы
+        
+        while (queue.Count > 0 && iterations < maxIterations)
+        {
+            iterations++;
+            Vector2I current = queue.Dequeue();
+            
+            // Нашли цель!
+            if (current.X == target.X && current.Y == target.Y)
+            {
+                Logger.Debug($"Path found from ({start.X}, {start.Y}) to ({target.X}, {target.Y}) in {iterations} steps", false);
+                return true;
+            }
+            
+            // Проверяем соседние клетки
+            foreach (var direction in directions)
+            {
+                Vector2I next = current + direction;
+                
+                // Проверяем границы
+                if (next.X < 0 || next.X >= worldTilesX || next.Y < 0 || next.Y >= worldTilesY)
+                    continue;
+                
+                // Пропускаем уже посещенные
+                if (visited[next.X, next.Y])
+                    continue;
+                
+                // Проверяем проходимость
+                if (worldMask[next.X, next.Y] == TileType.Room)
+                {
+                    visited[next.X, next.Y] = true;
+                    queue.Enqueue(next);
+                }
+            }
+        }
+        
+        Logger.Debug($"No path found from ({start.X}, {start.Y}) to ({target.X}, {target.Y}) after {iterations} iterations", false);
+        return false; // Путь не найден
+    }
+    
+    // Находит подходящую точку спавна игрока в сгенерированном мире (СТАРЫЙ метод для fallback)
     private Vector2 FindWorldSpawnPosition(TileType[,] worldMask, int worldTilesX, int worldTilesY)
     {
         // Начинаем поиск из центра мира
