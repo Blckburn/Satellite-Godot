@@ -1164,12 +1164,16 @@ public partial class LevelGenerator : Node
     // Создает игрока в указанной позиции (ЗАМЕНЯЕТ emergency систему)
     private void CreatePlayerAtPosition(Vector2 position)
     {
-        // 🛡️ ЗАЩИТА ОТ ДУБЛИРОВАНИЯ - проверяем что игрока еще нет!
+        // 🛡️ УДАЛЯЕМ СТАРЫХ ИГРОКОВ и создаем нового в правильном месте!
         var existingPlayers = GetTree().GetNodesInGroup("Player");
         if (existingPlayers.Count > 0)
         {
-            Logger.Debug($"🚫 Player already exists ({existingPlayers.Count} found)! Skipping creation to avoid duplicates.", true);
-            return;
+            Logger.Debug($"🔄 Found {existingPlayers.Count} existing players! Removing them to spawn in correct corner.", true);
+            foreach (Node player in existingPlayers)
+            {
+                Logger.Debug($"🗑️ Removing old player at {player.Get("position")}", true);
+                player.QueueFree();
+            }
         }
         
         if (PlayerScene == null)
@@ -1294,7 +1298,7 @@ public partial class LevelGenerator : Node
                         Vector2I wallTile = _biome.GetWallTileForBiome(biomeForWall, tilePos);
                         WallsTileMap.SetCell(tilePos, WallsSourceID, wallTile);
                         
-                        Logger.Debug($"Outer wall at ({x}, {y}) uses biome {biomeForWall} -> tile {wallTile}", false);
+                                                   // Logger.Debug($"Outer wall at ({x}, {y}) uses biome {biomeForWall} -> tile {wallTile}", false); // СПАМ!
                     }
                 }
             }
@@ -1312,7 +1316,7 @@ public partial class LevelGenerator : Node
         
         // Возвращаем биом этой ближайшей точки
         int foundBiome = worldBiome[nearestX, nearestY];
-        Logger.Debug($"Outer wall at ({wallX}, {wallY}) -> nearest map point ({nearestX}, {nearestY}) biome {foundBiome}", false);
+        // Logger.Debug($"Outer wall at ({wallX}, {wallY}) -> nearest map point ({nearestX}, {nearestY}) biome {foundBiome}", false); // СПАМ!
         return foundBiome;
     }
     
