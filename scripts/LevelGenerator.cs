@@ -4,6 +4,11 @@ using System.Collections.Generic;
 
 public partial class LevelGenerator : Node
 {
+    public enum GenerationAlgorithm
+    {
+        RoomsCorridors = 0,
+        CaveTrails = 1
+    }
     // Сигнал о завершении генерации уровня с передачей точки спавна
     [Signal] public delegate void LevelGeneratedEventHandler(Vector2 spawnPosition);
 
@@ -72,6 +77,22 @@ public partial class LevelGenerator : Node
 
     // Клавиша для генерации мульти-секционной карты
     [Export] public Key MultiSectionGenerationKey { get; set; } = Key.M;
+
+    // Переключатель алгоритма генерации и параметры Cave+Trails
+    [Export] public GenerationAlgorithm Algorithm { get; set; } = GenerationAlgorithm.RoomsCorridors;
+
+    // Cave (Cellular Automata) params
+    [Export(PropertyHint.Range, "0,1,0.01")] public float CaveInitialFill { get; set; } = 0.42f;
+    [Export] public int CaveSmoothSteps { get; set; } = 5;
+    [Export] public int CaveBirthLimit { get; set; } = 4;
+    [Export] public int CaveDeathLimit { get; set; } = 3;
+    [Export] public bool CavePreserveLargest { get; set; } = true;
+
+    // Trails params
+    [Export] public int TrailNodeCount { get; set; } = 8;
+    [Export] public int TrailMinSpacing { get; set; } = 6;
+    [Export] public int TrailWidth { get; set; } = 3;
+    [Export] public bool TrailConnectAllComponents { get; set; } = true;
 
     // Псевдослучайный генератор
     private Random _random;
@@ -426,8 +447,16 @@ public partial class LevelGenerator : Node
             // Устанавливаем тип биома для генерации
             BiomeType = section.BiomeType;
 
-            // Генерируем уровень для этой секции
-            GenerateSectionLevel(section);
+            // Генерируем уровень для этой секции (по выбранному алгоритму)
+            switch (Algorithm)
+            {
+                case GenerationAlgorithm.RoomsCorridors:
+                    GenerateSectionLevel(section);
+                    break;
+                case GenerationAlgorithm.CaveTrails:
+                    GenerateSectionLevelCaveTrails(section);
+                    break;
+            }
 
             Logger.Debug($"Generated section at ({section.GridX},{section.GridY}) with biome {GetBiomeName(section.BiomeType)}", false);
         }
@@ -511,6 +540,202 @@ public partial class LevelGenerator : Node
         {
             Logger.Error($"Error generating section level: {e.Message}\n{e.StackTrace}");
         }
+    }
+
+    // Черновой генератор Cave+Trails
+    private void GenerateSectionLevelCaveTrails(MapSection section)
+    {
+        try
+        {
+            _currentSection = section;
+            section.Rooms.Clear();
+            ResetSectionMask(section);
+
+            // 1) Cellular Automata для пещер — заполняем маску как проходимо/непроходимо (Room/Background)
+            var rng = _random;
+            for (int x = 0; x < MapWidth; x++)
+            for (int y = 0; y < MapHeight; y++)
+                section.SectionMask[x, y] = (rng.NextDouble() < CaveInitialFill) ? TileType.Background : TileType.Room;
+
+            for (int step = 0; step < CaveSmoothSteps; step++)
+            {
+                var next = new TileType[MapWidth, MapHeight];
+                for (int x = 0; x < MapWidth; x++)
+                for (int y = 0; y < MapHeight; y++)
+                {
+                    int walls = 0;
+                    for (int dx = -1; dx <= 1; dx++)
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        if (dx == 0 && dy == 0) continue;
+                        int nx = x + dx, ny = y + dy;
+                        if (nx < 0 || nx >= MapWidth || ny < 0 || ny >= MapHeight) { walls++; continue; }
+                        if (section.SectionMask[nx, ny] != TileType.Room) walls++;
+                    }
+                    if (section.SectionMask[x, y] != TileType.Room)
+                        next[x, y] = (walls >= CaveDeathLimit) ? TileType.Background : TileType.Room;
+                    else
+                        next[x, y] = (walls > CaveBirthLimit) ? TileType.Background : TileType.Room;
+                }
+                section.SectionMask = next;
+            }
+
+            // 2) Сохраняем крупнейшую компонету проходимых клеток (Room)
+            if (CavePreserveLargest)
+            {
+                PreserveLargestWalkableComponent(section);
+            }
+
+            // 3) Рисуем пол/фон в TileMap из маски
+            Vector2I worldOffset = new Vector2I((int)section.WorldOffset.X, (int)section.WorldOffset.Y);
+            var floorTile = _biome.GetFloorTileForBiome(section.BiomeType);
+            var backgroundTile = GetBackgroundTileForBiome(section.BiomeType);
+            for (int x = 0; x < MapWidth; x++)
+            for (int y = 0; y < MapHeight; y++)
+            {
+                Vector2I wp = worldOffset + new Vector2I(x, y);
+                if (section.SectionMask[x, y] == TileType.Room)
+                {
+                    FloorsTileMap.SetCell(wp, FloorsSourceID, floorTile);
+                    WallsTileMap.EraseCell(wp);
+                }
+                else
+                {
+                    WallsTileMap.SetCell(wp, WallsSourceID, backgroundTile);
+                }
+            }
+
+            // 4) Тропы: выбираем опорные узлы и соединяем кратчайшими путями по проходимым клеткам
+            var nodes = PickTrailNodes(section, TrailNodeCount, TrailMinSpacing);
+            CarveTrailsBetweenNodes(section, nodes, TrailWidth);
+
+            // 5) Безопасность: гарантируем связность «пещера <-> тропы» внутри секции
+            EnsureSectionRoomConnectivity(section);
+
+            // Спавн и сущности
+            section.SpawnPosition = GetSectionSpawnPosition(section);
+            AddSectionResources(section);
+            AddSectionContainers(section);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error generating section level (Cave+Trails): {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    private void PreserveLargestWalkableComponent(MapSection section)
+    {
+        var visited = new bool[MapWidth, MapHeight];
+        int best = 0; System.Collections.Generic.List<Vector2I> bestCells = null;
+        for (int x = 0; x < MapWidth; x++)
+        for (int y = 0; y < MapHeight; y++)
+        {
+            if (visited[x, y] || section.SectionMask[x, y] != TileType.Room) continue;
+            var comp = new System.Collections.Generic.List<Vector2I>();
+            var q = new System.Collections.Generic.Queue<Vector2I>();
+            q.Enqueue(new Vector2I(x, y)); visited[x, y] = true;
+            while (q.Count > 0)
+            {
+                var p = q.Dequeue(); comp.Add(p);
+                foreach (var d in new[]{ new Vector2I(1,0), new Vector2I(-1,0), new Vector2I(0,1), new Vector2I(0,-1) })
+                {
+                    var n = new Vector2I(p.X + d.X, p.Y + d.Y);
+                    if (n.X < 0 || n.X >= MapWidth || n.Y < 0 || n.Y >= MapHeight) continue;
+                    if (visited[n.X, n.Y]) continue;
+                    if (section.SectionMask[n.X, n.Y] != TileType.Room) continue;
+                    visited[n.X, n.Y] = true; q.Enqueue(n);
+                }
+            }
+            if (comp.Count > best) { best = comp.Count; bestCells = comp; }
+        }
+        // Очищаем все, кроме best
+        if (bestCells == null) return;
+        var keep = new System.Collections.Generic.HashSet<Vector2I>(bestCells);
+        for (int x = 0; x < MapWidth; x++)
+        for (int y = 0; y < MapHeight; y++)
+        {
+            if (section.SectionMask[x, y] == TileType.Room && !keep.Contains(new Vector2I(x, y)))
+                section.SectionMask[x, y] = TileType.Background;
+        }
+    }
+
+    private System.Collections.Generic.List<Vector2I> PickTrailNodes(MapSection section, int count, int minSpacing)
+    {
+        var nodes = new System.Collections.Generic.List<Vector2I>();
+        int attempts = 0; int maxAttempts = count * 50;
+        while (nodes.Count < count && attempts++ < maxAttempts)
+        {
+            int x = _random.Next(2, MapWidth - 2);
+            int y = _random.Next(2, MapHeight - 2);
+            if (section.SectionMask[x, y] != TileType.Room) continue;
+            bool far = true;
+            foreach (var n in nodes)
+                if ((n - new Vector2I(x, y)).LengthSquared() < minSpacing * minSpacing) { far = false; break; }
+            if (far) nodes.Add(new Vector2I(x, y));
+        }
+        return nodes;
+    }
+
+    private void CarveTrailsBetweenNodes(MapSection section, System.Collections.Generic.List<Vector2I> nodes, int width)
+    {
+        if (nodes == null || nodes.Count < 2) return;
+        // Простая последовательная связь + утолщение пути
+        for (int i = 0; i < nodes.Count - 1; i++)
+        {
+            var path = FindPathOverRooms(section, nodes[i], nodes[i+1]);
+            if (path == null) continue;
+            Vector2I worldOffset = new Vector2I((int)section.WorldOffset.X, (int)section.WorldOffset.Y);
+            var floorTile = _biome.GetFloorTileForBiome(section.BiomeType);
+            foreach (var p in path)
+            {
+                for (int w = -(width/2); w <= (width/2); w++)
+                {
+                    foreach (var dir in new[]{new Vector2I(1,0), new Vector2I(0,1)})
+                    {
+                        int cx = p.X + dir.X * w;
+                        int cy = p.Y + dir.Y * w;
+                        if (cx < 0 || cx >= MapWidth || cy < 0 || cy >= MapHeight) continue;
+                        FloorsTileMap.SetCell(worldOffset + new Vector2I(cx, cy), FloorsSourceID, floorTile);
+                        WallsTileMap.EraseCell(worldOffset + new Vector2I(cx, cy));
+                        section.SectionMask[cx, cy] = TileType.Room;
+                    }
+                }
+            }
+        }
+    }
+
+    // A* по проходимым (Room) клеткам
+    private System.Collections.Generic.List<Vector2I> FindPathOverRooms(MapSection section, Vector2I start, Vector2I goal)
+    {
+        var open = new System.Collections.Generic.SortedSet<(int f, int g, Vector2I p)>(System.Collections.Generic.Comparer<(int,int,Vector2I)>.Create((a,b)=> a.f!=b.f? a.f-b.f : a.g!=b.g? a.g-b.g : a.p.X!=b.p.X? a.p.X-b.p.X : a.p.Y-b.p.Y));
+        var came = new System.Collections.Generic.Dictionary<Vector2I, Vector2I>();
+        var gScore = new System.Collections.Generic.Dictionary<Vector2I, int>();
+        int H(Vector2I p) => System.Math.Abs(p.X - goal.X) + System.Math.Abs(p.Y - goal.Y);
+        open.Add((H(start), 0, start)); gScore[start] = 0;
+        var dirs = new[]{ new Vector2I(1,0), new Vector2I(-1,0), new Vector2I(0,1), new Vector2I(0,-1) };
+        while (open.Count > 0)
+        {
+            var cur = open.Min; open.Remove(cur);
+            var p = cur.p;
+            if (p == goal)
+            {
+                var path = new System.Collections.Generic.List<Vector2I>();
+                while (came.ContainsKey(p)) { path.Add(p); p = came[p]; }
+                path.Reverse(); return path;
+            }
+            foreach (var d in dirs)
+            {
+                var n = new Vector2I(p.X + d.X, p.Y + d.Y);
+                if (n.X < 0 || n.X >= MapWidth || n.Y < 0 || n.Y >= MapHeight) continue;
+                if (section.SectionMask[n.X, n.Y] != TileType.Room) continue;
+                int ng = cur.g + 1;
+                if (!gScore.TryGetValue(n, out var old) || ng < old)
+                {
+                    gScore[n] = ng; came[n] = p; open.Add((ng + H(n), ng, n));
+                }
+            }
+        }
+        return null;
     }
 
     private void AddSectionResources(MapSection section)
