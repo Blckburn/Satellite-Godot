@@ -12,7 +12,7 @@ public static class GeneratedAtlasBuilder
         if (_cachedSourceId >= 0) return _cachedSourceId;
 
         int tileW = 64, tileH = 32;
-        int cols = 8, rows = 1; // [0]grass, [1]sand, [2]snow, [3]stone, [4]water, [5]ice, [6]bridgeH, [7]bridgeV
+        int cols = 12, rows = 1; // [0]grass, [1]sand, [2]snow, [3]stone, [4]water, [5]ice, [6]bridgeH, [7]bridgeV, [8..11] grass variants
         int imgW = cols * tileW;
         int imgH = rows * tileH;
 
@@ -27,6 +27,11 @@ public static class GeneratedAtlasBuilder
         DrawIso(img, tileW*5,     0, tileW, tileH, new Color(0.72f, 0.86f, 0.94f)); // ice
         DrawBridge(img, tileW*6,  0, tileW, tileH, true);  // natural bridge horizontal
         DrawBridge(img, tileW*7,  0, tileW, tileH, false); // natural bridge vertical
+        // extra grass variants to break grid
+        DrawIso(img, tileW*8,     0, tileW, tileH, new Color(0.37f, 0.60f, 0.36f));
+        DrawIso(img, tileW*9,     0, tileW, tileH, new Color(0.33f, 0.56f, 0.33f));
+        DrawIso(img, tileW*10,    0, tileW, tileH, new Color(0.40f, 0.61f, 0.38f));
+        DrawIso(img, tileW*11,    0, tileW, tileH, new Color(0.31f, 0.54f, 0.31f));
 
         // Register atlas source into TileSet and return id
         var ts = floors.TileSet;

@@ -1005,7 +1005,7 @@ public partial class LevelGenerator : Node
                     if (((x + y) % 11) != 0) continue;
                     var path = FindWorldPathConstrainedLocal(hub, new Vector2I(x, y), c.biome);
                     if (path == null) continue;
-                    var tile = _biome.GetFloorTileForBiome(c.biome);
+                    var tile = (c.biome == 0) ? new Vector2I(8 + (_random.Next() % 4), 0) : _biome.GetFloorTileForBiome(c.biome);
                     foreach (var wp in path)
                     {
                         for (int w = -(LocalCorridorWidth/2); w <= (LocalCorridorWidth/2); w++)
