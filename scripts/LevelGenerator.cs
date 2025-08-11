@@ -960,9 +960,17 @@ public partial class LevelGenerator : Node
             // Генерируем "комнаты" из проходимых областей для совместимости с системой ресурсов
             GenerateVirtualRoomsFromWorldMask(mapSection, worldMask, worldTilesX, worldTilesY);
             
-            // Добавляем ресурсы и контейнеры
-            AddSectionResources(mapSection);
-            AddSectionContainers(mapSection);
+            // Добавляем ресурсы и контейнеры только если у секции есть комнаты
+            if (mapSection.Rooms.Count > 0)
+            {
+                AddSectionResources(mapSection);
+                AddSectionContainers(mapSection);
+                Logger.Debug($"Added resources to section ({mapSection.GridX}, {mapSection.GridY}) with {mapSection.Rooms.Count} rooms", true);
+            }
+            else
+            {
+                Logger.Debug($"Skipping resource generation for section ({mapSection.GridX}, {mapSection.GridY}) - no rooms found", false);
+            }
         }
 
         // Выбираем точку спавна игрока в центральной области мира
@@ -975,6 +983,8 @@ public partial class LevelGenerator : Node
     private void GenerateVirtualRoomsFromWorldMask(MapSection section, TileType[,] worldMask, int worldTilesX, int worldTilesY)
     {
         section.Rooms.Clear();
+        
+        Logger.Debug($"Generating virtual rooms for section ({section.GridX}, {section.GridY}) at world offset {section.WorldOffset}", false);
         
         // Преобразуем мировые координаты в локальные координаты секции
         int sectionStartX = (int)section.WorldOffset.X;
@@ -1326,6 +1336,14 @@ public partial class LevelGenerator : Node
 
     private void AddSectionResources(MapSection section)
     {
+        if (_entitySpawner == null)
+        {
+            Logger.Error("EntitySpawner is not initialized!");
+            return;
+        }
+        
+        Logger.Debug($"Attempting to add resources to section ({section.GridX}, {section.GridY}) with {section.Rooms.Count} rooms, biome {GetBiomeName(section.BiomeType)}", false);
+        
         int resourcesPlaced = _entitySpawner.AddResources(
             section.Rooms,
             section.BiomeType,
@@ -1334,7 +1352,7 @@ public partial class LevelGenerator : Node
             YSortContainer
             );
 
-            Logger.Debug($"Added {resourcesPlaced} resources to section ({section.GridX}, {section.GridY}) with biome {GetBiomeName(section.BiomeType)}", false);
+        Logger.Debug($"Added {resourcesPlaced} resources to section ({section.GridX}, {section.GridY}) with biome {GetBiomeName(section.BiomeType)}", false);
     }
 
     // Односекционный режим удалён
