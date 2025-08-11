@@ -992,8 +992,12 @@ public partial class LevelGenerator : Node
         var spawnPoints = new List<(string name, Vector2 position, bool isValid)>();
         
         // Определяем 4 угловые зоны с ПРАВИЛЬНОЙ логикой
-        int borderOffset = 3; // Небольшой отступ от края
-        int cornerSize = Math.Max(10, Math.Min(worldTilesX, worldTilesY) / 5); // Зона поиска
+        // ⚠️ КРИТИЧНО: borderOffset должен быть БОЛЬШЕ чем WALL_THICKNESS!
+        const int WALL_THICKNESS = 15; // То же значение что и в AddBiomeBasedBorderWalls
+        int borderOffset = WALL_THICKNESS + 5; // ОТСТУП ОТ OUTER WALLS + запас безопасности!
+        int cornerSize = Math.Max(15, Math.Min(worldTilesX, worldTilesY) / 4); // Больше зона поиска
+        
+        Logger.Debug($"🛡️ SAFE SPAWN ZONES: borderOffset={borderOffset} (walls+5), cornerSize={cornerSize}", true);
         
         var cornerDefs = new List<(string name, int startX, int startY, int endX, int endY)>
         {
@@ -1006,7 +1010,9 @@ public partial class LevelGenerator : Node
         Vector2I? bestSpawn = null;
         string bestCornerName = "";
         
-        // Ищем ЛУЧШИЙ угол для спавна
+        // Собираем ВСЕ валидные углы для РАНДОМНОГО выбора! 🎲
+        var validSpawns = new List<(string name, Vector2I tilePos, Vector2 worldPos)>();
+        
         foreach (var corner in cornerDefs)
         {
             Logger.Debug($"🔍 Searching for spawn in corner: {corner.name} ({corner.startX},{corner.startY}) to ({corner.endX},{corner.endY})", false);
@@ -1017,12 +1023,7 @@ public partial class LevelGenerator : Node
             {
                 Vector2 worldPos = MapTileToIsometricWorld(cornerSpawn.Value);
                 spawnPoints.Add((corner.name, worldPos, true));
-                
-                if (bestSpawn == null) // Берем первый найденный как лучший
-                {
-                    bestSpawn = cornerSpawn;
-                    bestCornerName = corner.name;
-                }
+                validSpawns.Add((corner.name, cornerSpawn.Value, worldPos));
                 
                 Logger.Debug($"✅ Valid spawn found in {corner.name}: tile ({cornerSpawn.Value.X}, {cornerSpawn.Value.Y}) -> world {worldPos}", true);
             }
@@ -1036,6 +1037,19 @@ public partial class LevelGenerator : Node
                 
                 Logger.Debug($"❌ No valid spawn in {corner.name}, created fallback at ({centerX}, {centerY}) -> {fallbackPos}", false);
             }
+        }
+        
+        // 🎲 РАНДОМНО выбираем один из ВАЛИДНЫХ углов!
+        if (validSpawns.Count > 0)
+        {
+            Random random = new Random();
+            int randomIndex = random.Next(validSpawns.Count);
+            var selectedSpawn = validSpawns[randomIndex];
+            
+            bestSpawn = selectedSpawn.tilePos;
+            bestCornerName = selectedSpawn.name;
+            
+            Logger.Debug($"🎲 RANDOM CORNER SELECTED: {bestCornerName} from {validSpawns.Count} valid options!", true);
         }
         
         // Создаем физические SpawnPoint узлы в сцене
@@ -1081,16 +1095,40 @@ public partial class LevelGenerator : Node
                     // Проверяем проходимость
                     if (worldMask[x, y] == TileType.Room)
                     {
+                        // ДЕТАЛЬНАЯ отладка координат спавна
+                        Logger.Debug($"🔍 Checking spawn candidate at tile ({x}, {y})", false);
+                        
                         // Проверяем 3x3 область
                         if (IsAreaWalkable(worldMask, x, y, worldTilesX, worldTilesY, 1))
                         {
+                            Logger.Debug($"✅ 3x3 area is walkable at ({x}, {y})", false);
+                            
                             // Проверяем путь к центру карты
                             Vector2I mapCenter = new Vector2I(worldTilesX / 2, worldTilesY / 2);
                             if (IsPathToTargetExists(worldMask, new Vector2I(x, y), mapCenter, worldTilesX, worldTilesY))
                             {
+                                Logger.Debug($"✅ Path to center exists from ({x}, {y})", false);
+                                
+                                // ⚠️ ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: не в зоне outer walls!
+                                Vector2 worldPos = MapTileToIsometricWorld(new Vector2I(x, y));
+                                Logger.Debug($"🎯 SPAWN CANDIDATE: tile ({x}, {y}) -> world {worldPos}", true);
+                                Logger.Debug($"🗺️ Map bounds: 0-{worldTilesX-1} x 0-{worldTilesY-1}, walls extend -15 to +15", true);
+                                
                                 return new Vector2I(x, y);
                             }
+                            else
+                            {
+                                Logger.Debug($"❌ No path to center from ({x}, {y})", false);
+                            }
                         }
+                        else
+                        {
+                            Logger.Debug($"❌ 3x3 area not walkable at ({x}, {y})", false);
+                        }
+                    }
+                    else
+                    {
+                        Logger.Debug($"❌ Not Room tile at ({x}, {y}), type: {worldMask[x, y]}", false);
                     }
                 }
             }
