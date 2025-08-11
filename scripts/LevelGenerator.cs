@@ -7,7 +7,8 @@ public partial class LevelGenerator : Node
     public enum GenerationAlgorithm
     {
         RoomsCorridors = 0,
-        CaveTrails = 1
+        CaveTrails = 1,
+        WorldBiomes = 2
     }
     // Сигнал о завершении генерации уровня с передачей точки спавна
     [Signal] public delegate void LevelGeneratedEventHandler(Vector2 spawnPosition);
@@ -94,6 +95,13 @@ public partial class LevelGenerator : Node
     [Export] public int TrailWidth { get; set; } = 3;
     [Export] public bool TrailConnectAllComponents { get; set; } = true;
     [Export] public int TrailExtraEdges { get; set; } = 2;
+
+    // WorldBiomes params
+    [Export] public int WorldBiomeCount { get; set; } = 6; // сколько регионов биомов
+    [Export] public int WorldWidth { get; set; } = 3;      // секции по X (временно переиспользуем сетку как холст)
+    [Export] public int WorldHeight { get; set; } = 3;     // секции по Y
+    [Export] public int BiomeMinSpacing { get; set; } = 12;
+    [Export] public bool WorldBlendBorders { get; set; } = true;
 
     // Псевдослучайный генератор
     private Random _random;
@@ -461,6 +469,10 @@ public partial class LevelGenerator : Node
                 case GenerationAlgorithm.CaveTrails:
                     GenerateSectionLevelCaveTrails(section);
                     break;
+                case GenerationAlgorithm.WorldBiomes:
+                    // WorldBiomes отрисуем поверх сетки: каждая секция станет частью одного огромного мира
+                    GenerateSectionLevelWorldBiomes(section);
+                    break;
             }
 
             Logger.Debug($"Generated section at ({section.GridX},{section.GridY}) with biome {GetBiomeName(section.BiomeType)}", false);
@@ -747,6 +759,143 @@ public partial class LevelGenerator : Node
         catch (Exception e)
         {
             Logger.Error($"Error generating section level (Cave+Trails): {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    // Черновой каркас WorldBiomes: одна большая карта на сетке секций; размещаем центры биомов и для каждого региона вызываем Cave+Trails с его параметрами
+    private void GenerateSectionLevelWorldBiomes(MapSection section)
+    {
+        // В этом режиме реальная генерация идёт из (0,0) секции, остальные секции пропускают отрисовку
+        if (!(section.GridX == 0 && section.GridY == 0))
+        {
+            // только очистим маску/слои на всякий случай
+            ResetSectionMask(section);
+            return;
+        }
+
+        // Подготовим общий холст: размеры мира в тайлах равны размеру сетки * размер секции
+        int worldTilesX = GridWidth * MapWidth;
+        int worldTilesY = GridHeight * MapHeight;
+
+        // 1) Выберем центры регионов (простейшая Poisson-замена: отбраковка по минимальному расстоянию)
+        var rng = _random;
+        var centers = new System.Collections.Generic.List<(Vector2I pos, int biome)>();
+        int attempts = 0; int maxAttempts = WorldBiomeCount * 200;
+        while (centers.Count < WorldBiomeCount && attempts++ < maxAttempts)
+        {
+            int x = rng.Next(4, worldTilesX - 4);
+            int y = rng.Next(4, worldTilesY - 4);
+            bool ok = true;
+            foreach (var c in centers)
+            {
+                int dx = c.pos.X - x, dy = c.pos.Y - y;
+                if (dx*dx + dy*dy < BiomeMinSpacing * BiomeMinSpacing) { ok = false; break; }
+            }
+            if (!ok) continue;
+            int biome = rng.Next(0, MaxBiomeTypes);
+            centers.Add((new Vector2I(x, y), biome));
+        }
+        if (centers.Count == 0)
+        {
+            centers.Add((new Vector2I(worldTilesX/2, worldTilesY/2), 0));
+        }
+
+        // 2) Для каждого тайла определим ближайший центр (Voronoi по L1) и назначим биом
+        var worldBiome = new int[worldTilesX, worldTilesY];
+        for (int x = 0; x < worldTilesX; x++)
+        for (int y = 0; y < worldTilesY; y++)
+        {
+            int best = int.MaxValue; int b = 0;
+            foreach (var c in centers)
+            {
+                int d = System.Math.Abs(c.pos.X - x) + System.Math.Abs(c.pos.Y - y);
+                if (d < best) { best = d; b = c.biome; }
+            }
+            worldBiome[x, y] = b;
+        }
+
+        // 3) Для каждого региона сгенерируем «пещеру» локально, но будем писать прямо в глобальные TileMap через мировые координаты
+        foreach (var c in centers)
+        {
+            // Создадим временную секцию-обёртку, чтобы переиспользовать Cave+Trails
+            var temp = new MapSection(c.biome, 0, 0, worldTilesX, worldTilesY)
+            {
+                WorldOffset = new Vector2(0, 0)
+            };
+            // Маска: оставляем Room только внутри региона (по биому)
+            for (int x = 0; x < worldTilesX; x++)
+            for (int y = 0; y < worldTilesY; y++)
+                temp.SectionMask[x, y] = (worldBiome[x, y] == c.biome) ? TileType.Room : TileType.Background;
+
+            // Немного прогоняем Cave сглаживанием внутри региона
+            for (int step = 0; step < 3; step++)
+            {
+                var next = new TileType[worldTilesX, worldTilesY];
+                for (int x = 0; x < worldTilesX; x++)
+                for (int y = 0; y < worldTilesY; y++)
+                {
+                    int walls = 0;
+                    for (int dx = -1; dx <= 1; dx++)
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        if (dx == 0 && dy == 0) continue;
+                        int nx = x + dx, ny = y + dy;
+                        if (nx < 0 || nx >= worldTilesX || ny < 0 || ny >= worldTilesY) { walls++; continue; }
+                        if (temp.SectionMask[nx, ny] != TileType.Room) walls++;
+                    }
+                    if (temp.SectionMask[x, y] != TileType.Room)
+                        next[x, y] = (walls >= CaveDeathLimit) ? TileType.Background : TileType.Room;
+                    else
+                        next[x, y] = (walls > CaveBirthLimit) ? TileType.Background : TileType.Room;
+                }
+                temp.SectionMask = next;
+            }
+
+            // Нарисуем регион
+            var floorTile = _biome.GetFloorTileForBiome(c.biome);
+            var backTile = GetBackgroundTileForBiome(c.biome);
+            for (int x = 0; x < worldTilesX; x++)
+            for (int y = 0; y < worldTilesY; y++)
+            {
+                Vector2I wp = new Vector2I(x, y);
+                if (temp.SectionMask[x, y] == TileType.Room)
+                {
+                    FloorsTileMap.SetCell(wp, FloorsSourceID, floorTile);
+                    WallsTileMap.EraseCell(wp);
+                }
+                else if (WorldBlendBorders)
+                {
+                    WallsTileMap.SetCell(wp, WallsSourceID, backTile);
+                }
+            }
+        }
+
+        // 4) Глобальные тропы между центрами (по MST)
+        var centersIdx = new System.Collections.Generic.List<int>(); for (int i=0;i<centers.Count;i++) centersIdx.Add(i);
+        var edges = new System.Collections.Generic.List<(int a,int b,int w)>();
+        for (int i=0;i<centers.Count;i++)
+        for (int j=i+1;j<centers.Count;j++)
+        {
+            int dx = centers[i].pos.X - centers[j].pos.X; int dy = centers[i].pos.Y - centers[j].pos.Y;
+            edges.Add((i,j,dx*dx+dy*dy));
+        }
+        edges.Sort((e1,e2)=>e1.w.CompareTo(e2.w));
+        var parent = new int[centers.Count]; for (int i=0;i<parent.Length;i++) parent[i]=i;
+        int FindP(int x){ while (parent[x]!=x) x=parent[x]=parent[parent[x]]; return x; }
+        bool UnionP(int x,int y){ x=FindP(x); y=FindP(y); if (x==y) return false; parent[y]=x; return true; }
+        var chosen = new System.Collections.Generic.List<(int a,int b)>();
+        foreach (var e in edges) if (UnionP(e.a,e.b)) chosen.Add((e.a,e.b));
+
+        foreach (var c in chosen)
+        {
+            var path = FindWorldPathOrganic(centers[c.a].pos, centers[c.b].pos);
+            if (path == null) continue;
+            var tile = _biome.GetFloorTileForBiome(centers[c.a].biome);
+            foreach (var wp in path)
+            {
+                FloorsTileMap.SetCell(wp, FloorsSourceID, tile);
+                WallsTileMap.EraseCell(wp);
+            }
         }
     }
 
