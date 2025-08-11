@@ -19,15 +19,16 @@ public sealed class BiomePalette
     {
         switch (biomeType)
         {
-            case 1:
-                // Grass: use high-quality supersampled Wang variants packed at indices 12..23 in atlas row 0
-                return new Vector2I(12 + _random.Next(0, 12), 0);
-            case 2: return new Vector2I(4, 0); // Sand
-            case 3: return new Vector2I(3, 0); // Snow
-            case 4: return new Vector2I(1, 0); // Stone
-            case 5: return new Vector2I(2, 0); // Ground
-            case 6: return new Vector2I(2, 0); // Ground
-            default: return new Vector2I(2, 1); // ForestFloor (по умолчанию)
+            // ВОЗВРАТ К ИСХОДНЫМ КООРДИНАТАМ floors.png
+            // 0: Grass, 1: Stone, 2: Ground, 3: Snow, 4: Sand, 5: Water
+            // 0-й ряд; 1-й ряд: 0: Ice, 1: Lava, 2: ForestFloor, 3: Techno, 4: Anomal, 5: Empty
+            case 1: return new Vector2I(2, 1); // Forest → ForestFloor
+            case 2: return new Vector2I(4, 0); // Desert → Sand
+            case 3: return new Vector2I(3, 0); // Ice → Snow (пол)
+            case 4: return new Vector2I(3, 1); // Techno
+            case 5: return new Vector2I(4, 1); // Anomal
+            case 6: return new Vector2I(1, 1); // Lava Springs
+            default: return new Vector2I(0, 0); // Grassland → Grass
         }
     }
 
@@ -70,9 +71,8 @@ public sealed class BiomePalette
 
     public Vector2I GetBridgeTile(bool horizontal, int width)
     {
-        // Используем сгенерированные в процедурном атласе индексы:
-        // 6 — горизонтальный мост, 7 — вертикальный мост
-        return new Vector2I(horizontal ? 6 : 7, 0);
+        // Без специальных мостов: твёрдый каменный пол
+        return new Vector2I(1, 0); // Stone
     }
 }
 
