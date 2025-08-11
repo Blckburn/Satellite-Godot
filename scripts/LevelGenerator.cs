@@ -202,6 +202,10 @@ public partial class LevelGenerator : Node
 
     public override void _Ready()
     {
+        // 📁 ИНИЦИАЛИЗИРУЕМ ФАЙЛОВОЕ ЛОГИРОВАНИЕ ПЕРВЫМ!
+        Logger.InitializeFileLogging();
+        Logger.Info("🚀 LevelGenerator starting up...");
+        
         // Инициализируем генератор случайных чисел
         if (RandomSeed >= 0)
             _random = new Random(RandomSeed);
@@ -1058,7 +1062,7 @@ public partial class LevelGenerator : Node
         }
         else
         {
-            Logger.Error("🚨 NO VALID SPAWN CORNERS FOUND! This should not happen!", true);
+            Logger.Error("🚨 NO VALID SPAWN CORNERS FOUND! This should not happen!");
         }
         
         // Создаем физические SpawnPoint узлы в сцене
