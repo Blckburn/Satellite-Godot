@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public static class Logger
 {
-    public static bool EnableDebugLogs = false;
+    public static bool EnableDebugLogs = true;
     private static readonly Dictionary<string, bool> _loggedMessages = new Dictionary<string, bool>();
 
     public static void Debug(string message, bool onceOnly = false)

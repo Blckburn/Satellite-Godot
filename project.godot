@@ -14,6 +14,12 @@ config/name="Satellite"
 run/main_scene="uid://brbrxlc0fdl4i"
 config/features=PackedStringArray("4.4", "C#", "Forward Plus")
 config/icon="res://icon.svg"
+config/windows/size/viewport_width=1600
+config/windows/size/viewport_height=900
+config/windows/size/window_width_override=1600
+config/windows/size/window_height_override=900
+config/windows/size/resizable=true
+config/windows/size/fullscreen=false
 
 [autoload]
 

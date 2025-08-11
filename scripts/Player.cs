@@ -65,8 +65,9 @@ public partial class Player : Character
                 var label = new Label();
                 label.Name = "DebugLabel";
                 label.ZIndex = 1000;
-                label.Position = new Vector2(10, -40);
+                label.Position = new Vector2(0, -40);
                 label.AddThemeColorOverride("font_color", Colors.Lime);
+                label.HorizontalAlignment = HorizontalAlignment.Center;
                 AddChild(label);
             }
         }
@@ -357,18 +358,21 @@ public partial class Player : Character
         SetMovementDirection(inputDirection);
 
         // Временная диагностика управления (каждые ~0.5 сек при 60 FPS)
-        _debugUpdateCounter++;
-        if (_debugUpdateCounter >= DEBUG_UPDATE_INTERVAL)
+        if (ShowDebugInfo)
         {
-            _debugUpdateCounter = 0;
-            bool up = Input.IsActionPressed("move_up");
-            bool down = Input.IsActionPressed("move_down");
-            bool left = Input.IsActionPressed("move_left");
-            bool right = Input.IsActionPressed("move_right");
-            var lbl = GetNodeOrNull<Label>("DebugLabel");
-            if (lbl != null)
+            _debugUpdateCounter++;
+            if (_debugUpdateCounter >= DEBUG_UPDATE_INTERVAL)
             {
-                lbl.Text = $"U:{up} D:{down} L:{left} R:{right}\nDir:{inputDirection}";
+                _debugUpdateCounter = 0;
+                bool up = Input.IsActionPressed("move_up");
+                bool down = Input.IsActionPressed("move_down");
+                bool left = Input.IsActionPressed("move_left");
+                bool right = Input.IsActionPressed("move_right");
+                var lbl = GetNodeOrNull<Label>("DebugLabel");
+                if (lbl != null)
+                {
+                    lbl.Text = $"Dir:{inputDirection}"; // компактный HUD
+                }
             }
         }
 

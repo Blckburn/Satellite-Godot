@@ -14,7 +14,7 @@ radius = 90.0222
 z_as_relative = false
 y_sort_enabled = true
 script = ExtResource("1_gfjak")
-ShowDebugInfo = true
+ShowDebugInfo = false
 TileMapPath = NodePath("TileMap")
 SpritePath = NodePath("")
 
@@ -27,6 +27,9 @@ shape = SubResource("RectangleShape2D_gmlin")
 [node name="Camera2D" type="Camera2D" parent="."]
 script = ExtResource("3_4kuee")
 PlayerPath = NodePath("..")
+ZoomDefault = 0.6
+ZoomMin = 0.3
+ZoomMax = 1.2
 
 [node name="InteractionArea" type="Area2D" parent="."]
 
