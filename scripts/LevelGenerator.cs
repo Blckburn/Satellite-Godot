@@ -402,8 +402,8 @@ public partial class LevelGenerator : Node
             // Генерируем все секции карты
             GenerateAllSections();
 
-            // ИСПРАВЛЕНИЕ: Явно указываем, что нужно соединить секции
-            if (ConnectSections)
+            // Соединяем секции только для режима RoomsCorridors (в CaveTrails длинные прямые мосты не нужны)
+            if (ConnectSections && Algorithm == GenerationAlgorithm.RoomsCorridors)
             {
                 _multiSectionCoordinator.ConnectAdjacentSections(
                     GridWidth,
