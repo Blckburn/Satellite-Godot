@@ -19,7 +19,7 @@ public static class GeneratedAtlasBuilder
         Image img = Image.Create(imgW, imgH, false, Image.Format.Rgba8);
         img.Fill(new Color(0,0,0,0));
 
-        DrawIso(img, 0,           0, tileW, tileH, new Color(0.24f, 0.55f, 0.28f)); // grass
+        DrawIso(img, 0,           0, tileW, tileH, new Color(0.35f, 0.58f, 0.34f)); // grass (чуть светлее)
         DrawIso(img, tileW*1,     0, tileW, tileH, new Color(0.82f, 0.75f, 0.45f)); // sand
         DrawIso(img, tileW*2,     0, tileW, tileH, new Color(0.90f, 0.93f, 0.96f)); // snow
         DrawIso(img, tileW*3,     0, tileW, tileH, new Color(0.50f, 0.52f, 0.56f)); // stone
@@ -62,8 +62,11 @@ public static class GeneratedAtlasBuilder
                 float dy = Math.Abs(y - cy) / halfH;
                 if (dx + dy <= 1.0f)
                 {
-                    float noise = (float)(rng.NextDouble()*0.08 - 0.04);
-                    float shade = 0.06f * (y - oy) / h; // light gradient
+                    // плавно затухающий шум к центру, у краёв = 0 (чтобы не было швов)
+                    float k = MathF.Max(0f, 1f - (dx + dy));
+                    float noiseAmp = 0.02f * k * k; // было 0.08
+                    float noise = (float)(rng.NextDouble()*2 - 1) * noiseAmp;
+                    float shade = 0f; // без направленного градиента, чтобы не проявлялась сетка
                     var c = new Color(
                         Math.Clamp(baseCol.R + noise - shade, 0, 1),
                         Math.Clamp(baseCol.G + noise - shade, 0, 1),
@@ -78,11 +81,11 @@ public static class GeneratedAtlasBuilder
 
     private static void DrawBridge(Image img, int ox, int oy, int w, int h, bool horizontal)
     {
-        // base: water-like blue background, with stone stepping stripe
-        DrawIso(img, ox, oy, w, h, new Color(0.18f, 0.44f, 0.72f));
+        // base: natural ground color as substrate for land bridge
+        DrawIso(img, ox, oy, w, h, new Color(0.42f, 0.40f, 0.30f));
         int cx = ox + w/2; int cy = oy + h/2;
         int len = horizontal ? w : h;
-        for (int i = -len/3; i <= len/3; i += (horizontal ? 10 : 6))
+        for (int i = -len/3; i <= len/3; i += (horizontal ? 8 : 8))
         {
             for (int t = -3; t <= 3; t++)
             {
@@ -91,7 +94,7 @@ public static class GeneratedAtlasBuilder
                 // set stone color if inside
                 if (px >= ox && px < ox + w && py >= oy && py < oy + h)
                 {
-                    img.SetPixel(px, py, new Color(0.60f, 0.60f, 0.62f, 1));
+                    img.SetPixel(px, py, new Color(0.36f, 0.36f, 0.36f, 1));
                 }
             }
         }
