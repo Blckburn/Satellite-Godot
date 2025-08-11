@@ -402,7 +402,7 @@ public partial class LevelGenerator : Node
             // Генерируем все секции карты
             GenerateAllSections();
 
-            // Соединяем секции только для режима RoomsCorridors (в CaveTrails длинные прямые мосты не нужны)
+            // Соединяем секции
             if (ConnectSections && Algorithm == GenerationAlgorithm.RoomsCorridors)
             {
                 _multiSectionCoordinator.ConnectAdjacentSections(
@@ -412,6 +412,10 @@ public partial class LevelGenerator : Node
                     (left, right) => ConnectSectionsHorizontally(left, right),
                     (top, bottom) => ConnectSectionsVertically(top, bottom)
                 );
+            }
+            else if (ConnectSections && Algorithm == GenerationAlgorithm.CaveTrails)
+            {
+                ConnectSectionsCaveStyle();
             }
 
             // Выбираем секцию для спавна игрока через координатор (получаем МИРОВЫЕ пиксели)
@@ -461,6 +465,124 @@ public partial class LevelGenerator : Node
 
             Logger.Debug($"Generated section at ({section.GridX},{section.GridY}) with biome {GetBiomeName(section.BiomeType)}", false);
         }
+    }
+
+    // Новый способ межсекционных проходов для CaveTrails: короткие органичные перемычки между ближайшими проходимыми плитками на границе секций
+    private void ConnectSectionsCaveStyle()
+    {
+        // Горизонтальные соседи
+        for (int y = 0; y < GridHeight; y++)
+        {
+            for (int x = 0; x < GridWidth - 1; x++)
+            {
+                var left = _mapSections.Find(s => s.GridX == x && s.GridY == y);
+                var right = _mapSections.Find(s => s.GridX == x + 1 && s.GridY == y);
+                if (left == null || right == null) continue;
+                CarveOrganicBridge(left, right, horizontal: true);
+            }
+        }
+        // Вертикальные соседи
+        for (int x = 0; x < GridWidth; x++)
+        {
+            for (int y = 0; y < GridHeight - 1; y++)
+            {
+                var top = _mapSections.Find(s => s.GridX == x && s.GridY == y);
+                var bottom = _mapSections.Find(s => s.GridX == x && s.GridY == y + 1);
+                if (top == null || bottom == null) continue;
+                CarveOrganicBridge(top, bottom, horizontal: false);
+            }
+        }
+    }
+
+    private void CarveOrganicBridge(MapSection a, MapSection b, bool horizontal)
+    {
+        // соберем кандидаты вдоль общей границы: ближайшие к проходимым клеткам секций
+        var candidatesA = new System.Collections.Generic.List<Vector2I>();
+        var candidatesB = new System.Collections.Generic.List<Vector2I>();
+        if (horizontal)
+        {
+            int ax = MapWidth - 2; // внутренняя колонка у правой границы левой секции
+            int bx = 1;           // внутренняя колонка у левой границы правой секции
+            for (int ty = 2; ty < MapHeight - 2; ty++)
+            {
+                if (a.SectionMask[ax, ty] == TileType.Room) candidatesA.Add(new Vector2I((int)a.WorldOffset.X + ax, (int)a.WorldOffset.Y + ty));
+                if (b.SectionMask[bx, ty] == TileType.Room) candidatesB.Add(new Vector2I((int)b.WorldOffset.X + bx, (int)b.WorldOffset.Y + ty));
+            }
+        }
+        else
+        {
+            int ay = MapHeight - 2; // внутренняя строка у нижней границы верхней секции
+            int by = 1;             // внутренняя строка у верхней границы нижней секции
+            for (int tx = 2; tx < MapWidth - 2; tx++)
+            {
+                if (a.SectionMask[tx, ay] == TileType.Room) candidatesA.Add(new Vector2I((int)a.WorldOffset.X + tx, (int)a.WorldOffset.Y + ay));
+                if (b.SectionMask[tx, by] == TileType.Room) candidatesB.Add(new Vector2I((int)b.WorldOffset.X + tx, (int)b.WorldOffset.Y + by));
+            }
+        }
+        if (candidatesA.Count == 0 || candidatesB.Count == 0) return;
+
+        // найдём ближайшую пару
+        int best = int.MaxValue; Vector2I pa = default, pb = default;
+        foreach (var va in candidatesA)
+        foreach (var vb in candidatesB)
+        {
+            int dx = (int)(va.X - vb.X); int dy = (int)(va.Y - vb.Y);
+            int d2 = dx*dx + dy*dy; if (d2 < best) { best = d2; pa = va; pb = vb; }
+        }
+
+        // проложим короткий A* путь по мировым тайлам, где допускаем прорезание через фон/стены
+        var path = FindWorldPathOrganic(pa, pb);
+        if (path == null) return;
+        var floorTileA = _biome.GetFloorTileForBiome(a.BiomeType);
+        var floorTileB = _biome.GetFloorTileForBiome(b.BiomeType);
+        var floorTile = floorTileA; // можно смешивать, пока возьмём левую/верхнюю секцию
+        foreach (var wp in path)
+        {
+            FloorsTileMap.SetCell(wp, FloorsSourceID, floorTile);
+            WallsTileMap.EraseCell(wp);
+            // обновим локальные маски соответствующих секций
+            foreach (var s in new[]{a,b})
+            {
+                int lx = wp.X - (int)s.WorldOffset.X; int ly = wp.Y - (int)s.WorldOffset.Y;
+                if (lx >= 0 && lx < MapWidth && ly >= 0 && ly < MapHeight)
+                    s.SectionMask[lx, ly] = TileType.Room;
+            }
+        }
+    }
+
+    // Поиск пути в мировых тайлах с разрешением проходить через всё, кроме чужих «комнат», чтобы мост был органичным
+    private System.Collections.Generic.List<Vector2I> FindWorldPathOrganic(Vector2I startWp, Vector2I goalWp)
+    {
+        var open = new System.Collections.Generic.SortedSet<(int,int,Vector2I)>(System.Collections.Generic.Comparer<(int,int,Vector2I)>.Create((a,b)=> a.Item1!=b.Item1? a.Item1-b.Item1 : a.Item2!=b.Item2? a.Item2-b.Item2 : a.Item3.X!=b.Item3.X? a.Item3.X-b.Item3.X : a.Item3.Y-b.Item3.Y));
+        var came = new System.Collections.Generic.Dictionary<Vector2I, Vector2I>();
+        var gScore = new System.Collections.Generic.Dictionary<Vector2I, int>();
+        int H(Vector2I p) => System.Math.Abs(p.X - goalWp.X) + System.Math.Abs(p.Y - goalWp.Y);
+        open.Add((H(startWp), 0, startWp)); gScore[startWp] = 0;
+        var dirs = new[]{ new Vector2I(1,0), new Vector2I(-1,0), new Vector2I(0,1), new Vector2I(0,-1) };
+        while (open.Count > 0)
+        {
+            var cur = open.Min; open.Remove(cur);
+            var p = cur.Item3;
+            if (p == goalWp)
+            {
+                var path = new System.Collections.Generic.List<Vector2I>();
+                while (came.ContainsKey(p)) { path.Add(p); p = came[p]; }
+                path.Reverse(); return path;
+            }
+            foreach (var d in dirs)
+            {
+                var n = new Vector2I(p.X + d.X, p.Y + d.Y);
+                // в мировых координатах ограничимся рамками всёй мультикарты
+                if (n.X < 0 || n.Y < 0) continue;
+                // разрешаем идти по любым клеткам — мост прорежет
+                int ng = cur.Item2 + 1;
+                if (!gScore.TryGetValue(n, out var old) || ng < old)
+                {
+                    gScore[n] = ng; came[n] = p; open.Add((ng + H(n), ng, n));
+                }
+            }
+        }
+        return null;
     }
 
     // НОВОЕ: Метод для генерации уровня для конкретной секции
