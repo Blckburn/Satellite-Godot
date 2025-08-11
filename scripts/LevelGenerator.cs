@@ -1165,8 +1165,18 @@ public partial class LevelGenerator : Node
                 // Определяем тип ресурса на основе биома
                 ResourceType resourceType = SelectResourceTypeForBiome(biome);
                 
+                // Загружаем соответствующий ResourceItem из .tres файла
+                Item resourceItem = LoadResourceItemForType(resourceType);
+                if (resourceItem == null)
+                {
+                    Logger.Error($"Failed to load ResourceItem for type {resourceType}");
+                    resourceNode.QueueFree();
+                    return false;
+                }
+                
                 // Настраиваем ресурс
                 resourceNode.Type = resourceType;
+                resourceNode.ResourceItem = resourceItem; // Устанавливаем правильный ResourceItem!
                 resourceNode.ResourceAmount = _random.Next(1, 4); // Случайное количество от 1 до 3
                 
                 // Преобразуем мировые тайловые координаты в изометрические пиксельные
@@ -1179,7 +1189,7 @@ public partial class LevelGenerator : Node
                 if (YSortContainer != null)
                 {
                     YSortContainer.AddChild(resourceNode);
-                    Logger.Debug($"Successfully placed {resourceType} resource at world ({worldX}, {worldY})", false);
+                    Logger.Debug($"Successfully placed {resourceType} resource at world ({worldX}, {worldY}) with ResourceItem {resourceItem.DisplayName}", false);
                     return true;
                 }
                 else
@@ -1196,6 +1206,48 @@ public partial class LevelGenerator : Node
         }
         
         return false;
+    }
+    
+    // Загружает ResourceItem файл для конкретного типа ресурса
+    private Item LoadResourceItemForType(ResourceType resourceType)
+    {
+        string resourcePath = "";
+        
+        switch (resourceType)
+        {
+            case ResourceType.Metal:
+                resourcePath = "res://scenes/resources/items/metal_ore.tres";
+                break;
+            case ResourceType.Crystal:
+                resourcePath = "res://scenes/resources/items/resource_crystal.tres";
+                break;
+            case ResourceType.Organic:
+                resourcePath = "res://scenes/resources/items/organic_matter.tres";
+                break;
+            default:
+                Logger.Error($"No ResourceItem path defined for ResourceType {resourceType}");
+                return null;
+        }
+        
+        try
+        {
+            Item resourceItem = ResourceLoader.Load<Item>(resourcePath);
+            if (resourceItem != null)
+            {
+                Logger.Debug($"Successfully loaded ResourceItem from {resourcePath}: {resourceItem.DisplayName}", false);
+                return resourceItem;
+            }
+            else
+            {
+                Logger.Error($"Failed to load ResourceItem from path: {resourcePath}");
+                return null;
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Exception loading ResourceItem from {resourcePath}: {e.Message}");
+            return null;
+        }
     }
 
     // Размещает контейнер в мировых координатах
@@ -1243,18 +1295,19 @@ public partial class LevelGenerator : Node
         return false;
     }
 
-    // Выбирает тип ресурса на основе биома
+    // Выбирает тип ресурса на основе биома (ТОЛЬКО реально существующие типы: Metal, Crystal, Organic)
     private ResourceType SelectResourceTypeForBiome(int biome)
     {
-        // Используем биом-специфичные вероятности
+        // ВНИМАНИЕ: У нас есть только 3 типа ресурсов в проекте: Metal, Crystal, Organic
+        // Energy и Composite отсутствуют в scenes/resources/items/
         switch (biome)
         {
             case 0: // Grassland - сбалансированно
                 {
                     float rand = (float)_random.NextDouble();
                     if (rand < 0.4f) return ResourceType.Metal;
-                    if (rand < 0.6f) return ResourceType.Crystal;
-                    return ResourceType.Organic;
+                    if (rand < 0.7f) return ResourceType.Organic;
+                    return ResourceType.Crystal;
                 }
             case 1: // Forest - больше органики
                 {
@@ -1268,37 +1321,35 @@ public partial class LevelGenerator : Node
                     float rand = (float)_random.NextDouble();
                     if (rand < 0.5f) return ResourceType.Metal;
                     if (rand < 0.8f) return ResourceType.Crystal;
-                    return ResourceType.Energy;
+                    return ResourceType.Organic; // Заменяем Energy на Organic
                 }
             case 3: // Ice - кристаллы
                 {
                     float rand = (float)_random.NextDouble();
                     if (rand < 0.5f) return ResourceType.Crystal;
                     if (rand < 0.8f) return ResourceType.Metal;
-                    return ResourceType.Energy;
+                    return ResourceType.Organic; // Заменяем Energy на Organic
                 }
-            case 4: // Techno - энергия и композиты
+            case 4: // Techno - металлы и кристаллы
                 {
                     float rand = (float)_random.NextDouble();
-                    if (rand < 0.4f) return ResourceType.Energy;
-                    if (rand < 0.6f) return ResourceType.Metal;
-                    if (rand < 0.8f) return ResourceType.Composite;
-                    return ResourceType.Crystal;
+                    if (rand < 0.4f) return ResourceType.Metal;
+                    if (rand < 0.7f) return ResourceType.Crystal;
+                    return ResourceType.Organic; // Заменяем Energy/Composite на Organic
                 }
-            case 5: // Anomal - все редкие
+            case 5: // Anomal - редкие кристаллы
                 {
                     float rand = (float)_random.NextDouble();
                     if (rand < 0.4f) return ResourceType.Crystal;
-                    if (rand < 0.6f) return ResourceType.Energy;
-                    if (rand < 0.8f) return ResourceType.Composite;
-                    return ResourceType.Metal;
+                    if (rand < 0.7f) return ResourceType.Metal;
+                    return ResourceType.Organic; // Заменяем Composite/Energy на Organic
                 }
-            case 6: // Lava Springs - металлы и энергия
+            case 6: // Lava Springs - металлы
                 {
                     float rand = (float)_random.NextDouble();
                     if (rand < 0.5f) return ResourceType.Metal;
-                    if (rand < 0.8f) return ResourceType.Energy;
-                    return ResourceType.Crystal;
+                    if (rand < 0.8f) return ResourceType.Crystal;
+                    return ResourceType.Organic; // Заменяем Energy/Composite на Organic
                 }
             default:
                 return ResourceType.Metal;
