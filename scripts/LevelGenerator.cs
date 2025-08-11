@@ -911,7 +911,14 @@ public partial class LevelGenerator : Node
             var wp = new Vector2I(x, y);
             if (worldMask[x, y] == TileType.Room)
             {
-                FloorsTileMap.SetCell(wp, FloorsSourceID, _biome.GetFloorTileForBiome(biome));
+                Vector2I tile = _biome.GetFloorTileForBiome(biome);
+                if (biome == 0)
+                {
+                    // травяной биом: используем 8 вариантов (12..19) детерминированно по (x,y) для разрыва паттерна
+                    int v = (int)(((uint)(x * 73856093) ^ (uint)(y * 19349663)) & 7);
+                    tile = new Vector2I(12 + v, 0);
+                }
+                FloorsTileMap.SetCell(wp, FloorsSourceID, tile);
                 WallsTileMap.EraseCell(wp);
             }
             else if (WorldBlendBorders)
