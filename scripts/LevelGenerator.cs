@@ -103,6 +103,12 @@ public partial class LevelGenerator : Node
     [Export] public int BiomeMinSpacing { get; set; } = 12;
     [Export] public bool WorldBlendBorders { get; set; } = true;
     [Export(PropertyHint.Range, "0,1,0.01")] public float WorldOpenTarget { get; set; } = 0.38f; // целевая доля проходимых тайлов внутри мира
+    [Export] public int CarveGlobalTrailsWidth { get; set; } = 4; // ширина глобальных троп (МСТ)
+    [Export] public int BiomeHallRadius { get; set; } = 10;       // радиус «зала» вокруг центра биома
+    [Export] public int RiverCount { get; set; } = 2;             // кол-во «рек/лавы» как открытых полос
+    [Export] public int RiverWidth { get; set; } = 6;             // ширина полосы
+    [Export(PropertyHint.Range, "0,0.2,0.005")] public float RiverNoiseFreq { get; set; } = 0.045f; // частота синус-шума
+    [Export] public float RiverNoiseAmp { get; set; } = 8f;       // амплитуда синус-шума (в тайлах)
 
     // Псевдослучайный генератор
     private Random _random;
@@ -819,7 +825,7 @@ public partial class LevelGenerator : Node
             worldBiome[x, y] = b;
         }
 
-        // 3) Инициализация надежной маски мира шумом внутри каждого региона
+        // 3) Инициализация надежной маски мира шумом внутри каждого региона + «залы» вокруг центров
         var worldMask = new TileType[worldTilesX, worldTilesY];
         for (int x = 0; x < worldTilesX; x++)
         for (int y = 0; y < worldTilesY; y++)
@@ -829,6 +835,20 @@ public partial class LevelGenerator : Node
                 worldMask[x, y] = TileType.Room;
             else
                 worldMask[x, y] = TileType.Background;
+        }
+
+        // Залы вокруг центров
+        foreach (var c in centers)
+        {
+            int r = System.Math.Max(2, BiomeHallRadius);
+            for (int dx = -r; dx <= r; dx++)
+            for (int dy = -r; dy <= r; dy++)
+            {
+                int x = c.pos.X + dx, y = c.pos.Y + dy;
+                if (x < 0 || x >= worldTilesX || y < 0 || y >= worldTilesY) continue;
+                if (dx*dx + dy*dy <= r*r && worldBiome[x,y]==c.biome)
+                    worldMask[x, y] = TileType.Room;
+            }
         }
 
         // 4) Сглаживание с учётом границ биомов (сосед другого биома считаем стеной) + самонастройка под WorldOpenTarget
@@ -922,8 +942,52 @@ public partial class LevelGenerator : Node
             var tile = _biome.GetFloorTileForBiome(centers[c.a].biome);
             foreach (var wp in path)
             {
-                FloorsTileMap.SetCell(wp, FloorsSourceID, tile);
-                WallsTileMap.EraseCell(wp);
+                for (int w = -(CarveGlobalTrailsWidth/2); w <= (CarveGlobalTrailsWidth/2); w++)
+                {
+                    foreach (var d in new[]{new Vector2I(1,0), new Vector2I(0,1)})
+                    {
+                        var p = new Vector2I(wp.X + d.X*w, wp.Y + d.Y*w);
+                        FloorsTileMap.SetCell(p, FloorsSourceID, tile);
+                        WallsTileMap.EraseCell(p);
+                    }
+                }
+            }
+        }
+
+        // 5b) Реки/лава: W синусоиды по миру
+        for (int ri = 0; ri < RiverCount; ri++)
+        {
+            // случайная ориентация
+            bool horizontal = rng.NextDouble() < 0.5;
+            if (horizontal)
+            {
+                int y0 = rng.Next(worldTilesY);
+                for (int x = 0; x < worldTilesX; x++)
+                {
+                    int y = y0 + (int)(System.Math.Sin(x * RiverNoiseFreq) * RiverNoiseAmp);
+                    for (int w = -RiverWidth/2; w <= RiverWidth/2; w++)
+                    {
+                        int yy = y + w; if (yy < 0 || yy >= worldTilesY) continue;
+                        FloorsTileMap.EraseCell(new Vector2I(x, yy));
+                        WallsTileMap.SetCell(new Vector2I(x, yy), WallsSourceID, GetBackgroundTileForBiome(6)); // 6=Lava Springs / заглушка
+                        worldMask[x, yy] = TileType.Background;
+                    }
+                }
+            }
+            else
+            {
+                int x0 = rng.Next(worldTilesX);
+                for (int y = 0; y < worldTilesY; y++)
+                {
+                    int x = x0 + (int)(System.Math.Sin(y * RiverNoiseFreq) * RiverNoiseAmp);
+                    for (int w = -RiverWidth/2; w <= RiverWidth/2; w++)
+                    {
+                        int xx = x + w; if (xx < 0 || xx >= worldTilesX) continue;
+                        FloorsTileMap.EraseCell(new Vector2I(xx, y));
+                        WallsTileMap.SetCell(new Vector2I(xx, y), WallsSourceID, GetBackgroundTileForBiome(6));
+                        worldMask[xx, y] = TileType.Background;
+                    }
+                }
             }
         }
     }
