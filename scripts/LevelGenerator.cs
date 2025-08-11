@@ -104,8 +104,6 @@ public partial class LevelGenerator : Node
     [Export] public int RiverWidth { get; set; } = 6;             // ширина полосы
     [Export(PropertyHint.Range, "0,0.2,0.005")] public float RiverNoiseFreq { get; set; } = 0.045f; // частота синус-шума
     [Export] public float RiverNoiseAmp { get; set; } = 8f;       // амплитуда синус-шума (в тайлах)
-    [Export] public Vector2I BridgeTileHorizontal { get; set; } = new Vector2I(1,0); // временно: камень
-    [Export] public Vector2I BridgeTileVertical { get; set; } = new Vector2I(1,0);   // временно: камень
     [Export] public int LocalCorridorWidth { get; set; } = 3;     // ширина локальных связок «комнаты → центр биома»
     [Export] public bool RandomizeWorldParams { get; set; } = true; // лёгкая рандомизация параметров при каждой генерации
     [Export] public int RandomSeed { get; set; } = -1;              // -1 = случайный сид, иначе фиксированный
@@ -225,8 +223,11 @@ public partial class LevelGenerator : Node
 
         Logger.Debug($"TileMapLayer найдены: Floors: {FloorsTileMap?.Name}, Walls: {WallsTileMap?.Name}, YSort: {YSortContainer?.Name}", true);
 
-        // Уберём визуальные швы: используем padding в атласе (включено) и nearest-фильтр на текстуре
-        // Замечание: в C# API Godot список источников не всегда доступен. Полагаться на padding атласа.
+        // Уберём визуальные швы: используем padding в атласе (включено) и nearest-фильтр на слое
+        if (FloorsTileMap != null)
+        {
+            FloorsTileMap.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
+        }
 
         // Генерируем мульти-секционную карту сразу с задержкой 0.5 секунды
         GetTree().CreateTimer(0.5).Timeout += () => {
@@ -272,9 +273,7 @@ public partial class LevelGenerator : Node
         _sectionConnector = new SectionConnector(_random);
         _decorator = new Decorator(_random);
         _multiSectionCoordinator = new MultiSectionCoordinator(_random);
-        // Гарантируем наличие сгенерированного источника пола (минимальный процедурный атлас)
-        int genId = GeneratedAtlasBuilder.EnsureFloorSource(FloorsTileMap, FloorsSourceID);
-        if (genId >= 0) FloorsSourceID = genId;
+        // Используем исходные TileSet источники floors/walls из проекта без автогенерации
         _biome = new BiomePalette(_random, () => UseVariedWalls);
 
     }
@@ -912,12 +911,6 @@ public partial class LevelGenerator : Node
             if (worldMask[x, y] == TileType.Room)
             {
                 Vector2I tile = _biome.GetFloorTileForBiome(biome);
-                if (biome == 0)
-                {
-                    // травяной биом: используем 8 вариантов (12..19) детерминированно по (x,y) для разрыва паттерна
-                    int v = (int)(((uint)(x * 73856093) ^ (uint)(y * 19349663)) & 7);
-                    tile = new Vector2I(12 + v, 0);
-                }
                 FloorsTileMap.SetCell(wp, FloorsSourceID, tile);
                 WallsTileMap.EraseCell(wp);
             }
@@ -1012,8 +1005,8 @@ public partial class LevelGenerator : Node
                     if (((x + y) % 11) != 0) continue;
                     var path = FindWorldPathConstrainedLocal(hub, new Vector2I(x, y), c.biome);
                     if (path == null) continue;
-                    // Если это травяной биом (0), используем Wang‑варианты 12..19 как псевдо‑края/вариации
-                    var tile = (c.biome == 0) ? new Vector2I(12 + (_random.Next() % 8), 0) : _biome.GetFloorTileForBiome(c.biome);
+                    // Если это травяной биом (0), используем улучшенные Wang‑варианты 12..23
+                    var tile = _biome.GetFloorTileForBiome(c.biome);
                     foreach (var wp in path)
                     {
                         for (int w = -(LocalCorridorWidth/2); w <= (LocalCorridorWidth/2); w++)

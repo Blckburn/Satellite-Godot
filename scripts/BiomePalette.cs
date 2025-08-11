@@ -19,7 +19,9 @@ public sealed class BiomePalette
     {
         switch (biomeType)
         {
-            case 1: return new Vector2I(0, 0); // Grass
+            case 1:
+                // Grass: use high-quality supersampled Wang variants packed at indices 12..23 in atlas row 0
+                return new Vector2I(12 + _random.Next(0, 12), 0);
             case 2: return new Vector2I(4, 0); // Sand
             case 3: return new Vector2I(3, 0); // Snow
             case 4: return new Vector2I(1, 0); // Stone

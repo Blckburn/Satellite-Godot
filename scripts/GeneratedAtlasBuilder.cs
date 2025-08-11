@@ -12,7 +12,14 @@ public static class GeneratedAtlasBuilder
         if (_cachedSourceId >= 0) return _cachedSourceId;
 
         int tileW = 64, tileH = 32;
-        int cols = 20, rows = 1; // 0..11 base, [12..19] grass Wang variants (from external PNG)
+        // Supersampling scale for source authoring (render at 3x and downscale into atlas 64x32)
+        int superScale = 3;
+        int hiW = tileW * superScale;
+        int hiH = tileH * superScale;
+
+        // Expand atlas width to host base tiles + 12 grass Wang variants (4x3)
+        // 0..11 base/system tiles, [12..23] grass Wang variants
+        int cols = 32, rows = 1;
         int imgW = cols * tileW;
         int imgH = rows * tileH;
 
@@ -34,17 +41,21 @@ public static class GeneratedAtlasBuilder
         DrawIso(img, tileW*10,    0, tileW, tileH, new Color(0.40f, 0.61f, 0.38f));
         DrawIso(img, tileW*11,    0, tileW, tileH, new Color(0.31f, 0.54f, 0.31f));
 
-        // Подмешаем внешний PNG с Wang-набором травы 4x2 (если отсутствует — создадим)
+        // Подмешаем внешний PNG с Wang-набором травы 4x3 в высоком разрешении (если отсутствует — создадим)
         string wangPath = "res://resources/textures/grass_wang.png";
-        EnsureGrassWangPng(wangPath, tileW, tileH);
+        EnsureGrassWangPng(wangPath, hiW, hiH); // создаём 3x крупнее, затем даунскейл до 64x32
         var grassImg = Image.LoadFromFile(wangPath);
-        if (grassImg != null && grassImg.GetWidth() >= tileW*4 && grassImg.GetHeight() >= tileH*2)
+        if (grassImg != null && grassImg.GetWidth() >= hiW*4 && grassImg.GetHeight() >= hiH*3)
         {
-            for (int gy = 0; gy < 2; gy++)
+            int outIndex = 12; // куда раскладываем в атласе
+            for (int gy = 0; gy < 3; gy++)
             for (int gx = 0; gx < 4; gx++)
             {
-                var tile = grassImg.GetRegion(new Rect2I(gx*tileW, gy*tileH, tileW, tileH));
-                img.BlitRect(tile, new Rect2I(0,0,tileW,tileH), new Vector2I(tileW*(12 + gx + gy*4), 0));
+                var hiRegion = grassImg.GetRegion(new Rect2I(gx*hiW, gy*hiH, hiW, hiH));
+                // Даунскейл до 64x32 с высоким качеством
+                hiRegion.Resize(tileW, tileH, Image.Interpolation.Lanczos);
+                img.BlitRect(hiRegion, new Rect2I(0,0,tileW,tileH), new Vector2I(tileW * outIndex, 0));
+                outIndex++;
             }
         }
 
@@ -67,13 +78,14 @@ public static class GeneratedAtlasBuilder
         return _cachedSourceId;
     }
 
-    private static void EnsureGrassWangPng(string path, int tileW, int tileH)
+    private static void EnsureGrassWangPng(string path, int hiTileW, int hiTileH)
     {
         if (FileAccess.FileExists(path)) return;
         var dir = DirAccess.Open("res://resources/textures");
         if (dir == null) return; // если нет прав/пути — пропускаем
 
-        int cols = 4, rows = 2; int w = cols*tileW, h = rows*tileH;
+        // Храним 4x3 вариантов в высоком разрешении (каждый тайл = 3x 64x32 => 192x96)
+        int cols = 4, rows = 3; int w = cols*hiTileW, h = rows*hiTileH;
         var img = Image.Create(w, h, false, Image.Format.Rgba8);
         img.Fill(new Color(0,0,0,0));
 
@@ -84,7 +96,7 @@ public static class GeneratedAtlasBuilder
         for (int gy=0; gy<rows; gy++)
         for (int gx=0; gx<cols; gx++)
         {
-            DrawGrassTile(img, gx*tileW, gy*tileH, tileW, tileH, bases[idx++ % bases.Length]);
+            DrawGrassTile(img, gx*hiTileW, gy*hiTileH, hiTileW, hiTileH, bases[idx++ % bases.Length]);
         }
         img.SavePng(path);
     }
@@ -101,12 +113,12 @@ public static class GeneratedAtlasBuilder
             float dx = Math.Abs(x - cx)/halfW; float dy = Math.Abs(y - cy)/halfH;
             if (dx + dy > 1.0f) continue;
             float u = (x-ox)/(float)w; float v=(y-oy)/(float)h;
-            float tex = 0.22f*(MathF.Cos(2*MathF.PI*3*u)*MathF.Cos(2*MathF.PI*2.3f*v))
-                      + 0.18f*(MathF.Cos(2*MathF.PI*1.2f*(u+v)))
-                      + 0.10f*(MathF.Cos(2*MathF.PI*4.1f*(u*0.6f+v*0.4f)));
-            float vein = 0.08f*MathF.Sin(2*MathF.PI*(u*5.3f + v*5.7f));
-            float k = MathF.Max(0f, 1f-(dx+dy));
-            float rnd = (float)(rng.NextDouble()*2-1) * 0.02f * k*k;
+            float tex = 0.18f*(MathF.Cos(2*MathF.PI*3*u)*MathF.Cos(2*MathF.PI*2.2f*v))
+                      + 0.14f*(MathF.Cos(2*MathF.PI*1.1f*(u+v)))
+                      + 0.08f*(MathF.Cos(2*MathF.PI*4.1f*(u*0.6f+v*0.4f)));
+            float vein = 0.06f*MathF.Sin(2*MathF.PI*(u*5.3f + v*5.7f));
+            float k = MathF.Max(0f, 1f-(dx+dy)); // плавное затухание к краям ромба
+            float rnd = (float)(rng.NextDouble()*2-1) * 0.018f * k*k;
             var c = new Color(
                 Math.Clamp(baseCol.R + tex + vein + rnd, 0,1),
                 Math.Clamp(baseCol.G + tex + vein + rnd, 0,1),
