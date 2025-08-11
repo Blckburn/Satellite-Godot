@@ -12,7 +12,7 @@ public static class GeneratedAtlasBuilder
         if (_cachedSourceId >= 0) return _cachedSourceId;
 
         int tileW = 64, tileH = 32;
-        int cols = 12, rows = 1; // [0]grass, [1]sand, [2]snow, [3]stone, [4]water, [5]ice, [6]bridgeH, [7]bridgeV, [8..11] grass variants
+        int cols = 20, rows = 1; // 0..11 base, [12..19] grass Wang variants (from external PNG)
         int imgW = cols * tileW;
         int imgH = rows * tileH;
 
@@ -27,11 +27,26 @@ public static class GeneratedAtlasBuilder
         DrawIso(img, tileW*5,     0, tileW, tileH, new Color(0.80f, 0.92f, 0.97f)); // ice brighter
         DrawBridge(img, tileW*6,  0, tileW, tileH, true);  // natural bridge horizontal
         DrawBridge(img, tileW*7,  0, tileW, tileH, false); // natural bridge vertical
-        // extra grass variants to break grid
+
+        // 8..11 зарезервированы (ранее использовались как variants)
         DrawIso(img, tileW*8,     0, tileW, tileH, new Color(0.37f, 0.60f, 0.36f));
         DrawIso(img, tileW*9,     0, tileW, tileH, new Color(0.33f, 0.56f, 0.33f));
         DrawIso(img, tileW*10,    0, tileW, tileH, new Color(0.40f, 0.61f, 0.38f));
         DrawIso(img, tileW*11,    0, tileW, tileH, new Color(0.31f, 0.54f, 0.31f));
+
+        // Подмешаем внешний PNG с Wang-набором травы 4x2 (если отсутствует — создадим)
+        string wangPath = "res://resources/textures/grass_wang.png";
+        EnsureGrassWangPng(wangPath, tileW, tileH);
+        var grassImg = Image.LoadFromFile(wangPath);
+        if (grassImg != null && grassImg.GetWidth() >= tileW*4 && grassImg.GetHeight() >= tileH*2)
+        {
+            for (int gy = 0; gy < 2; gy++)
+            for (int gx = 0; gx < 4; gx++)
+            {
+                var tile = grassImg.GetRegion(new Rect2I(gx*tileW, gy*tileH, tileW, tileH));
+                img.BlitRect(tile, new Rect2I(0,0,tileW,tileH), new Vector2I(tileW*(12 + gx + gy*4), 0));
+            }
+        }
 
         // Register atlas source into TileSet and return id
         var ts = floors.TileSet;
@@ -50,6 +65,54 @@ public static class GeneratedAtlasBuilder
         int newId = ts.AddSource(atlas);
         _cachedSourceId = newId;
         return _cachedSourceId;
+    }
+
+    private static void EnsureGrassWangPng(string path, int tileW, int tileH)
+    {
+        if (FileAccess.FileExists(path)) return;
+        var dir = DirAccess.Open("res://resources/textures");
+        if (dir == null) return; // если нет прав/пути — пропускаем
+
+        int cols = 4, rows = 2; int w = cols*tileW, h = rows*tileH;
+        var img = Image.Create(w, h, false, Image.Format.Rgba8);
+        img.Fill(new Color(0,0,0,0));
+
+        // палитра травы
+        var bases = new Color[]{ new Color(0.33f,0.58f,0.35f), new Color(0.36f,0.61f,0.37f), new Color(0.30f,0.55f,0.33f), new Color(0.38f,0.62f,0.39f),
+                                 new Color(0.35f,0.60f,0.36f), new Color(0.34f,0.57f,0.35f), new Color(0.32f,0.56f,0.34f), new Color(0.37f,0.63f,0.40f)};
+        int idx = 0;
+        for (int gy=0; gy<rows; gy++)
+        for (int gx=0; gx<cols; gx++)
+        {
+            DrawGrassTile(img, gx*tileW, gy*tileH, tileW, tileH, bases[idx++ % bases.Length]);
+        }
+        img.SavePng(path);
+    }
+
+    private static void DrawGrassTile(Image img, int ox, int oy, int w, int h, Color baseCol)
+    {
+        // изо-ромб с процедурной травяной текстурой (бесшовной): смесь косинусных волн и «прожилок»
+        int cx = ox + w/2; int cy = oy + h/2;
+        float halfW = w*0.5f; float halfH = h*0.5f;
+        var rng = new Random(ox*2654435761u.GetHashCode() ^ oy*40503);
+        for (int y=oy; y<oy+h; y++)
+        for (int x=ox; x<ox+w; x++)
+        {
+            float dx = Math.Abs(x - cx)/halfW; float dy = Math.Abs(y - cy)/halfH;
+            if (dx + dy > 1.0f) continue;
+            float u = (x-ox)/(float)w; float v=(y-oy)/(float)h;
+            float tex = 0.22f*(MathF.Cos(2*MathF.PI*3*u)*MathF.Cos(2*MathF.PI*2.3f*v))
+                      + 0.18f*(MathF.Cos(2*MathF.PI*1.2f*(u+v)))
+                      + 0.10f*(MathF.Cos(2*MathF.PI*4.1f*(u*0.6f+v*0.4f)));
+            float vein = 0.08f*MathF.Sin(2*MathF.PI*(u*5.3f + v*5.7f));
+            float k = MathF.Max(0f, 1f-(dx+dy));
+            float rnd = (float)(rng.NextDouble()*2-1) * 0.02f * k*k;
+            var c = new Color(
+                Math.Clamp(baseCol.R + tex + vein + rnd, 0,1),
+                Math.Clamp(baseCol.G + tex + vein + rnd, 0,1),
+                Math.Clamp(baseCol.B + tex + vein + rnd, 0,1), 1);
+            img.SetPixel(x,y,c);
+        }
     }
 
     private static void DrawIso(Image img, int ox, int oy, int w, int h, Color baseCol)
