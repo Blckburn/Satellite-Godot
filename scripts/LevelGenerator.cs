@@ -459,6 +459,9 @@ public partial class LevelGenerator : Node
             // Соединяем комнаты в секции коридорами
             ConnectSectionRooms(section);
 
+            // Гарантируем, что каждая комната имеет выход к сети коридоров
+            EnsureSectionRoomConnectivity(section);
+
             // Заполняем фоновыми тайлами пустые области
             FillSectionWithBackgroundTiles(section);
 
@@ -493,6 +496,9 @@ public partial class LevelGenerator : Node
                 WallsSourceID,
                 biome => biome >= 4 ? new Vector2I(1,1) : new Vector2I(5,0)
             );
+
+            // Гарантируем соединение комнат с коридорами
+            EnsureSectionRoomConnectivity(section);
 
             // Выбираем точку спавна для секции
             section.SpawnPosition = GetSectionSpawnPosition(section);
@@ -1090,6 +1096,86 @@ public partial class LevelGenerator : Node
             MAP_LAYER,
             FloorsSourceID
         );
+    }
+
+    // Гарантия связности комнат с сетью коридоров
+    private void EnsureSectionRoomConnectivity(MapSection section)
+    {
+        foreach (var room in section.Rooms)
+        {
+            bool connected = false;
+            for (int x = room.Position.X; x < room.Position.X + room.Size.X && !connected; x++)
+            {
+                int topY = room.Position.Y - 1;
+                int bottomY = room.Position.Y + room.Size.Y;
+                if (topY >= 0 && section.SectionMask[x, topY] == TileType.Corridor) connected = true;
+                if (bottomY < MapHeight && section.SectionMask[x, bottomY] == TileType.Corridor) connected = true;
+            }
+            for (int y = room.Position.Y; y < room.Position.Y + room.Size.Y && !connected; y++)
+            {
+                int leftX = room.Position.X - 1;
+                int rightX = room.Position.X + room.Size.X;
+                if (leftX >= 0 && section.SectionMask[leftX, y] == TileType.Corridor) connected = true;
+                if (rightX < MapWidth && section.SectionMask[rightX, y] == TileType.Corridor) connected = true;
+            }
+
+            if (connected) continue;
+
+            // Пробиваем кратчайший L-канал от центра комнаты к ближайшему коридору
+            Vector2I center = room.Position + room.Size / 2;
+
+            int bestDist = int.MaxValue;
+            Vector2I best = center;
+            for (int x = 0; x < MapWidth; x++)
+            for (int y = 0; y < MapHeight; y++)
+            {
+                if (section.SectionMask[x, y] != TileType.Corridor) continue;
+                int dx = x - center.X;
+                int dy = y - center.Y;
+                int d2 = dx*dx + dy*dy;
+                if (d2 < bestDist)
+                {
+                    bestDist = d2;
+                    best = new Vector2I(x, y);
+                }
+            }
+
+            Vector2I worldOffset = new Vector2I((int)section.WorldOffset.X, (int)section.WorldOffset.Y);
+            Vector2I floorTile = _biome.GetFloorTileForBiome(section.BiomeType);
+            int width = Math.Max(2, CorridorWidth);
+
+            int sx = Math.Min(center.X, best.X);
+            int ex = Math.Max(center.X, best.X);
+            int yMid = center.Y;
+            for (int x = sx; x <= ex; x++)
+            {
+                for (int w = -(width/2); w <= width/2; w++)
+                {
+                    int yy = yMid + w;
+                    if (x < 0 || x >= MapWidth || yy < 0 || yy >= MapHeight) continue;
+                    FloorsTileMap.SetCell(worldOffset + new Vector2I(x, yy), FloorsSourceID, floorTile);
+                    WallsTileMap.EraseCell(worldOffset + new Vector2I(x, yy));
+                    if (section.SectionMask[x, yy] != TileType.Room)
+                        section.SectionMask[x, yy] = TileType.Corridor;
+                }
+            }
+
+            int sy = Math.Min(yMid, best.Y);
+            int ey = Math.Max(yMid, best.Y);
+            int xMid = best.X;
+            for (int y = sy; y <= ey; y++)
+            {
+                for (int w = -(width/2); w <= width/2; w++)
+                {
+                    int xx = xMid + w;
+                    if (xx < 0 || xx >= MapWidth || y < 0 || y >= MapHeight) continue;
+                    FloorsTileMap.SetCell(worldOffset + new Vector2I(xx, y), FloorsSourceID, floorTile);
+                    WallsTileMap.EraseCell(worldOffset + new Vector2I(xx, y));
+                    if (section.SectionMask[xx, y] != TileType.Room)
+                        section.SectionMask[xx, y] = TileType.Corridor;
+                }
+            }
+        }
     }
 
     // НОВОЕ: Метод для соединения двух комнат в секции
