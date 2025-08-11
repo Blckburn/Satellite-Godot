@@ -392,7 +392,7 @@ public partial class LevelGenerator : Node
                 );
             }
 
-            // Выбираем секцию для спавна игрока через координатор
+            // Выбираем секцию для спавна игрока через координатор (получаем МИРОВЫЕ пиксели)
             _multiSectionCoordinator.SelectSpawnSection(_mapSections, out _currentSpawnPosition);
 
             Logger.Debug($"Multi-section map generated with {_mapSections.Count} sections", true);
@@ -1141,7 +1141,7 @@ public partial class LevelGenerator : Node
     // НОВОЕ: Метод для добавления опасных зон в секции
     private void AddSectionHazards(MapSection section) { /* moved to Decorator */ }
 
-    // НОВОЕ: Метод для получения точки спавна в секции
+    // НОВОЕ: Метод для получения безопасной точки спавна в секции (в ТАЙЛОВЫХ координатах секции)
     private Vector2 GetSectionSpawnPosition(MapSection section)
     {
         if (section.Rooms.Count == 0)
@@ -1150,19 +1150,58 @@ public partial class LevelGenerator : Node
             return Vector2.Zero;
         }
 
-        // Выбираем случайную комнату
+        // Случайная комната
         int roomIndex = _random.Next(0, section.Rooms.Count);
-        Rect2I spawnRoom = section.Rooms[roomIndex];
+        Rect2I room = section.Rooms[roomIndex];
 
-        // Получаем центр комнаты
-        Vector2I center = spawnRoom.Position + spawnRoom.Size / 2;
+        // Стартуем с центра комнаты
+        Vector2I center = room.Position + room.Size / 2;
 
-        // Преобразуем координаты тайла в мировые координаты
-        Vector2 worldPos = MapTileToIsometricWorld(center);
+        // Локальная функция проверки проходимости тайла
+        bool IsWalkableTile(int x, int y)
+        {
+            if (x < 0 || y < 0 || x >= MapWidth || y >= MapHeight) return false;
+            var t = section.SectionMask[x, y];
+            return t == TileType.Room || t == TileType.Corridor || t == TileType.Background; // допустимые
+        }
 
-        Logger.Debug($"Selected spawn position in section ({section.GridX},{section.GridY}) at room {roomIndex}, tile ({center.X}, {center.Y}), world pos: {worldPos}", false);
+        // Если центр подходит — используем его
+        if (IsWalkableTile(center.X, center.Y))
+        {
+            Logger.Debug($"Spawn tile chosen at room center ({center.X}, {center.Y}) in section ({section.GridX},{section.GridY})", false);
+            return new Vector2(center.X, center.Y);
+        }
 
-        return worldPos;
+        // Ищем ближайший проходимый тайл внутри комнаты (по расширяющимся квадратным слоям)
+        int maxRadius = Math.Max(room.Size.X, room.Size.Y);
+        for (int radius = 1; radius <= maxRadius; radius++)
+        {
+            for (int dy = -radius; dy <= radius; dy++)
+            {
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    // Пропускаем внутренние точки, оставляем только «кольцо» текущего радиуса
+                    if (Math.Abs(dx) != radius && Math.Abs(dy) != radius) continue;
+
+                    int tx = center.X + dx;
+                    int ty = center.Y + dy;
+
+                    // Должно быть внутри комнаты
+                    if (tx < room.Position.X || ty < room.Position.Y || tx >= room.Position.X + room.Size.X || ty >= room.Position.Y + room.Size.Y)
+                        continue;
+
+                    if (IsWalkableTile(tx, ty))
+                    {
+                        Logger.Debug($"Spawn tile adjusted to ({tx}, {ty}) in section ({section.GridX},{section.GridY})", false);
+                        return new Vector2(tx, ty);
+                    }
+                }
+            }
+        }
+
+        // Фолбэк: верхний левый угол комнаты (как тайл)
+        Logger.Error($"No walkable tile found in room in section ({section.GridX},{section.GridY}). Falling back to room origin.");
+        return new Vector2(room.Position.X, room.Position.Y);
     }
 
     // Метод для получения позиции спавна игрока
@@ -1561,10 +1600,11 @@ public partial class LevelGenerator : Node
             return;
         }
         
-        // Рассчитываем мировые координаты точки спавна
-        Vector2 localSpawnPos = section.SpawnPosition.Value;
-        Vector2 worldOffset = section.WorldOffset;
-        Vector2 worldSpawnPos = new Vector2(localSpawnPos.X + worldOffset.X, localSpawnPos.Y + worldOffset.Y);
+        // Рассчитываем МИРОВЫЕ координаты (изометрические пиксели) точки спавна из тайловых координат + смещение секции
+        Vector2 localSpawnTile = section.SpawnPosition.Value; // хранится в тайлах
+        Vector2 worldOffsetTiles = section.WorldOffset;       // смещение секции в тайлах
+        Vector2I worldTile = new Vector2I((int)(localSpawnTile.X + worldOffsetTiles.X), (int)(localSpawnTile.Y + worldOffsetTiles.Y));
+        Vector2 worldSpawnPos = MapTileToIsometricWorld(worldTile);
         
         // Находим игрока и телепортируем
         Node2D player = FindPlayer();

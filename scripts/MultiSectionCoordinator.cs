@@ -60,11 +60,23 @@ public sealed class MultiSectionCoordinator
             return;
         }
 
-        Vector2 local = spawnSection.SpawnPosition.Value;
-        Vector2 off = spawnSection.WorldOffset;
-        spawnWorldPosition = new Vector2(local.X + off.X, local.Y + off.Y);
-        Logger.Debug($"Selected spawn position in section ({spawnSection.GridX}, {spawnSection.GridY})", true);
-        Logger.Debug($"Local spawn position: {local}, World spawn position: {spawnWorldPosition}", false);
+        // Локальные тайловые координаты спавна + смещение секции в тайлах
+        Vector2 localTile = spawnSection.SpawnPosition.Value;
+        Vector2 offTiles = spawnSection.WorldOffset;
+        Vector2I worldTile = new Vector2I((int)(localTile.X + offTiles.X), (int)(localTile.Y + offTiles.Y));
+
+        // Преобразуем в изометрические мировые пиксели
+        spawnWorldPosition = MapTileToIsometricWorld(worldTile);
+        Logger.Debug($"Selected spawn position in section ({spawnSection.GridX}, {spawnSection.GridY}) (tile {worldTile}) -> world {spawnWorldPosition}", true);
+    }
+
+    private Vector2 MapTileToIsometricWorld(Vector2I tilePos)
+    {
+        float tileWidth = 64.0f;
+        float tileHeight = 32.0f;
+        float x = (tilePos.X - tilePos.Y) * tileWidth / 2.0f;
+        float y = (tilePos.X + tilePos.Y) * tileHeight / 2.0f;
+        return new Vector2(x, y);
     }
 
     public void ConnectAdjacentSections(
