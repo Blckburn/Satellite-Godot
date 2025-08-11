@@ -597,6 +597,7 @@ public partial class LevelGenerator : Node
                 MapWidth,
                 MapHeight,
                 FloorsTileMap,
+                WallsTileMap,
                 MAP_LAYER,
                 FloorsSourceID,
                 (section, x1, x2, y, width, floor) => _corridorCarver.FindAndConnectToNearbyRooms(
@@ -617,6 +618,7 @@ public partial class LevelGenerator : Node
                 MapWidth,
                 MapHeight,
                 FloorsTileMap,
+                WallsTileMap,
                 MAP_LAYER,
                 FloorsSourceID,
                 (section, x1, x2, y, width, floor) => _corridorCarver.FindAndConnectToNearbyRooms(
@@ -702,6 +704,7 @@ public partial class LevelGenerator : Node
                 MapWidth,
                 MapHeight,
                 FloorsTileMap,
+                WallsTileMap,
                 MAP_LAYER,
                 FloorsSourceID,
                 (section, x, width, y1, y2, floor, isHorizontal) => _corridorCarver.FindAndConnectToNearbyRooms(
@@ -722,6 +725,7 @@ public partial class LevelGenerator : Node
                 MapWidth,
                 MapHeight,
                 FloorsTileMap,
+                WallsTileMap,
                 MAP_LAYER,
                 FloorsSourceID,
                 (section, x, width, y1, y2, floor, isHorizontal) => _corridorCarver.FindAndConnectToNearbyRooms(
