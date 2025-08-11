@@ -41,6 +41,8 @@ theme_override_constants/margin_bottom = 40
 layout_mode = 2
 theme_override_constants/separation = 20
 alignment = 1
+size_flags_horizontal = 4
+custom_minimum_size = Vector2(900, 0)
 
 [node name="TitleLabel" type="Label" parent="MainContainer/MenuContainer"]
 layout_mode = 2
@@ -61,6 +63,7 @@ custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 theme_override_fonts/font = ExtResource("3_8ln24")
 text = "CONTINUE"
+size_flags_horizontal = 4
 
 [node name="NewGameButton" type="Button" parent="MainContainer/MenuContainer"]
 unique_name_in_owner = true
@@ -68,6 +71,7 @@ custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 theme_override_fonts/font = ExtResource("3_8ln24")
 text = "NEW GAME"
+size_flags_horizontal = 4
 
 [node name="SettingsButton" type="Button" parent="MainContainer/MenuContainer"]
 unique_name_in_owner = true
@@ -75,6 +79,7 @@ custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 theme_override_fonts/font = ExtResource("3_8ln24")
 text = "SETTINGS"
+size_flags_horizontal = 4
 
 [node name="Spacer2" type="Control" parent="MainContainer/MenuContainer"]
 custom_minimum_size = Vector2(0, 20)
@@ -87,6 +92,7 @@ custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 theme_override_fonts/font = ExtResource("3_8ln24")
 text = "EXIT"
+size_flags_horizontal = 4
 
 [node name="SettingsPanel" type="Panel" parent="."]
 unique_name_in_owner = true

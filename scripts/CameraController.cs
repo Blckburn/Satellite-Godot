@@ -41,6 +41,24 @@ public partial class CameraController : Camera2D
         _currentZoom = Vector2.One * ZoomDefault;
         Zoom = _currentZoom;
 
+        // Автоподключение к событию спавна игрока, если нет явной связи в сцене
+        try
+        {
+            Node? levelGenerator = GetTree().Root.FindChild("LevelGenerator", true, false);
+            if (levelGenerator != null)
+            {
+                Callable handler = new Callable(this, nameof(OnPlayerSpawned));
+                if (!levelGenerator.IsConnected("PlayerSpawned", handler))
+                {
+                    levelGenerator.Connect("PlayerSpawned", handler);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Debug($"CameraController: auto-connect to PlayerSpawned failed: {e.Message}", false);
+        }
+
         // Получаем ссылку на игрока если путь указан
         if (!string.IsNullOrEmpty(PlayerPath))
         {
