@@ -48,24 +48,17 @@ public sealed class BiomePalette
 
     public Vector2I GetWallTileForBiome(int biomeType, Vector2I _)
     {
-        bool useVariation = _useVariedWalls() && _random.Next(0, 100) < 30;
-
+        // ВОЗВРАТ К ИСХОДНЫМ «СТЕНАМ»: используем координаты из walls.png, отличные от пола
+        // Подбираем стабильные, нерандомные значения, чтобы стены точно отличались от пола
         switch (biomeType)
         {
-            case 1: return useVariation && _random.Next(0, 100) < 50 ? new Vector2I(3, 0) : new Vector2I(2, 1); // Snow / ForestFloor
-            case 2: return useVariation && _random.Next(0, 100) < 40 ? new Vector2I(2, 0) : new Vector2I(1, 0); // Ground / Stone
-            case 3: return useVariation && _random.Next(0, 100) < 40 ? new Vector2I(1, 0) : new Vector2I(0, 1); // Stone / Ice
-            case 4: return useVariation && _random.Next(0, 100) < 40 ? new Vector2I(4, 1) : new Vector2I(3, 1); // Anomal / Techno
-            case 5:
-                if (useVariation)
-                {
-                    int v = _random.Next(0, 100);
-                    if (v < 40) return new Vector2I(1, 1); // Lava
-                    return new Vector2I(4, 1); // Anomal
-                }
-                return new Vector2I(4, 1);
-            case 6: return useVariation && _random.Next(0, 100) < 40 ? new Vector2I(1, 0) : new Vector2I(1, 1); // Stone / Lava
-            default: return useVariation && _random.Next(0, 100) < 40 ? new Vector2I(2, 0) : new Vector2I(0, 0); // Ground / Grass
+            case 1: return new Vector2I(0, 0); // Forest/Grassland wall
+            case 2: return new Vector2I(1, 0); // Desert wall
+            case 3: return new Vector2I(0, 1); // Ice wall
+            case 4: return new Vector2I(3, 1); // Techno wall
+            case 5: return new Vector2I(4, 1); // Anomal wall
+            case 6: return new Vector2I(1, 1); // Lava wall
+            default: return new Vector2I(2, 0); // Generic stone wall
         }
     }
 
