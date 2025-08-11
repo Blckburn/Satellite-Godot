@@ -419,9 +419,18 @@ public partial class LevelGenerator : Node
             EmitSignal("MultiSectionMapGenerated");
             
             // 🚀 ЭМИТИМ ГЛАВНЫЙ СИГНАЛ О ЗАВЕРШЕНИИ ГЕНЕРАЦИИ УРОВНЯ!
+            Logger.Debug($"ABOUT TO EMIT LevelGenerated signal from multi-section with spawn: {_currentSpawnPosition}", true);
+            
+            // ПРОВЕРЯЕМ что спавн не нулевой!
+            if (_currentSpawnPosition == Vector2.Zero)
+            {
+                Logger.Error("❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!");
+                _currentSpawnPosition = new Vector2(MapWidth * 32, MapHeight * 16);
+            }
+            
             // PlayerSpawner подхватит этот сигнал и создаст игрока в правильном месте
             EmitSignal(SignalName.LevelGenerated, _currentSpawnPosition);
-            Logger.Debug($"LevelGenerated signal emitted from multi-section generation with spawn: {_currentSpawnPosition}", true);
+            Logger.Debug($"✅ LevelGenerated signal emitted from multi-section generation with spawn: {_currentSpawnPosition}", true);
             
             // УБИРАЕМ старый HandlePlayerSpawn() - теперь PlayerSpawner сделает это через сигнал!
         }
@@ -956,10 +965,82 @@ public partial class LevelGenerator : Node
         Logger.Debug($"WorldBiomes generation completed. Spawn position: {_currentSpawnPosition}", true);
         
         // 🚀 ЭМИТИМ СИГНАЛ О ЗАВЕРШЕНИИ ГЕНЕРАЦИИ С ПРАВИЛЬНОЙ ПОЗИЦИЕЙ СПАВНА!
+        Logger.Debug($"ABOUT TO EMIT LevelGenerated signal with spawn position: {_currentSpawnPosition}", true);
+        
+        // ПРОВЕРЯЕМ что спавн не нулевой!
+        if (_currentSpawnPosition == Vector2.Zero)
+        {
+            Logger.Error("❌ CRITICAL: Spawn position is ZERO! Using emergency fallback to map center!");
+            _currentSpawnPosition = new Vector2(MapWidth * 32, MapHeight * 16); // Центр карты в пикселях
+        }
+        
         EmitSignal(SignalName.LevelGenerated, _currentSpawnPosition);
-        Logger.Debug($"LevelGenerated signal emitted with spawn position: {_currentSpawnPosition}", true);
+        Logger.Debug($"✅ LevelGenerated signal emitted with spawn position: {_currentSpawnPosition}", true);
+        
+        // АВАРИЙНЫЙ FALLBACK: если есть PlayerScene но нет PlayerSpawner
+        GetTree().CreateTimer(2.0).Timeout += () => {
+            var players = GetTree().GetNodesInGroup("Player");
+            if (players.Count == 0)
+            {
+                Logger.Error("🚨 EMERGENCY: No player found 2 seconds after level generation! Creating emergency player!");
+                CreateEmergencyPlayer();
+            }
+            else
+            {
+                Logger.Debug($"✅ Player found in scene: {players[0].Name}", true);
+            }
+        };
     }
 
+    // 🚨 АВАРИЙНОЕ создание игрока если PlayerSpawner не сработал
+    private void CreateEmergencyPlayer()
+    {
+        if (PlayerScene == null)
+        {
+            Logger.Error("PlayerScene is null! Cannot create emergency player!");
+            return;
+        }
+        
+        try
+        {
+            Logger.Debug("Creating emergency player...", true);
+            
+            // Создаем игрока
+            Node2D player = PlayerScene.Instantiate<Node2D>();
+            if (player == null)
+            {
+                Logger.Error("Failed to instantiate emergency player!");
+                return;
+            }
+            
+            // Позиция - используем текущую спавн позицию или центр карты
+            Vector2 emergencyPosition = _currentSpawnPosition;
+            if (emergencyPosition == Vector2.Zero)
+            {
+                emergencyPosition = new Vector2(MapWidth * 32, MapHeight * 16); // Центр карты
+            }
+            
+            player.Position = emergencyPosition;
+            player.AddToGroup("Player");
+            
+            // Добавляем в YSortContainer если есть, иначе в сцену
+            if (YSortContainer != null)
+            {
+                YSortContainer.AddChild(player);
+                Logger.Debug($"🚨 Emergency player created in YSortContainer at {emergencyPosition}", true);
+            }
+            else
+            {
+                AddChild(player);
+                Logger.Debug($"🚨 Emergency player created in LevelGenerator at {emergencyPosition}", true);
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Failed to create emergency player: {e.Message}");
+        }
+    }
+    
     // Удалено: GenerateVirtualRoomsFromWorldMask - заменено на прямую генерацию по мировой маске
 
     // КРУТАЯ система толстых стен с привязкой к биомам! 💪
