@@ -1169,8 +1169,24 @@ public partial class LevelGenerator : Node
             return t == TileType.Room || t == TileType.Corridor || t == TileType.Background; // допустимые
         }
 
-        // Если центр подходит — используем его
-        if (IsWalkableTile(center.X, center.Y))
+        // Функция проверки, что тайл имеет выход (минимум одного соседа-прохода)
+        bool HasExit(int x, int y)
+        {
+            var dirs = new[] { new Vector2I(1,0), new Vector2I(-1,0), new Vector2I(0,1), new Vector2I(0,-1) };
+            foreach (var d in dirs)
+            {
+                int nx = x + d.X;
+                int ny = y + d.Y;
+                if (nx < 0 || ny < 0 || nx >= MapWidth || ny >= MapHeight) continue;
+                var t = section.SectionMask[nx, ny];
+                if (t == TileType.Room || t == TileType.Corridor || t == TileType.Background)
+                    return true;
+            }
+            return false;
+        }
+
+        // Если центр подходит и есть выход — используем его
+        if (IsWalkableTile(center.X, center.Y) && HasExit(center.X, center.Y))
         {
             Logger.Debug($"Spawn tile chosen at room center ({center.X}, {center.Y}) in section ({section.GridX},{section.GridY})", false);
             return new Vector2(center.X, center.Y);
@@ -1194,13 +1210,42 @@ public partial class LevelGenerator : Node
                     if (tx < room.Position.X || ty < room.Position.Y || tx >= room.Position.X + room.Size.X || ty >= room.Position.Y + room.Size.Y)
                         continue;
 
-                    if (IsWalkableTile(tx, ty))
+                    if (IsWalkableTile(tx, ty) && HasExit(tx, ty))
                     {
                         Logger.Debug($"Spawn tile adjusted to ({tx}, {ty}) in section ({section.GridX},{section.GridY})", false);
                         return new Vector2(tx, ty);
                     }
                 }
             }
+        }
+
+        // Если подходящего тайла в комнате не нашли, пробуем выбрать ближайший тайл КОРИДОРА
+        int bestDist = int.MaxValue;
+        Vector2I bestCorridor = center;
+        for (int x = room.Position.X; x < room.Position.X + room.Size.X; x++)
+        for (int y = room.Position.Y; y < room.Position.Y + room.Size.Y; y++)
+        {
+            // Сканируем всю секцию на случай, если коридор вне комнаты
+        }
+        for (int x = 0; x < MapWidth; x++)
+        for (int y = 0; y < MapHeight; y++)
+        {
+            if (section.SectionMask[x, y] == TileType.Corridor && HasExit(x, y))
+            {
+                int dx = x - center.X;
+                int dy = y - center.Y;
+                int d2 = dx*dx + dy*dy;
+                if (d2 < bestDist)
+                {
+                    bestDist = d2;
+                    bestCorridor = new Vector2I(x, y);
+                }
+            }
+        }
+        if (bestDist != int.MaxValue)
+        {
+            Logger.Debug($"Spawn moved to nearest corridor tile ({bestCorridor.X},{bestCorridor.Y}) in section ({section.GridX},{section.GridY})", false);
+            return new Vector2(bestCorridor.X, bestCorridor.Y);
         }
 
         // Фолбэк: верхний левый угол комнаты (как тайл)
