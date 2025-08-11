@@ -707,7 +707,7 @@ public partial class LevelGenerator : Node
     // A* по проходимым (Room) клеткам
     private System.Collections.Generic.List<Vector2I> FindPathOverRooms(MapSection section, Vector2I start, Vector2I goal)
     {
-        var open = new System.Collections.Generic.SortedSet<(int f, int g, Vector2I p)>(System.Collections.Generic.Comparer<(int,int,Vector2I)>.Create((a,b)=> a.f!=b.f? a.f-b.f : a.g!=b.g? a.g-b.g : a.p.X!=b.p.X? a.p.X-b.p.X : a.p.Y-b.p.Y));
+        var open = new System.Collections.Generic.SortedSet<(int,int,Vector2I)>(System.Collections.Generic.Comparer<(int,int,Vector2I)>.Create((a,b)=> a.Item1!=b.Item1? a.Item1-b.Item1 : a.Item2!=b.Item2? a.Item2-b.Item2 : a.Item3.X!=b.Item3.X? a.Item3.X-b.Item3.X : a.Item3.Y-b.Item3.Y));
         var came = new System.Collections.Generic.Dictionary<Vector2I, Vector2I>();
         var gScore = new System.Collections.Generic.Dictionary<Vector2I, int>();
         int H(Vector2I p) => System.Math.Abs(p.X - goal.X) + System.Math.Abs(p.Y - goal.Y);
@@ -716,7 +716,7 @@ public partial class LevelGenerator : Node
         while (open.Count > 0)
         {
             var cur = open.Min; open.Remove(cur);
-            var p = cur.p;
+            var p = cur.Item3;
             if (p == goal)
             {
                 var path = new System.Collections.Generic.List<Vector2I>();
@@ -728,7 +728,7 @@ public partial class LevelGenerator : Node
                 var n = new Vector2I(p.X + d.X, p.Y + d.Y);
                 if (n.X < 0 || n.X >= MapWidth || n.Y < 0 || n.Y >= MapHeight) continue;
                 if (section.SectionMask[n.X, n.Y] != TileType.Room) continue;
-                int ng = cur.g + 1;
+                int ng = cur.Item2 + 1;
                 if (!gScore.TryGetValue(n, out var old) || ng < old)
                 {
                     gScore[n] = ng; came[n] = p; open.Add((ng + H(n), ng, n));
