@@ -734,6 +734,10 @@ public partial class LevelGenerator : Node
 
             // 5) Безопасность: гарантируем связность «пещера <-> тропы» внутри секции
             EnsureSectionRoomConnectivity(section);
+            if (TrailConnectAllComponents)
+            {
+                ConnectAllRoomComponentsToTrails(section);
+            }
 
             // Спавн и сущности
             section.SpawnPosition = GetSectionSpawnPosition(section);
@@ -782,6 +786,87 @@ public partial class LevelGenerator : Node
         }
     }
 
+    // Подключение изолированных комнатных компонентов к ближайшей тропе/коридору
+    private void ConnectAllRoomComponentsToTrails(MapSection section)
+    {
+        // 1) Найдём все компоненты Room
+        var visited = new bool[MapWidth, MapHeight];
+        var components = new System.Collections.Generic.List<System.Collections.Generic.List<Vector2I>>();
+        for (int x = 0; x < MapWidth; x++)
+        for (int y = 0; y < MapHeight; y++)
+        {
+            if (visited[x, y] || section.SectionMask[x, y] != TileType.Room) continue;
+            var comp = new System.Collections.Generic.List<Vector2I>();
+            var q = new System.Collections.Generic.Queue<Vector2I>();
+            q.Enqueue(new Vector2I(x, y)); visited[x, y] = true;
+            while (q.Count > 0)
+            {
+                var p = q.Dequeue(); comp.Add(p);
+                foreach (var d in new[]{ new Vector2I(1,0), new Vector2I(-1,0), new Vector2I(0,1), new Vector2I(0,-1) })
+                {
+                    var n = new Vector2I(p.X + d.X, p.Y + d.Y);
+                    if (n.X < 0 || n.X >= MapWidth || n.Y < 0 || n.Y >= MapHeight) continue;
+                    if (visited[n.X, n.Y]) continue;
+                    if (section.SectionMask[n.X, n.Y] != TileType.Room) continue;
+                    visited[n.X, n.Y] = true; q.Enqueue(n);
+                }
+            }
+            components.Add(comp);
+        }
+
+        if (components.Count <= 1) return; // уже связно
+
+        // 2) Соберём все клетки коридоров (троп) как цели
+        var corridors = new System.Collections.Generic.List<Vector2I>();
+        for (int x = 0; x < MapWidth; x++)
+        for (int y = 0; y < MapHeight; y++)
+            if (section.SectionMask[x, y] == TileType.Corridor)
+                corridors.Add(new Vector2I(x, y));
+
+        // Если коридоров нет — нечем соединять
+        if (corridors.Count == 0) return;
+
+        // 3) Для каждой компоненты проведём короткую связь к ближайшему коридору
+        foreach (var comp in components)
+        {
+            // если в компоненте уже есть контакт с коридором — пропуск
+            bool touches = false;
+            foreach (var p in comp)
+            {
+                foreach (var d in new[]{ new Vector2I(1,0), new Vector2I(-1,0), new Vector2I(0,1), new Vector2I(0,-1) })
+                {
+                    int nx = p.X + d.X, ny = p.Y + d.Y;
+                    if (nx < 0 || nx >= MapWidth || ny < 0 || ny >= MapHeight) continue;
+                    if (section.SectionMask[nx, ny] == TileType.Corridor) { touches = true; break; }
+                }
+                if (touches) break;
+            }
+            if (touches) continue;
+
+            // выберем точку комп-ты и ближайшую цель
+            Vector2I from = comp[comp.Count / 2];
+            int best = int.MaxValue; Vector2I target = from;
+            foreach (var c in corridors)
+            {
+                int dx = c.X - from.X; int dy = c.Y - from.Y; int d2 = dx*dx + dy*dy;
+                if (d2 < best) { best = d2; target = c; }
+            }
+
+            // Проложим путь по непроходимым (фон/стены), не разрушая другие комнаты
+            var worldOffset = new Vector2I((int)section.WorldOffset.X, (int)section.WorldOffset.Y);
+            var path = FindWorldPathOrganic(worldOffset + from, worldOffset + target);
+            if (path == null) continue;
+            var floorTile = _biome.GetFloorTileForBiome(section.BiomeType);
+            foreach (var wp in path)
+            {
+                FloorsTileMap.SetCell(wp, FloorsSourceID, floorTile);
+                WallsTileMap.EraseCell(wp);
+                int lx = wp.X - worldOffset.X; int ly = wp.Y - worldOffset.Y;
+                if (lx >= 0 && lx < MapWidth && ly >= 0 && ly < MapHeight)
+                    section.SectionMask[lx, ly] = TileType.Corridor;
+            }
+        }
+    }
     private System.Collections.Generic.List<Vector2I> PickTrailNodes(MapSection section, int count, int minSpacing)
     {
         var nodes = new System.Collections.Generic.List<Vector2I>();
@@ -854,7 +939,7 @@ public partial class LevelGenerator : Node
                         if (cx < 0 || cx >= MapWidth || cy < 0 || cy >= MapHeight) continue;
                         FloorsTileMap.SetCell(worldOffset + new Vector2I(cx, cy), FloorsSourceID, floorTile);
                         WallsTileMap.EraseCell(worldOffset + new Vector2I(cx, cy));
-                        section.SectionMask[cx, cy] = TileType.Room;
+                        section.SectionMask[cx, cy] = TileType.Corridor;
                     }
                 }
             }
