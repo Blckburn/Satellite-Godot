@@ -980,11 +980,11 @@ public partial class LevelGenerator : Node
         Logger.Debug($"✅ LevelGenerated signal emitted with spawn position: {_currentSpawnPosition}", true);
         
         // АВАРИЙНЫЙ FALLBACK: если есть PlayerScene но нет PlayerSpawner  
-        GetTree().CreateTimer(1.0).Timeout += () => {
+        GetTree().CreateTimer(0.5).Timeout += () => {
             var players = GetTree().GetNodesInGroup("Player");
             if (players.Count == 0)
             {
-                Logger.Error("🚨 EMERGENCY: No player found 1 second after level generation! Creating emergency player!");
+                Logger.Error("🚨 EMERGENCY: No player found 0.5 second after level generation! Creating emergency player!");
                 CreateEmergencyPlayer();
             }
             else
@@ -1045,57 +1045,57 @@ public partial class LevelGenerator : Node
     
     // Удалено: GenerateVirtualRoomsFromWorldMask - заменено на прямую генерацию по мировой маске
 
-    // КРУТАЯ система толстых стен с привязкой к биомам! 💪
+    // EPIC система толстых стен НАРУЖУ от карты! 💪
     private void AddBiomeBasedBorderWalls(TileType[,] worldMask, int[,] worldBiome, int worldTilesX, int worldTilesY)
     {
-        const int WALL_THICKNESS = 5; // Разумные толстые стены (не съедают всю карту!)
-        Logger.Debug($"Adding THICK biome-based border walls around map {worldTilesX}x{worldTilesY}, thickness: {WALL_THICKNESS}", true);
+        const int WALL_THICKNESS = 15; // ТОЛСТЫЕ стены НАРУЖУ!
+        Logger.Debug($"Adding EPIC biome-based border walls AROUND map {worldTilesX}x{worldTilesY}, thickness: {WALL_THICKNESS}", true);
         
-        // Добавляем ТОЛСТЫЕ стены по периметру карты
-        for (int x = 0; x < worldTilesX; x++)
+        // Создаем стены ВОКРУГ карты, расширяя TileMap область
+        // Стены будут от (-WALL_THICKNESS, -WALL_THICKNESS) до (worldTilesX + WALL_THICKNESS, worldTilesY + WALL_THICKNESS)
+        
+        for (int x = -WALL_THICKNESS; x < worldTilesX + WALL_THICKNESS; x++)
         {
-            for (int y = 0; y < worldTilesY; y++)
+            for (int y = -WALL_THICKNESS; y < worldTilesY + WALL_THICKNESS; y++)
             {
-                // Проверяем расстояние от края - если меньше WALL_THICKNESS, то это стена
-                int distanceFromEdge = Math.Min(
-                    Math.Min(x, worldTilesX - 1 - x),
-                    Math.Min(y, worldTilesY - 1 - y)
-                );
+                // Проверяем, находимся ли мы ВНЕ игровой области (в зоне стен)
+                bool isOutsideMap = (x < 0 || x >= worldTilesX || y < 0 || y >= worldTilesY);
                 
-                if (distanceFromEdge < WALL_THICKNESS)
+                if (isOutsideMap)
                 {
-                    // ТОЛЬКО если тайл пустой или уже стена - не перезаписываем Room тайлы!
-                    if (worldMask[x, y] == TileType.Wall || worldMask[x, y] == TileType.None)
+                    // Это зона стен! Определяем ближайший биом для стены
+                    int biomeForWall = GetNearestBiomeForOuterWall(worldBiome, x, y, worldTilesX, worldTilesY);
+                    
+                    // Устанавливаем тайл стены в TileMap с привязкой к биому
+                    if (WallsTileMap != null)
                     {
-                        // Устанавливаем стену в маске
-                        worldMask[x, y] = TileType.Wall;
+                        Vector2I tilePos = new Vector2I(x, y);
+                        Vector2I wallTile = _biome.GetWallTileForBiome(biomeForWall, tilePos);
+                        WallsTileMap.SetCell(tilePos, WallsSourceID, wallTile);
                         
-                        // Определяем ближайший биом для выбора стены
-                        int biomeForWall = GetNearestBiomeForWall(worldBiome, x, y, worldTilesX, worldTilesY, WALL_THICKNESS);
-                        
-                        // Устанавливаем тайл стены в TileMap с привязкой к биому
-                        if (WallsTileMap != null)
-                        {
-                            Vector2I tilePos = new Vector2I(x, y);
-                            Vector2I wallTile = _biome.GetWallTileForBiome(biomeForWall, tilePos);
-                            WallsTileMap.SetCell(tilePos, WallsSourceID, wallTile);
-                            
-                            Logger.Debug($"Border wall at ({x}, {y}) uses biome {biomeForWall} -> tile {wallTile}", false);
-                        }
-                    }
-                    else
-                    {
-                        // Логируем что мы НЕ перезаписываем существующий контент
-                        Logger.Debug($"Skipping wall at ({x}, {y}) - already has content: {worldMask[x, y]}", false);
+                        Logger.Debug($"Outer wall at ({x}, {y}) uses biome {biomeForWall} -> tile {wallTile}", false);
                     }
                 }
             }
         }
         
-        Logger.Debug($"THICK biome-based border walls added successfully! Wall thickness: {WALL_THICKNESS}", true);
+        Logger.Debug($"EPIC biome-based outer walls added successfully! Wall thickness: {WALL_THICKNESS}", true);
     }
     
-    // Находит ближайший биом для стены (ищет внутрь карты от границы)
+    // Находит ближайший биом для НАРУЖНОЙ стены (проецируется к краю игровой области)
+    private int GetNearestBiomeForOuterWall(int[,] worldBiome, int wallX, int wallY, int worldTilesX, int worldTilesY)
+    {
+        // Находим ближайшую точку на границе игровой области
+        int nearestX = Math.Max(0, Math.Min(worldTilesX - 1, wallX));
+        int nearestY = Math.Max(0, Math.Min(worldTilesY - 1, wallY));
+        
+        // Возвращаем биом этой ближайшей точки
+        int foundBiome = worldBiome[nearestX, nearestY];
+        Logger.Debug($"Outer wall at ({wallX}, {wallY}) -> nearest map point ({nearestX}, {nearestY}) biome {foundBiome}", false);
+        return foundBiome;
+    }
+    
+    // Находит ближайший биом для стены (СТАРЫЙ метод, оставляем для совместимости)
     private int GetNearestBiomeForWall(int[,] worldBiome, int wallX, int wallY, int worldTilesX, int worldTilesY, int wallThickness)
     {
         // Ищем ближайшую НЕ-стеновую клетку внутри карты
@@ -1143,13 +1143,13 @@ public partial class LevelGenerator : Node
     {
         Logger.Debug($"Finding corner spawn position for map {worldTilesX}x{worldTilesY}", true);
         
-        const int WALL_THICKNESS = 5; // Та же толщина что и в стенах!
+        // Стены теперь НАРУЖУ, поэтому НЕТ отступа внутри карты!
         
-        // Определяем размеры угловых зон с учетом ТОЛСТЫХ стен
+        // Определяем размеры угловых зон БЕЗ отступа от стен
         int cornerSize = Math.Max(8, Math.Min(worldTilesX, worldTilesY) / 6); // Больше зона для поиска
-        int borderOffset = WALL_THICKNESS + 2; // Отступ от ТОЛСТЫХ стен + безопасность
+        int borderOffset = 2; // Минимальный отступ от самого края карты
         
-        Logger.Debug($"Corner zone size: {cornerSize}x{cornerSize}, border offset: {borderOffset} (wall thickness: {WALL_THICKNESS})", false);
+        Logger.Debug($"Corner zone size: {cornerSize}x{cornerSize}, border offset: {borderOffset} (walls now OUTSIDE map)", false);
         
         // Определяем 4 угловые зоны с учетом границ
         var corners = new List<(string name, int startX, int startY, int endX, int endY)>
@@ -1179,7 +1179,7 @@ public partial class LevelGenerator : Node
                 Logger.Debug($"  Tile coords: ({spawnPoint.Value.X}, {spawnPoint.Value.Y})", true);
                 Logger.Debug($"  World coords: {worldPosition}", true);
                 Logger.Debug($"  Map size: {worldTilesX}x{worldTilesY}", true);
-                Logger.Debug($"  Wall thickness: {WALL_THICKNESS}, Border offset: {borderOffset}", true);
+                Logger.Debug($"  Border offset: {borderOffset} (walls are OUTSIDE map)", true);
                 Logger.Debug($"  Corner zone: ({corner.startX},{corner.startY}) to ({corner.endX},{corner.endY})", true);
                 
                 // Проверяем, что спавн ДЕЙСТВИТЕЛЬНО внутри игровой области
@@ -1188,13 +1188,13 @@ public partial class LevelGenerator : Node
                     Math.Min(spawnPoint.Value.Y, worldTilesY - 1 - spawnPoint.Value.Y)
                 );
                 
-                if (distanceFromEdge < WALL_THICKNESS)
+                if (distanceFromEdge < borderOffset)
                 {
-                    Logger.Debug($"  ⚠️ WARNING: Spawn too close to edge! Distance: {distanceFromEdge}, required: {WALL_THICKNESS}", true);
+                    Logger.Debug($"  ⚠️ WARNING: Spawn too close to edge! Distance: {distanceFromEdge}, required: {borderOffset}", true);
                 }
                 else
                 {
-                    Logger.Debug($"  ✅ Spawn safely inside walls. Distance from edge: {distanceFromEdge}", true);
+                    Logger.Debug($"  ✅ Spawn safely inside map. Distance from edge: {distanceFromEdge}", true);
                 }
                 
                 return worldPosition;
