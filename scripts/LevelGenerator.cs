@@ -1039,10 +1039,11 @@ public partial class LevelGenerator : Node
         {
             // ОТЛАДКА: показываем ВСЕ доступные углы
             Logger.Debug($"🔍 Available spawn corners ({validSpawns.Count}):", true);
-            for (int i = 0; i < validSpawns.Count; i++)
-            {
-                Logger.Debug($"  [{i}] {validSpawns[i].name} at tile {validSpawns[i].tilePos} -> world {validSpawns[i].worldPos}", true);
-            }
+            // Убираем детальный спам углов для скорости
+            // for (int i = 0; i < validSpawns.Count; i++)
+            // {
+            //     Logger.Debug($"  [{i}] {validSpawns[i].name} at tile {validSpawns[i].tilePos} -> world {validSpawns[i].worldPos}", true);
+            // }
             
             // ИСПОЛЬЗУЕМ СИСТЕМНОЕ ВРЕМЯ для истинной рандомизации!
             long ticks = DateTime.Now.Ticks;
@@ -1054,11 +1055,12 @@ public partial class LevelGenerator : Node
             bestSpawn = selectedSpawn.tilePos;
             bestCornerName = selectedSpawn.name;
             
-            Logger.Debug($"🎲 RANDOM SELECTION PROCESS:", true);
-            Logger.Debug($"  Ticks: {ticks}", true);
-            Logger.Debug($"  Seed: {seed}", true);
-            Logger.Debug($"  Random index: {randomIndex} (from 0-{validSpawns.Count-1})", true);
-            Logger.Debug($"  🎯 SELECTED: {bestCornerName} at {selectedSpawn.worldPos}", true);
+            // Убираем детальный debug для скорости
+            // Logger.Debug($"🎲 RANDOM SELECTION PROCESS:", true);
+            // Logger.Debug($"  Ticks: {ticks}", true);
+            // Logger.Debug($"  Seed: {seed}", true);
+            // Logger.Debug($"  Random index: {randomIndex} (from 0-{validSpawns.Count-1})", true);
+            Logger.Debug($"🎯 SELECTED CORNER: {bestCornerName} at {selectedSpawn.worldPos}", true);
         }
         else
         {
@@ -1157,7 +1159,7 @@ public partial class LevelGenerator : Node
                 AddChild(spawnNode);
             }
             
-            Logger.Debug($"✅ Created SpawnPoint: {spawnNode.Name} at {spawn.position} (Valid: {spawn.isValid})", false);
+            // Logger.Debug($"✅ Created SpawnPoint: {spawnNode.Name} at {spawn.position} (Valid: {spawn.isValid})", false); // СПАМ!
         }
     }
     
@@ -1464,12 +1466,12 @@ public partial class LevelGenerator : Node
                             // САМОЕ ВАЖНОЕ: проверяем проходимость к центру карты!
                             if (IsPathToTargetExists(worldMask, new Vector2I(x, y), mapCenter, worldTilesX, worldTilesY))
                             {
-                                Logger.Debug($"Valid spawn found at ({x}, {y}) with path to center ({mapCenter.X}, {mapCenter.Y})", false);
+                                // Logger.Debug($"Valid spawn found at ({x}, {y}) with path to center ({mapCenter.X}, {mapCenter.Y})", false); // СПАМ!
                                 return new Vector2I(x, y);
                             }
                             else
                             {
-                                Logger.Debug($"Spawn at ({x}, {y}) rejected: no path to center", false);
+                                // Logger.Debug($"Spawn at ({x}, {y}) rejected: no path to center", false); // СПАМ!
                             }
                         }
                     }
@@ -1536,7 +1538,7 @@ public partial class LevelGenerator : Node
             }
         }
         
-        Logger.Debug($"No path found from ({start.X}, {start.Y}) to ({target.X}, {target.Y}) after {iterations} iterations", false);
+        // Logger.Debug($"No path found from ({start.X}, {start.Y}) to ({target.X}, {target.Y}) after {iterations} iterations", false); // СПАМ!
         return false; // Путь не найден
     }
     
@@ -1778,7 +1780,7 @@ public partial class LevelGenerator : Node
                 if (YSortContainer != null)
                 {
                     YSortContainer.AddChild(resourceNode);
-                    Logger.Debug($"Successfully placed {resourceType} resource at world ({worldX}, {worldY}) with ResourceItem {resourceItem.DisplayName}", false);
+                    // Logger.Debug($"Successfully placed {resourceType} resource at world ({worldX}, {worldY}) with ResourceItem {resourceItem.DisplayName}", false); // СПАМ!
                     return true;
                 }
                 else
@@ -1865,7 +1867,7 @@ public partial class LevelGenerator : Node
                 if (YSortContainer != null)
                 {
                     YSortContainer.AddChild(containerNode);
-                    Logger.Debug($"Successfully placed container at world ({worldX}, {worldY}) in biome {GetBiomeName(biome)}", false);
+                    // Logger.Debug($"Successfully placed container at world ({worldX}, {worldY}) in biome {GetBiomeName(biome)}", false); // СПАМ!
                     return true;
                 }
                 else
