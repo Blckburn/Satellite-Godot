@@ -1121,58 +1121,104 @@ public partial class LevelGenerator : Node
 
             if (connected) continue;
 
-            // Пробиваем кратчайший L-канал от центра комнаты к ближайшему коридору
-            Vector2I center = room.Position + room.Size / 2;
-
-            int bestDist = int.MaxValue;
-            Vector2I best = center;
-            for (int x = 0; x < MapWidth; x++)
-            for (int y = 0; y < MapHeight; y++)
-            {
-                if (section.SectionMask[x, y] != TileType.Corridor) continue;
-                int dx = x - center.X;
-                int dy = y - center.Y;
-                int d2 = dx*dx + dy*dy;
-                if (d2 < bestDist)
-                {
-                    bestDist = d2;
-                    best = new Vector2I(x, y);
-                }
-            }
-
+            // 1) Пытаемся провести прямой выход от границы комнаты до ближайшего коридора
             Vector2I worldOffset = new Vector2I((int)section.WorldOffset.X, (int)section.WorldOffset.Y);
             Vector2I floorTile = _biome.GetFloorTileForBiome(section.BiomeType);
-            int width = Math.Max(2, CorridorWidth);
+            int halfWidth = Math.Max(1, CorridorWidth / 2);
 
-            int sx = Math.Min(center.X, best.X);
-            int ex = Math.Max(center.X, best.X);
-            int yMid = center.Y;
-            for (int x = sx; x <= ex; x++)
+            // Кандидаты стартов: середины каждой стороны комнаты (на 1 клетку ВНЕ комнаты)
+            var doorStarts = new System.Collections.Generic.List<(Vector2I start, Vector2I dir)>
             {
-                for (int w = -(width/2); w <= width/2; w++)
+                (new Vector2I(room.Position.X + room.Size.X/2, room.Position.Y - 1), new Vector2I(0, -1)), // вверх
+                (new Vector2I(room.Position.X + room.Size.X/2, room.Position.Y + room.Size.Y), new Vector2I(0, 1)), // вниз
+                (new Vector2I(room.Position.X - 1, room.Position.Y + room.Size.Y/2), new Vector2I(-1, 0)), // влево
+                (new Vector2I(room.Position.X + room.Size.X, room.Position.Y + room.Size.Y/2), new Vector2I(1, 0)), // вправо
+            };
+
+            bool carved = false;
+            foreach (var (start, dir) in doorStarts)
+            {
+                // Идём по прямой, пока не встретим коридор или границы секции
+                System.Collections.Generic.List<Vector2I> path = new System.Collections.Generic.List<Vector2I>();
+                Vector2I p = start;
+                while (p.X >= 0 && p.X < MapWidth && p.Y >= 0 && p.Y < MapHeight)
                 {
-                    int yy = yMid + w;
-                    if (x < 0 || x >= MapWidth || yy < 0 || yy >= MapHeight) continue;
-                    FloorsTileMap.SetCell(worldOffset + new Vector2I(x, yy), FloorsSourceID, floorTile);
-                    WallsTileMap.EraseCell(worldOffset + new Vector2I(x, yy));
-                    if (section.SectionMask[x, yy] != TileType.Room)
-                        section.SectionMask[x, yy] = TileType.Corridor;
+                    if (section.SectionMask[p.X, p.Y] == TileType.Corridor)
+                    {
+                        carved = true;
+                        break;
+                    }
+                    // Разрешаем прорезание сквозь фон/стены/декор, но не через другие комнаты
+                    if (section.SectionMask[p.X, p.Y] == TileType.Room)
+                    {
+                        path.Clear();
+                        break;
+                    }
+                    path.Add(p);
+                    p += dir;
                 }
+
+                if (!carved || path.Count == 0) continue;
+
+                // Прорезаем путь как коридор
+                foreach (var cell in path)
+                {
+                    for (int w = -halfWidth; w <= halfWidth; w++)
+                    {
+                        int cx = cell.X + (dir.Y != 0 ? w : 0);
+                        int cy = cell.Y + (dir.X != 0 ? w : 0);
+                        if (cx < 0 || cx >= MapWidth || cy < 0 || cy >= MapHeight) continue;
+                        FloorsTileMap.SetCell(worldOffset + new Vector2I(cx, cy), FloorsSourceID, floorTile);
+                        WallsTileMap.EraseCell(worldOffset + new Vector2I(cx, cy));
+                        if (section.SectionMask[cx, cy] != TileType.Room)
+                            section.SectionMask[cx, cy] = TileType.Corridor;
+                    }
+                }
+                break;
             }
 
-            int sy = Math.Min(yMid, best.Y);
-            int ey = Math.Max(yMid, best.Y);
-            int xMid = best.X;
-            for (int y = sy; y <= ey; y++)
+            if (!carved)
             {
-                for (int w = -(width/2); w <= width/2; w++)
+                // 2) Фолбэк: короткий L‑образный канал к ближайшему коридору (как раньше)
+                Vector2I center = room.Position + room.Size / 2;
+                int bestDist = int.MaxValue; Vector2I best = center;
+                for (int x = 0; x < MapWidth; x++)
+                for (int y = 0; y < MapHeight; y++)
                 {
-                    int xx = xMid + w;
-                    if (xx < 0 || xx >= MapWidth || y < 0 || y >= MapHeight) continue;
-                    FloorsTileMap.SetCell(worldOffset + new Vector2I(xx, y), FloorsSourceID, floorTile);
-                    WallsTileMap.EraseCell(worldOffset + new Vector2I(xx, y));
-                    if (section.SectionMask[xx, y] != TileType.Room)
-                        section.SectionMask[xx, y] = TileType.Corridor;
+                    if (section.SectionMask[x, y] != TileType.Corridor) continue;
+                    int dx = x - center.X, dy = y - center.Y; int d2 = dx*dx + dy*dy;
+                    if (d2 < bestDist) { bestDist = d2; best = new Vector2I(x, y); }
+                }
+
+                int sx = Math.Min(center.X, best.X);
+                int ex = Math.Max(center.X, best.X);
+                int yMid = center.Y;
+                for (int x = sx; x <= ex; x++)
+                {
+                    for (int w = -halfWidth; w <= halfWidth; w++)
+                    {
+                        int yy = yMid + w;
+                        if (x < 0 || x >= MapWidth || yy < 0 || yy >= MapHeight) continue;
+                        FloorsTileMap.SetCell(worldOffset + new Vector2I(x, yy), FloorsSourceID, floorTile);
+                        WallsTileMap.EraseCell(worldOffset + new Vector2I(x, yy));
+                        if (section.SectionMask[x, yy] != TileType.Room)
+                            section.SectionMask[x, yy] = TileType.Corridor;
+                    }
+                }
+                int sy = Math.Min(yMid, best.Y);
+                int ey = Math.Max(yMid, best.Y);
+                int xMid = best.X;
+                for (int y = sy; y <= ey; y++)
+                {
+                    for (int w = -halfWidth; w <= halfWidth; w++)
+                    {
+                        int xx = xMid + w;
+                        if (xx < 0 || xx >= MapWidth || y < 0 || y >= MapHeight) continue;
+                        FloorsTileMap.SetCell(worldOffset + new Vector2I(xx, y), FloorsSourceID, floorTile);
+                        WallsTileMap.EraseCell(worldOffset + new Vector2I(xx, y));
+                        if (section.SectionMask[xx, y] != TileType.Room)
+                            section.SectionMask[xx, y] = TileType.Corridor;
+                    }
                 }
             }
         }
