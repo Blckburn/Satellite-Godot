@@ -14,12 +14,6 @@ config/name="Satellite"
 run/main_scene="uid://brbrxlc0fdl4i"
 config/features=PackedStringArray("4.4", "C#", "Forward Plus")
 config/icon="res://icon.svg"
-config/windows/size/viewport_width=1600
-config/windows/size/viewport_height=900
-config/windows/size/window_width_override=1600
-config/windows/size/window_height_override=900
-config/windows/size/resizable=true
-config/windows/size/fullscreen=false
 
 [autoload]
 
@@ -42,6 +36,17 @@ version_control/autoload_on_startup=true
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/TileMapLayerMigrator/plugin.cfg")
+
+[display]
+
+window/size/viewport_width=2560
+window/size/viewport_height=1440
+window/size/window_width_override=2560
+window/size/window_height_override=1440
+window/size/resizable=true
+window/size/fullscreen=false
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
 
 [input]
 
