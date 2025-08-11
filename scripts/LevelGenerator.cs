@@ -1168,6 +1168,8 @@ public partial class LevelGenerator : Node
     // Метод для получения позиции спавна игрока
     // Односекционный режим удалён
 
+    [Signal] public delegate void PlayerSpawnedEventHandler(Node2D player);
+
     // Обработка спавна игрока
     private void HandlePlayerSpawn()
     {
@@ -1199,6 +1201,12 @@ public partial class LevelGenerator : Node
 
         // Центрируем камеру на игроке
         CenterCameraOnPlayer();
+
+        // Эмитим сигнал для систем, которым нужен игрок (например, камера)
+        if (_currentPlayer != null)
+        {
+            EmitSignal(SignalName.PlayerSpawned, _currentPlayer);
+        }
     }
 
     // Поиск существующего игрока

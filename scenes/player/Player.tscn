@@ -26,7 +26,6 @@ shape = SubResource("RectangleShape2D_gmlin")
 [node name="Camera2D" type="Camera2D" parent="."]
 script = ExtResource("3_4kuee")
 PlayerPath = NodePath("..")
-ZoomMin = 0.2
 ZoomMax = 2.0
 ZoomDefault = 0.8
 

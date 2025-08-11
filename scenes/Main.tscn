@@ -48,6 +48,8 @@ ResourceDensity = 0.6
 
 [node name="isometric_tileset" parent="." instance=ExtResource("7_nxtc6")]
 
+[connection signal="PlayerSpawned" from="LevelGenerator" to="isometric_tileset/Player/Camera2D" method="OnPlayerSpawned"]
+
 [node name="ContainerUI" type="CanvasLayer" parent="."]
 
 [node name="ContainerUI" parent="ContainerUI" instance=ExtResource("9_q8u5g")]
