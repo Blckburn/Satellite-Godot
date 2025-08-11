@@ -147,7 +147,7 @@ public static class FileLogger
                 string timestamp = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
                 string logEntry = $"[{timestamp}] {message}";
                 
-                File.AppendAllText(_currentLogFile, logEntry + Environment.NewLine);
+                File.AppendAllText(_currentLogFile, logEntry + System.Environment.NewLine);
             }
             catch (Exception e)
             {
