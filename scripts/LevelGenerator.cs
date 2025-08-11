@@ -1101,6 +1101,12 @@ public partial class LevelGenerator : Node
     // Гарантия связности комнат с сетью коридоров
     private void EnsureSectionRoomConnectivity(MapSection section)
     {
+        // Вычислим заранее: есть ли вообще коридоры в секции
+        bool sectionHasCorridors = false;
+        for (int cx = 0; cx < MapWidth && !sectionHasCorridors; cx++)
+        for (int cy = 0; cy < MapHeight && !sectionHasCorridors; cy++)
+            if (section.SectionMask[cx, cy] == TileType.Corridor) sectionHasCorridors = true;
+
         foreach (var room in section.Rooms)
         {
             bool connected = false;
@@ -1190,34 +1196,80 @@ public partial class LevelGenerator : Node
                     if (d2 < bestDist) { bestDist = d2; best = new Vector2I(x, y); }
                 }
 
-                int sx = Math.Min(center.X, best.X);
-                int ex = Math.Max(center.X, best.X);
-                int yMid = center.Y;
-                for (int x = sx; x <= ex; x++)
+                if (bestDist != int.MaxValue)
                 {
-                    for (int w = -halfWidth; w <= halfWidth; w++)
+                    int sx = Math.Min(center.X, best.X);
+                    int ex = Math.Max(center.X, best.X);
+                    int yMid = center.Y;
+                    for (int x = sx; x <= ex; x++)
                     {
-                        int yy = yMid + w;
-                        if (x < 0 || x >= MapWidth || yy < 0 || yy >= MapHeight) continue;
-                        FloorsTileMap.SetCell(worldOffset + new Vector2I(x, yy), FloorsSourceID, floorTile);
-                        WallsTileMap.EraseCell(worldOffset + new Vector2I(x, yy));
-                        if (section.SectionMask[x, yy] != TileType.Room)
-                            section.SectionMask[x, yy] = TileType.Corridor;
+                        for (int w = -halfWidth; w <= halfWidth; w++)
+                        {
+                            int yy = yMid + w;
+                            if (x < 0 || x >= MapWidth || yy < 0 || yy >= MapHeight) continue;
+                            FloorsTileMap.SetCell(worldOffset + new Vector2I(x, yy), FloorsSourceID, floorTile);
+                            WallsTileMap.EraseCell(worldOffset + new Vector2I(x, yy));
+                            if (section.SectionMask[x, yy] != TileType.Room)
+                                section.SectionMask[x, yy] = TileType.Corridor;
+                        }
+                    }
+                    int sy = Math.Min(yMid, best.Y);
+                    int ey = Math.Max(yMid, best.Y);
+                    int xMid = best.X;
+                    for (int y = sy; y <= ey; y++)
+                    {
+                        for (int w = -halfWidth; w <= halfWidth; w++)
+                        {
+                            int xx = xMid + w;
+                            if (xx < 0 || xx >= MapWidth || y < 0 || y >= MapHeight) continue;
+                            FloorsTileMap.SetCell(worldOffset + new Vector2I(xx, y), FloorsSourceID, floorTile);
+                            WallsTileMap.EraseCell(worldOffset + new Vector2I(xx, y));
+                            if (section.SectionMask[xx, y] != TileType.Room)
+                                section.SectionMask[xx, y] = TileType.Corridor;
+                        }
                     }
                 }
-                int sy = Math.Min(yMid, best.Y);
-                int ey = Math.Max(yMid, best.Y);
-                int xMid = best.X;
-                for (int y = sy; y <= ey; y++)
+                else if (!sectionHasCorridors)
                 {
-                    for (int w = -halfWidth; w <= halfWidth; w++)
+                    // 3) В секции ещё нет коридоров — режем до ближайшей границы секции
+                    // Выбираем направление к ближайшей стороне
+                    Vector2I centerTile = room.Position + room.Size / 2;
+                    var candidates = new (Vector2I start, Vector2I dir, int dist)[]
                     {
-                        int xx = xMid + w;
-                        if (xx < 0 || xx >= MapWidth || y < 0 || y >= MapHeight) continue;
-                        FloorsTileMap.SetCell(worldOffset + new Vector2I(xx, y), FloorsSourceID, floorTile);
-                        WallsTileMap.EraseCell(worldOffset + new Vector2I(xx, y));
-                        if (section.SectionMask[xx, y] != TileType.Room)
-                            section.SectionMask[xx, y] = TileType.Corridor;
+                        (new Vector2I(room.Position.X + room.Size.X/2, room.Position.Y - 1), new Vector2I(0,-1), centerTile.Y),
+                        (new Vector2I(room.Position.X + room.Size.X/2, room.Position.Y + room.Size.Y), new Vector2I(0,1), MapHeight - 1 - centerTile.Y),
+                        (new Vector2I(room.Position.X - 1, room.Position.Y + room.Size.Y/2), new Vector2I(-1,0), centerTile.X),
+                        (new Vector2I(room.Position.X + room.Size.X, room.Position.Y + room.Size.Y/2), new Vector2I(1,0), MapWidth - 1 - centerTile.X),
+                    };
+                    Array.Sort(candidates, (a,b) => a.dist.CompareTo(b.dist));
+                    foreach (var c in candidates)
+                    {
+                        System.Collections.Generic.List<Vector2I> path = new System.Collections.Generic.List<Vector2I>();
+                        Vector2I p = c.start;
+                        while (p.X >= 0 && p.X < MapWidth && p.Y >= 0 && p.Y < MapHeight)
+                        {
+                            if (section.SectionMask[p.X, p.Y] == TileType.Corridor) { path.Clear(); break; }
+                            if (section.SectionMask[p.X, p.Y] == TileType.Room) { path.Clear(); break; }
+                            path.Add(p);
+                            // достигли края — достаточно
+                            if (p.X == 0 || p.X == MapWidth-1 || p.Y == 0 || p.Y == MapHeight-1) break;
+                            p += c.dir;
+                        }
+                        if (path.Count == 0) continue;
+                        foreach (var cell in path)
+                        {
+                            for (int w = -halfWidth; w <= halfWidth; w++)
+                            {
+                                int cx = cell.X + (c.dir.Y != 0 ? w : 0);
+                                int cy = cell.Y + (c.dir.X != 0 ? w : 0);
+                                if (cx < 0 || cx >= MapWidth || cy < 0 || cy >= MapHeight) continue;
+                                FloorsTileMap.SetCell(worldOffset + new Vector2I(cx, cy), FloorsSourceID, floorTile);
+                                WallsTileMap.EraseCell(worldOffset + new Vector2I(cx, cy));
+                                if (section.SectionMask[cx, cy] != TileType.Room)
+                                    section.SectionMask[cx, cy] = TileType.Corridor;
+                            }
+                        }
+                        break;
                     }
                 }
             }
