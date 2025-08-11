@@ -111,7 +111,6 @@ public partial class LevelGenerator : Node
     // Псевдослучайный генератор
     private Random _random;
     private BiomePalette _biome;
-    // private SingleMapBuilder _singleMap; // одно-секционный билдер удалён
     private NodeLocator _nodeLocator;
 
     // Удалено: локальный список комнат больше не используется в мультисекции (оставлено для совместимости, но не используется)
@@ -585,173 +584,9 @@ public partial class LevelGenerator : Node
         return null;
     }
 
-    // НОВОЕ: Метод для генерации уровня для конкретной секции
-    // УДАЛЕНО: RoomsCorridors генератор
-    /* private void GenerateSectionLevel(MapSection section)
-    {
-        try
-        {
-            // Сохраняем ссылку на текущую секцию
-            _currentSection = section;
+    // НОВОЕ: Метод для генерации уровня для конкретной секции - использует актуальный WorldBiomes генератор
 
-            // Сбрасываем список комнат секции
-            section.Rooms.Clear();
-
-            // Сбрасываем маску секции
-            ResetSectionMask(section);
-
-            // Устанавливаем фоновый тайл в зависимости от биома секции
-            _backgroundTile = GetBackgroundTileForBiome(section.BiomeType);
-
-            // Заполняем базовый пол секции
-            FillSectionBaseFloor(section);
-
-            // Генерируем комнаты в секции
-            GenerateSectionRooms(section);
-
-            // Соединяем комнаты в секции коридорами
-            ConnectSectionRooms(section);
-
-            // Заполняем фоновыми тайлами пустые области
-            FillSectionWithBackgroundTiles(section);
-
-            // Добавляем стены вокруг комнат и коридоров
-            _decorator.AddSectionWalls(
-                section,
-                MapWidth,
-                MapHeight,
-                WallsTileMap,
-                MAP_LAYER,
-                WallsSourceID,
-                (biome, pos) => _biome.GetWallTileForBiome(biome, pos)
-            );
-
-            // Добавляем декорации и препятствия
-            _decorator.AddSectionDecorationsAndObstacles(
-                section,
-                MapWidth,
-                WallsTileMap,
-                MAP_LAYER,
-                WallsSourceID,
-                biome => _biome.GetDecorationTileForBiome(biome)
-            );
-
-            // Добавляем опасные зоны (вода/лава)
-            _decorator.AddSectionHazards(
-                section,
-                FloorsTileMap,
-                WallsTileMap,
-                MAP_LAYER,
-                FloorsSourceID,
-                WallsSourceID,
-                biome => biome >= 4 ? new Vector2I(1,1) : new Vector2I(5,0)
-            );
-
-            // Выбираем точку спавна для секции
-            section.SpawnPosition = GetSectionSpawnPosition(section);
-
-            // Добавляем генерацию ресурсов после добавления стен и декораций
-            AddSectionResources(section);
-
-            AddSectionContainers(section);
-
-            // На САМОМ конце пайплайна: гарантируем связность комнат с коридорами
-            EnsureSectionRoomConnectivity(section);
-
-            Logger.Debug($"Section level generated at ({section.GridX}, {section.GridY}) with {section.Rooms.Count} rooms", false);
-        }
-        catch (Exception e)
-        {
-            Logger.Error($"Error generating section level: {e.Message}\n{e.StackTrace}");
-        }
-    } */
-
-    // Черновой генератор Cave+Trails
-    // УДАЛЕНО: Cave+Trails генератор
-    /* private void GenerateSectionLevelCaveTrails(MapSection section)
-    {
-        try
-        {
-            _currentSection = section;
-            section.Rooms.Clear();
-            ResetSectionMask(section);
-
-            // 1) Cellular Automata для пещер — заполняем маску как проходимо/непроходимо (Room/Background)
-            var rng = _random;
-            for (int x = 0; x < MapWidth; x++)
-            for (int y = 0; y < MapHeight; y++)
-                section.SectionMask[x, y] = (rng.NextDouble() < CaveInitialFill) ? TileType.Background : TileType.Room;
-
-            for (int step = 0; step < CaveSmoothSteps; step++)
-            {
-                var next = new TileType[MapWidth, MapHeight];
-                for (int x = 0; x < MapWidth; x++)
-                for (int y = 0; y < MapHeight; y++)
-                {
-                    int walls = 0;
-                    for (int dx = -1; dx <= 1; dx++)
-                    for (int dy = -1; dy <= 1; dy++)
-                    {
-                        if (dx == 0 && dy == 0) continue;
-                        int nx = x + dx, ny = y + dy;
-                        if (nx < 0 || nx >= MapWidth || ny < 0 || ny >= MapHeight) { walls++; continue; }
-                        if (section.SectionMask[nx, ny] != TileType.Room) walls++;
-                    }
-                    if (section.SectionMask[x, y] != TileType.Room)
-                        next[x, y] = (walls >= CaveDeathLimit) ? TileType.Background : TileType.Room;
-                    else
-                        next[x, y] = (walls > CaveBirthLimit) ? TileType.Background : TileType.Room;
-                }
-                section.SectionMask = next;
-            }
-
-            // 2) Сохраняем крупнейшую компонету проходимых клеток (Room)
-            if (CavePreserveLargest)
-            {
-                PreserveLargestWalkableComponent(section);
-            }
-
-            // 3) Рисуем пол/фон в TileMap из маски
-            Vector2I worldOffset = new Vector2I((int)section.WorldOffset.X, (int)section.WorldOffset.Y);
-            var floorTile = _biome.GetFloorTileForBiome(section.BiomeType);
-            var backgroundTile = GetBackgroundTileForBiome(section.BiomeType);
-            for (int x = 0; x < MapWidth; x++)
-            for (int y = 0; y < MapHeight; y++)
-            {
-                Vector2I wp = worldOffset + new Vector2I(x, y);
-                if (section.SectionMask[x, y] == TileType.Room)
-                {
-                    FloorsTileMap.SetCell(wp, FloorsSourceID, floorTile);
-                    WallsTileMap.EraseCell(wp);
-                }
-                else
-                {
-                    var wallTile = _biome.GetWallTileForBiome(section.BiomeType, wp);
-                    WallsTileMap.SetCell(wp, WallsSourceID, wallTile);
-                }
-            }
-
-            // 4) Тропы: выбираем опорные узлы и соединяем кратчайшими путями по проходимым клеткам
-            var nodes = PickTrailNodes(section, TrailNodeCount, TrailMinSpacing);
-            CarveTrailsBetweenNodes(section, nodes, TrailWidth);
-
-            // 5) Безопасность: гарантируем связность «пещера <-> тропы» внутри секции
-            EnsureSectionRoomConnectivity(section);
-            if (TrailConnectAllComponents)
-            {
-                ConnectAllRoomComponentsToTrails(section);
-            }
-
-            // Спавн и сущности
-            section.SpawnPosition = GetSectionSpawnPosition(section);
-            AddSectionResources(section);
-            AddSectionContainers(section);
-        }
-        catch (Exception e)
-        {
-            Logger.Error($"Error generating section level (Cave+Trails): {e.Message}\n{e.StackTrace}");
-        }
-    } */
+    // Актуальный генератор: WorldBiomes
 
     // Черновой каркас WorldBiomes: одна большая карта на сетке секций; размещаем центры биомов и для каждого региона вызываем Cave+Trails с его параметрами
     private void GenerateSectionLevelWorldBiomes(MapSection section)
@@ -1118,7 +953,146 @@ public partial class LevelGenerator : Node
                 }
             }
         }
+
+        // Добавляем генерацию ресурсов и контейнеров для каждой секции
+        foreach (var mapSection in _mapSections)
+        {
+            // Генерируем "комнаты" из проходимых областей для совместимости с системой ресурсов
+            GenerateVirtualRoomsFromWorldMask(mapSection, worldMask, worldTilesX, worldTilesY);
+            
+            // Добавляем ресурсы и контейнеры
+            AddSectionResources(mapSection);
+            AddSectionContainers(mapSection);
+        }
+
+        // Выбираем точку спавна игрока в центральной области мира
+        _currentSpawnPosition = FindWorldSpawnPosition(worldMask, worldTilesX, worldTilesY);
+        
+        Logger.Debug($"WorldBiomes generation completed. Spawn position: {_currentSpawnPosition}", true);
     }
+
+    // Генерирует "виртуальные комнаты" из проходимых областей мирового маска для совместимости с системой ресурсов
+    private void GenerateVirtualRoomsFromWorldMask(MapSection section, TileType[,] worldMask, int worldTilesX, int worldTilesY)
+    {
+        section.Rooms.Clear();
+        
+        // Преобразуем мировые координаты в локальные координаты секции
+        int sectionStartX = (int)section.WorldOffset.X;
+        int sectionStartY = (int)section.WorldOffset.Y;
+        int sectionEndX = sectionStartX + MapWidth;
+        int sectionEndY = sectionStartY + MapHeight;
+        
+        // Ограничиваем координаты границами мирового маска
+        sectionStartX = Math.Max(0, sectionStartX);
+        sectionStartY = Math.Max(0, sectionStartY);
+        sectionEndX = Math.Min(worldTilesX, sectionEndX);
+        sectionEndY = Math.Min(worldTilesY, sectionEndY);
+        
+        // Создаем большие "комнаты" из проходимых областей для размещения ресурсов
+        int roomSize = Math.Max(8, Math.Min(MapWidth / 4, MapHeight / 4));
+        
+        for (int x = sectionStartX; x < sectionEndX; x += roomSize)
+        {
+            for (int y = sectionStartY; y < sectionEndY; y += roomSize)
+            {
+                int roomWidth = Math.Min(roomSize, sectionEndX - x);
+                int roomHeight = Math.Min(roomSize, sectionEndY - y);
+                
+                // Проверяем, есть ли достаточно проходимых клеток в этой области
+                int walkableTiles = 0;
+                for (int rx = x; rx < x + roomWidth; rx++)
+                {
+                    for (int ry = y; ry < y + roomHeight; ry++)
+                    {
+                        if (rx < worldTilesX && ry < worldTilesY && worldMask[rx, ry] == TileType.Room)
+                            walkableTiles++;
+                    }
+                }
+                
+                // Если достаточно проходимых клеток, создаем виртуальную комнату
+                if (walkableTiles >= (roomWidth * roomHeight) / 3) // минимум треть клеток должна быть проходима
+                {
+                    // Преобразуем мировые координаты в локальные координаты секции
+                    int localX = x - (int)section.WorldOffset.X;
+                    int localY = y - (int)section.WorldOffset.Y;
+                    
+                    // Убеждаемся, что комната находится в пределах секции
+                    if (localX >= 0 && localY >= 0 && localX < MapWidth && localY < MapHeight)
+                    {
+                        var room = new Rect2I(localX, localY, roomWidth, roomHeight);
+                        section.Rooms.Add(room);
+                    }
+                }
+            }
+        }
+        
+        Logger.Debug($"Generated {section.Rooms.Count} virtual rooms for section ({section.GridX}, {section.GridY})", false);
+    }
+
+    // Находит подходящую точку спавна игрока в сгенерированном мире
+    private Vector2 FindWorldSpawnPosition(TileType[,] worldMask, int worldTilesX, int worldTilesY)
+    {
+        // Начинаем поиск из центра мира
+        int centerX = worldTilesX / 2;
+        int centerY = worldTilesY / 2;
+        
+        // Ищем ближайшую проходимую клетку от центра мира
+        for (int radius = 0; radius < Math.Max(worldTilesX, worldTilesY) / 2; radius++)
+        {
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                for (int dy = -radius; dy <= radius; dy++)
+                {
+                    // Проверяем только клетки на текущем радиусе (граница круга)
+                    if (Math.Abs(dx) != radius && Math.Abs(dy) != radius && radius > 0)
+                        continue;
+                        
+                    int x = centerX + dx;
+                    int y = centerY + dy;
+                    
+                    // Проверяем границы
+                    if (x < 0 || x >= worldTilesX || y < 0 || y >= worldTilesY)
+                        continue;
+                    
+                    // Проверяем, что клетка проходима
+                    if (worldMask[x, y] == TileType.Room)
+                    {
+                        // Проверяем, что вокруг есть достаточно места (3x3 область)
+                        bool hasSpace = true;
+                        for (int sx = -1; sx <= 1 && hasSpace; sx++)
+                        {
+                            for (int sy = -1; sy <= 1 && hasSpace; sy++)
+                            {
+                                int checkX = x + sx;
+                                int checkY = y + sy;
+                                if (checkX >= 0 && checkX < worldTilesX && checkY >= 0 && checkY < worldTilesY)
+                                {
+                                    if (worldMask[checkX, checkY] != TileType.Room)
+                                        hasSpace = false;
+                                }
+                            }
+                        }
+                        
+                        if (hasSpace)
+                        {
+                            // Преобразуем тайловые координаты в мировые пиксельные координаты
+                            // Для изометрии: каждый тайл = 64x32 пикселя
+                            Vector2 worldPosition = MapTileToIsometricWorld(new Vector2I(x, y));
+                            Logger.Debug($"Found spawn position at tile ({x}, {y}) -> world {worldPosition}", false);
+                            return worldPosition;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Если не нашли подходящего места, используем центр мира
+        Vector2 fallbackPosition = MapTileToIsometricWorld(new Vector2I(centerX, centerY));
+        Logger.Debug($"Could not find safe spawn position, using center: {fallbackPosition}", true);
+        return fallbackPosition;
+    }
+
+
 
     private void PreserveLargestWalkableComponent(MapSection section)
     {
@@ -2191,14 +2165,7 @@ public partial class LevelGenerator : Node
         Logger.Debug($"Section filled with {tilesAdded} background tiles for biome {GetBiomeName(section.BiomeType)}", false);
     }
 
-    // НОВОЕ: Метод для добавления стен в секции
-    private void AddSectionWalls(MapSection section) { /* moved to Decorator */ }
-
-    // НОВОЕ: Метод для добавления декораций в секции
-    private void AddSectionDecorationsAndObstacles(MapSection section) { /* moved to Decorator */ }
-
-    // НОВОЕ: Метод для добавления опасных зон в секции
-    private void AddSectionHazards(MapSection section) { /* moved to Decorator */ }
+    // Методы стен, декораций и опасных зон перенесены в Decorator.cs
 
     // НОВОЕ: Метод для получения безопасной точки спавна в секции (в ТАЙЛОВЫХ координатах секции)
     private Vector2 GetSectionSpawnPosition(MapSection section)
@@ -2517,32 +2484,9 @@ public partial class LevelGenerator : Node
         return GetBackgroundTileForBiome(BiomeType);
     }
 
-    // Метод для заполнения базового пола (вся карта)
-    // Обновленный метод для базового пола
-    // Single-map удалён: метод не используется
-    // private void FillBaseFloor() => _singleMap.FillBaseFloor(MapWidth, MapHeight, GetBackgroundTileForBiome(), FloorsTileMap, MAP_LAYER, FloorsSourceID, _mapMask);
+    // Методы базового пола и декоративных тайлов теперь реализованы в секционном подходе
 
-    // Метод для добавления декоративных фоновых тайлов только в пустых областях
-    // Single-map удалён: метод не используется
-    // private void FillMapWithBackgroundTiles() => _singleMap.FillDecorBackground(MapWidth, MapHeight, GetBackgroundTileForBiome(), WallsTileMap, MAP_LAYER, WallsSourceID, _mapMask);
-
-    // Вынесено: RoomPlacer (single-map удалён)
-
-    // Метод для создания комнаты на карте
-    // CreateRoom — больше не используется (single-map удалён)
-
-    // Метод для соединения комнат коридорами
-    // ConnectRooms — больше не используется (single-map удалён)
-
-    // Соединение двух конкретных комнат
-    // ConnectTwoRooms — больше не используется (single-map удалён)
-
-    // Метод для создания горизонтального тоннеля
-    // CreateHorizontalTunnel — больше не используется (single-map удалён)
-
-
-    // Метод для создания вертикального тоннеля
-    // CreateVerticalTunnel — больше не используется (single-map удалён)
+    // Методы создания комнат и коридоров перенесены в RoomPlacer и CorridorCarver
 
 
     // НОВОЕ: Перегруженный метод для получения тайла пола на основе типа биома
