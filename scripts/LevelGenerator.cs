@@ -1616,14 +1616,14 @@ public partial class LevelGenerator : Node
 
         int resourcesPlaced = 0;
         int resourceAttempts = 0;
-        int maxResources = (worldTilesX * worldTilesY) / 100; // Примерно 1% тайлов могут содержать ресурсы
+        int maxResources = (worldTilesX * worldTilesY) / 50; // Примерно 2% тайлов могут содержать ресурсы (больше плотность)
         
         Logger.Debug($"Starting world resource generation. World size: {worldTilesX}x{worldTilesY}, target resources: {maxResources}", true);
 
         // Проходим по всему миру и размещаем ресурсы
-        for (int x = 0; x < worldTilesX && resourcesPlaced < maxResources; x += 4) // Шаг 4 для разреженности
+        for (int x = 0; x < worldTilesX && resourcesPlaced < maxResources; x += 2) // Шаг 2 для большей плотности
         {
-            for (int y = 0; y < worldTilesY && resourcesPlaced < maxResources; y += 4)
+            for (int y = 0; y < worldTilesY && resourcesPlaced < maxResources; y += 2)
             {
                 resourceAttempts++;
                 
@@ -1693,7 +1693,7 @@ public partial class LevelGenerator : Node
                 if (PlaceWorldContainer(x, y, biome))
                 {
                     containersPlaced++;
-                    Logger.Debug($"Placed container {containersPlaced} at ({x}, {y}) in biome {GetBiomeName(biome)}", false);
+                    // Logger.Debug($"Placed container {containersPlaced} at ({x}, {y}) in biome {GetBiomeName(biome)}", false); // СПАМ!
                 }
             }
         }
