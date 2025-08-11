@@ -102,6 +102,7 @@ public partial class LevelGenerator : Node
     [Export] public int WorldHeight { get; set; } = 3;     // секции по Y
     [Export] public int BiomeMinSpacing { get; set; } = 12;
     [Export] public bool WorldBlendBorders { get; set; } = true;
+    [Export(PropertyHint.Range, "0,1,0.01")] public float WorldOpenTarget { get; set; } = 0.38f; // целевая доля проходимых тайлов внутри мира
 
     // Псевдослучайный генератор
     private Random _random;
@@ -830,7 +831,7 @@ public partial class LevelGenerator : Node
                 worldMask[x, y] = TileType.Background;
         }
 
-        // 4) Сглаживание с учётом границ биомов (сосед другого биома считаем стеной)
+        // 4) Сглаживание с учётом границ биомов (сосед другого биома считаем стеной) + самонастройка под WorldOpenTarget
         for (int step = 0; step < CaveSmoothSteps; step++)
         {
             var next = new TileType[worldTilesX, worldTilesY];
@@ -847,9 +848,36 @@ public partial class LevelGenerator : Node
                     if (worldBiome[nx, ny] != worldBiome[x, y] || worldMask[nx, ny] != TileType.Room) walls++;
                 }
                 if (worldMask[x, y] != TileType.Room)
-                    next[x, y] = (walls >= CaveDeathLimit) ? TileType.Background : TileType.Room;
+                    next[x, y] = (walls >= CaveDeathLimit+1) ? TileType.Background : TileType.Room;
                 else
-                    next[x, y] = (walls > CaveBirthLimit) ? TileType.Background : TileType.Room;
+                    next[x, y] = (walls > CaveBirthLimit+1) ? TileType.Background : TileType.Room;
+            }
+            worldMask = next;
+        }
+
+        // 4b) Подстройка под целевую долю свободного пространства
+        int openCount = 0; for (int x=0;x<worldTilesX;x++) for (int y=0;y<worldTilesY;y++) if (worldMask[x,y]==TileType.Room) openCount++;
+        float openRatio = (float)openCount / (worldTilesX*worldTilesY);
+        if (openRatio < WorldOpenTarget)
+        {
+            // разрежаем стены: второй проход, где пороги уменьшаем
+            var next = new TileType[worldTilesX, worldTilesY];
+            for (int x = 0; x < worldTilesX; x++)
+            for (int y = 0; y < worldTilesY; y++)
+            {
+                int walls = 0;
+                for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    int nx = x + dx, ny = y + dy;
+                    if (nx < 0 || nx >= worldTilesX || ny < 0 || ny >= worldTilesY) { walls++; continue; }
+                    if (worldBiome[nx, ny] != worldBiome[x, y] || worldMask[nx, ny] != TileType.Room) walls++;
+                }
+                if (worldMask[x, y] != TileType.Room)
+                    next[x, y] = (walls >= CaveDeathLimit-1) ? TileType.Background : TileType.Room;
+                else
+                    next[x, y] = (walls > CaveBirthLimit+2) ? TileType.Background : TileType.Room;
             }
             worldMask = next;
         }
