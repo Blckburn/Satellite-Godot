@@ -8,8 +8,8 @@ public partial class CameraController : Camera2D
 
     // Настройки зума
     [Export] public float ZoomMin { get; set; } = 0.2f;
-    [Export] public float ZoomMax { get; set; } = 1.5f;
-    [Export] public float ZoomDefault { get; set; } = 1.0f;
+    [Export] public float ZoomMax { get; set; } = 2.0f;
+    [Export] public float ZoomDefault { get; set; } = 1.8f;
     [Export] public float ZoomSpeed { get; set; } = 0.1f;
 
     // Скорость движения камеры при использовании стрелок
