@@ -19,15 +19,15 @@ public sealed class BiomePalette
     {
         switch (biomeType)
         {
-            // ВОЗВРАТ К ИСХОДНЫМ КООРДИНАТАМ floors.png
+            // ОБНОВЛЕННЫЕ КООРДИНАТЫ floors.png
             // 0: Grass, 1: Stone, 2: Ground, 3: Snow, 4: Sand, 5: Water
             // 0-й ряд; 1-й ряд: 0: Ice, 1: Lava, 2: ForestFloor, 3: Techno, 4: Anomal, 5: Empty
-            case 1: return new Vector2I(2, 1); // Forest → ForestFloor
+            case 1: return new Vector2I(2, 0); // Forest → Ground
             case 2: return new Vector2I(4, 0); // Desert → Sand
             case 3: return new Vector2I(3, 0); // Ice → Snow (пол)
-            case 4: return new Vector2I(3, 1); // Techno
-            case 5: return new Vector2I(4, 1); // Anomal
-            case 6: return new Vector2I(1, 1); // Lava Springs
+            case 4: return new Vector2I(4, 1); // Techno → Anomal
+            case 5: return new Vector2I(3, 1); // Anomal → Techno
+            case 6: return new Vector2I(2, 0); // Lava Springs → Ground
             default: return new Vector2I(0, 0); // Grassland → Grass
         }
     }
@@ -48,17 +48,17 @@ public sealed class BiomePalette
 
     public Vector2I GetWallTileForBiome(int biomeType, Vector2I _)
     {
-        // ВОЗВРАТ К ИСХОДНЫМ «СТЕНАМ»: используем координаты из walls.png, отличные от пола
+        // ОБНОВЛЕННЫЕ КООРДИНАТЫ для стен walls.png
         // Подбираем стабильные, нерандомные значения, чтобы стены точно отличались от пола
         switch (biomeType)
         {
-            case 1: return new Vector2I(0, 0); // Forest/Grassland wall
+            case 1: return new Vector2I(0, 0); // Forest wall
             case 2: return new Vector2I(1, 0); // Desert wall
             case 3: return new Vector2I(0, 1); // Ice wall
             case 4: return new Vector2I(3, 1); // Techno wall
             case 5: return new Vector2I(4, 1); // Anomal wall
             case 6: return new Vector2I(1, 1); // Lava wall
-            default: return new Vector2I(2, 0); // Generic stone wall
+            default: return new Vector2I(2, 0); // Grassland → Ground wall
         }
     }
 

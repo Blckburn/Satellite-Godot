@@ -726,7 +726,8 @@ public partial class LevelGenerator : Node
                 }
                 else
                 {
-                    WallsTileMap.SetCell(wp, WallsSourceID, backgroundTile);
+                    var wallTile = _biome.GetWallTileForBiome(section.BiomeType, wp);
+                    WallsTileMap.SetCell(wp, WallsSourceID, wallTile);
                 }
             }
 
@@ -916,7 +917,8 @@ public partial class LevelGenerator : Node
             }
             else if (WorldBlendBorders)
             {
-                WallsTileMap.SetCell(wp, WallsSourceID, GetBackgroundTileForBiome(biome));
+                var wallTile = _biome.GetWallTileForBiome(biome, wp);
+                WallsTileMap.SetCell(wp, WallsSourceID, wallTile);
             }
         }
 
@@ -2169,8 +2171,9 @@ public partial class LevelGenerator : Node
                         // Рассчитываем мировые координаты тайла
                         Vector2I worldPos = new Vector2I((int)worldOffset.X + x, (int)worldOffset.Y + y);
 
-                        // Размещаем фоновый тайл
-                        WallsTileMap.SetCell(worldPos, WallsSourceID, backgroundTile);
+                        // Размещаем стену
+                        var wallTile = _biome.GetWallTileForBiome(section.BiomeType, worldPos);
+                        WallsTileMap.SetCell(worldPos, WallsSourceID, wallTile);
                         if (section.SectionMask[x, y] == TileType.None)
                         {
                             section.SectionMask[x, y] = TileType.Background;

@@ -1,9 +1,9 @@
- // Перечисление для слоев плитки
- Layers
- 
-     Level0 = 0,
-     Level1 = 1,
-     Level2 = 2,
+  // Перечисление для слоев плитки
+Layers
+
+    Level0 = 0,
+    Level1 = 1,
+    Level2 = 2,
 	 
 // Координаты тайлов в атласе
 
@@ -20,3 +20,12 @@ ForestFloor (2, 1)
 Techno (3, 1);
 Anomal (4, 1);
 Empty (5, 1)
+
+// ОБНОВЛЕННЫЕ КООРДИНАТЫ БИОМОВ:
+// Биом 0 (Grassland): Пол (0,0) - Grass, Стена (2,0) - Ground
+// Биом 1 (Forest): Пол (2,0) - Ground, Стена (0,0) - Forest wall  
+// Биом 2 (Desert): Пол (4,0) - Sand, Стена (1,0) - Desert wall
+// Биом 3 (Ice): Пол (3,0) - Snow, Стена (0,1) - Ice wall
+// Биом 4 (Techno): Пол (4,1) - Anomal, Стена (3,1) - Techno wall
+// Биом 5 (Anomal): Пол (3,1) - Techno, Стена (4,1) - Anomal wall  
+// Биом 6 (Lava Springs): Пол (2,0) - Ground, Стена (1,1) - Lava wall
