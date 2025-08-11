@@ -966,18 +966,9 @@ public partial class LevelGenerator : Node
         
         Logger.Debug($"WorldBiomes generation completed. Spawn position: {_currentSpawnPosition}", true);
         
-        // 🚀 ЭМИТИМ СИГНАЛ О ЗАВЕРШЕНИИ ГЕНЕРАЦИИ С ПРАВИЛЬНОЙ ПОЗИЦИЕЙ СПАВНА!
-        Logger.Debug($"ABOUT TO EMIT LevelGenerated signal with spawn position: {_currentSpawnPosition}", true);
-        
-        // ПРОВЕРЯЕМ что спавн не нулевой!
-        if (_currentSpawnPosition == Vector2.Zero)
-        {
-            Logger.Error("❌ CRITICAL: Spawn position is ZERO! Using emergency fallback to map center!");
-            _currentSpawnPosition = new Vector2(MapWidth * 32, MapHeight * 16); // Центр карты в пикселях
-        }
-        
-        EmitSignal(SignalName.LevelGenerated, _currentSpawnPosition);
-        Logger.Debug($"✅ LevelGenerated signal emitted with spawn position: {_currentSpawnPosition}", true);
+        // 🚫 ОТКЛЮЧАЕМ СИГНАЛ! Теперь создаем игрока напрямую через новую систему!
+        // EmitSignal(SignalName.LevelGenerated, _currentSpawnPosition);
+        Logger.Debug($"🚫 LevelGenerated signal DISABLED - using direct spawn system instead!", true);
         
         // 🚀 СОЗДАЕМ ИГРОКА НАПРЯМУЮ ЧЕРЕЗ SPAWN POINTS В УГЛАХ!
         CreateCornerSpawnPointsAndPlayer(worldMask, worldTilesX, worldTilesY);
@@ -1042,14 +1033,16 @@ public partial class LevelGenerator : Node
         // 🎲 РАНДОМНО выбираем один из ВАЛИДНЫХ углов!
         if (validSpawns.Count > 0)
         {
-            Random random = new Random();
+            // ИСПОЛЬЗУЕМ СИСТЕМНОЕ ВРЕМЯ для истинной рандомизации!
+            Random random = new Random((int)DateTime.Now.Ticks);
             int randomIndex = random.Next(validSpawns.Count);
             var selectedSpawn = validSpawns[randomIndex];
             
             bestSpawn = selectedSpawn.tilePos;
             bestCornerName = selectedSpawn.name;
             
-            Logger.Debug($"🎲 RANDOM CORNER SELECTED: {bestCornerName} from {validSpawns.Count} valid options!", true);
+            Logger.Debug($"🎲 TRULY RANDOM CORNER SELECTED: {bestCornerName} (index {randomIndex}) from {validSpawns.Count} valid options!", true);
+            Logger.Debug($"🎲 Random seed: {(int)DateTime.Now.Ticks}, selected corner: {bestCornerName}", true);
         }
         
         // Создаем физические SpawnPoint узлы в сцене
@@ -1171,6 +1164,14 @@ public partial class LevelGenerator : Node
     // Создает игрока в указанной позиции (ЗАМЕНЯЕТ emergency систему)
     private void CreatePlayerAtPosition(Vector2 position)
     {
+        // 🛡️ ЗАЩИТА ОТ ДУБЛИРОВАНИЯ - проверяем что игрока еще нет!
+        var existingPlayers = GetTree().GetNodesInGroup("Player");
+        if (existingPlayers.Count > 0)
+        {
+            Logger.Debug($"🚫 Player already exists ({existingPlayers.Count} found)! Skipping creation to avoid duplicates.", true);
+            return;
+        }
+        
         if (PlayerScene == null)
         {
             Logger.Error("PlayerScene is null! Cannot create player!");
@@ -1179,7 +1180,7 @@ public partial class LevelGenerator : Node
         
         try
         {
-            Logger.Debug($"🎮 Creating player at position: {position}", true);
+            Logger.Debug($"🎮 Creating SINGLE player at position: {position}", true);
             
             // Создаем игрока
             Node2D player = PlayerScene.Instantiate<Node2D>();
@@ -1196,13 +1197,17 @@ public partial class LevelGenerator : Node
             if (YSortContainer != null)
             {
                 YSortContainer.AddChild(player);
-                Logger.Debug($"✅ Player created in YSortContainer at {position}", true);
+                Logger.Debug($"✅ SINGLE player created in YSortContainer at {position}", true);
             }
             else
             {
                 AddChild(player);
-                Logger.Debug($"✅ Player created in LevelGenerator at {position}", true);
+                Logger.Debug($"✅ SINGLE player created in LevelGenerator at {position}", true);
             }
+            
+            // ФИНАЛЬНАЯ проверка что создался ТОЛЬКО ОДИН игрок
+            var playersAfter = GetTree().GetNodesInGroup("Player");
+            Logger.Debug($"🔍 Players in scene after creation: {playersAfter.Count}", true);
         }
         catch (Exception e)
         {
