@@ -290,22 +290,7 @@ public partial class LevelGenerator : Node
     }
 
     // Добавьте этот метод в класс для поддержки мульти-секций
-    private void AddSectionContainers(MapSection section)
-        {
-            // Собираем позиции всех размещенных ресурсов в секции
-            List<Vector2I> resourcePositions = GetSectionResourcePositions(section);
-
-        int containersPlaced = _entitySpawner.AddContainers(
-            section.Rooms,
-            section.BiomeType,
-            section.SectionMask,
-            section.WorldOffset,
-            YSortContainer,
-            resourcePositions
-            );
-
-            Logger.Debug($"Added {containersPlaced} containers to section ({section.GridX}, {section.GridY}) with biome {GetBiomeName(section.BiomeType)}", false);
-    }
+    // Удалено: AddSectionContainers - заменено на GenerateWorldContainers
 
     // Вспомогательный метод для сбора позиций ресурсов
     private List<Vector2I> GetResourcePositions()
@@ -954,24 +939,9 @@ public partial class LevelGenerator : Node
             }
         }
 
-        // Добавляем генерацию ресурсов и контейнеров для каждой секции
-        foreach (var mapSection in _mapSections)
-        {
-            // Генерируем "комнаты" из проходимых областей для совместимости с системой ресурсов
-            GenerateVirtualRoomsFromWorldMask(mapSection, worldMask, worldTilesX, worldTilesY);
-            
-            // Добавляем ресурсы и контейнеры только если у секции есть комнаты
-            if (mapSection.Rooms.Count > 0)
-            {
-                AddSectionResources(mapSection);
-                AddSectionContainers(mapSection);
-                Logger.Debug($"Added resources to section ({mapSection.GridX}, {mapSection.GridY}) with {mapSection.Rooms.Count} rooms", true);
-            }
-            else
-            {
-                Logger.Debug($"Skipping resource generation for section ({mapSection.GridX}, {mapSection.GridY}) - no rooms found", false);
-            }
-        }
+        // Генерируем ресурсы и контейнеры напрямую по мировой маске (новый подход для WorldBiomes)
+        GenerateWorldResources(worldMask, worldBiome, worldTilesX, worldTilesY);
+        GenerateWorldContainers(worldMask, worldBiome, worldTilesX, worldTilesY);
 
         // Выбираем точку спавна игрока в центральной области мира
         _currentSpawnPosition = FindWorldSpawnPosition(worldMask, worldTilesX, worldTilesY);
@@ -979,65 +949,7 @@ public partial class LevelGenerator : Node
         Logger.Debug($"WorldBiomes generation completed. Spawn position: {_currentSpawnPosition}", true);
     }
 
-    // Генерирует "виртуальные комнаты" из проходимых областей мирового маска для совместимости с системой ресурсов
-    private void GenerateVirtualRoomsFromWorldMask(MapSection section, TileType[,] worldMask, int worldTilesX, int worldTilesY)
-    {
-        section.Rooms.Clear();
-        
-        Logger.Debug($"Generating virtual rooms for section ({section.GridX}, {section.GridY}) at world offset {section.WorldOffset}", false);
-        
-        // Преобразуем мировые координаты в локальные координаты секции
-        int sectionStartX = (int)section.WorldOffset.X;
-        int sectionStartY = (int)section.WorldOffset.Y;
-        int sectionEndX = sectionStartX + MapWidth;
-        int sectionEndY = sectionStartY + MapHeight;
-        
-        // Ограничиваем координаты границами мирового маска
-        sectionStartX = Math.Max(0, sectionStartX);
-        sectionStartY = Math.Max(0, sectionStartY);
-        sectionEndX = Math.Min(worldTilesX, sectionEndX);
-        sectionEndY = Math.Min(worldTilesY, sectionEndY);
-        
-        // Создаем большие "комнаты" из проходимых областей для размещения ресурсов
-        int roomSize = Math.Max(8, Math.Min(MapWidth / 4, MapHeight / 4));
-        
-        for (int x = sectionStartX; x < sectionEndX; x += roomSize)
-        {
-            for (int y = sectionStartY; y < sectionEndY; y += roomSize)
-            {
-                int roomWidth = Math.Min(roomSize, sectionEndX - x);
-                int roomHeight = Math.Min(roomSize, sectionEndY - y);
-                
-                // Проверяем, есть ли достаточно проходимых клеток в этой области
-                int walkableTiles = 0;
-                for (int rx = x; rx < x + roomWidth; rx++)
-                {
-                    for (int ry = y; ry < y + roomHeight; ry++)
-                    {
-                        if (rx < worldTilesX && ry < worldTilesY && worldMask[rx, ry] == TileType.Room)
-                            walkableTiles++;
-                    }
-                }
-                
-                // Если достаточно проходимых клеток, создаем виртуальную комнату
-                if (walkableTiles >= (roomWidth * roomHeight) / 3) // минимум треть клеток должна быть проходима
-                {
-                    // Преобразуем мировые координаты в локальные координаты секции
-                    int localX = x - (int)section.WorldOffset.X;
-                    int localY = y - (int)section.WorldOffset.Y;
-                    
-                    // Убеждаемся, что комната находится в пределах секции
-                    if (localX >= 0 && localY >= 0 && localX < MapWidth && localY < MapHeight)
-                    {
-                        var room = new Rect2I(localX, localY, roomWidth, roomHeight);
-                        section.Rooms.Add(room);
-                    }
-                }
-            }
-        }
-        
-        Logger.Debug($"Generated {section.Rooms.Count} virtual rooms for section ({section.GridX}, {section.GridY})", false);
-    }
+    // Удалено: GenerateVirtualRoomsFromWorldMask - заменено на прямую генерацию по мировой маске
 
     // Находит подходящую точку спавна игрока в сгенерированном мире
     private Vector2 FindWorldSpawnPosition(TileType[,] worldMask, int worldTilesX, int worldTilesY)
@@ -1102,7 +1014,296 @@ public partial class LevelGenerator : Node
         return fallbackPosition;
     }
 
+    // Новый метод генерации ресурсов для WorldBiomes - работает напрямую с мировой маской
+    private void GenerateWorldResources(TileType[,] worldMask, int[,] worldBiome, int worldTilesX, int worldTilesY)
+    {
+        if (_resourceGenerator == null)
+        {
+            Logger.Error("ResourceGenerator is not initialized!");
+            return;
+        }
 
+        int resourcesPlaced = 0;
+        int resourceAttempts = 0;
+        int maxResources = (worldTilesX * worldTilesY) / 100; // Примерно 1% тайлов могут содержать ресурсы
+        
+        Logger.Debug($"Starting world resource generation. World size: {worldTilesX}x{worldTilesY}, target resources: {maxResources}", true);
+
+        // Проходим по всему миру и размещаем ресурсы
+        for (int x = 0; x < worldTilesX && resourcesPlaced < maxResources; x += 4) // Шаг 4 для разреженности
+        {
+            for (int y = 0; y < worldTilesY && resourcesPlaced < maxResources; y += 4)
+            {
+                resourceAttempts++;
+                
+                // Проверяем, что это проходимая область
+                if (worldMask[x, y] != TileType.Room)
+                    continue;
+                
+                // Проверяем, что вокруг тоже есть место (3x3 область)
+                if (!IsAreaWalkable(worldMask, x, y, worldTilesX, worldTilesY, 1))
+                    continue;
+                
+                // Получаем биом в этой точке
+                int biome = worldBiome[x, y];
+                
+                // Вероятность размещения ресурса зависит от биома
+                float spawnChance = GetResourceSpawnChance(biome);
+                if (_random.NextDouble() > spawnChance)
+                    continue;
+                
+                // Размещаем ресурс
+                if (PlaceWorldResource(x, y, biome))
+                {
+                    resourcesPlaced++;
+                    Logger.Debug($"Placed resource {resourcesPlaced} at ({x}, {y}) in biome {GetBiomeName(biome)}", false);
+                }
+            }
+        }
+        
+        Logger.Debug($"World resource generation completed. Placed {resourcesPlaced} resources from {resourceAttempts} attempts", true);
+    }
+
+    // Новый метод генерации контейнеров для WorldBiomes
+    private void GenerateWorldContainers(TileType[,] worldMask, int[,] worldBiome, int worldTilesX, int worldTilesY)
+    {
+        if (_containerGenerator == null)
+        {
+            Logger.Error("ContainerGenerator is not initialized!");
+            return;
+        }
+
+        int containersPlaced = 0;
+        int maxContainers = (worldTilesX * worldTilesY) / 200; // Примерно 0.5% тайлов могут содержать контейнеры
+        
+        Logger.Debug($"Starting world container generation. Target containers: {maxContainers}", true);
+
+        // Размещаем контейнеры реже чем ресурсы
+        for (int x = 0; x < worldTilesX && containersPlaced < maxContainers; x += 6) // Шаг 6 для большей разреженности
+        {
+            for (int y = 0; y < worldTilesY && containersPlaced < maxContainers; y += 6)
+            {
+                // Проверяем, что это проходимая область
+                if (worldMask[x, y] != TileType.Room)
+                    continue;
+                
+                // Проверяем, что вокруг есть достаточно места (5x5 область для контейнеров)
+                if (!IsAreaWalkable(worldMask, x, y, worldTilesX, worldTilesY, 2))
+                    continue;
+                
+                // Получаем биом в этой точке
+                int biome = worldBiome[x, y];
+                
+                // Вероятность размещения контейнера
+                if (_random.NextDouble() > 0.3) // 30% шанс
+                    continue;
+                
+                // Размещаем контейнер
+                if (PlaceWorldContainer(x, y, biome))
+                {
+                    containersPlaced++;
+                    Logger.Debug($"Placed container {containersPlaced} at ({x}, {y}) in biome {GetBiomeName(biome)}", false);
+                }
+            }
+        }
+        
+        Logger.Debug($"World container generation completed. Placed {containersPlaced} containers", true);
+    }
+
+    // Проверяет, что область вокруг точки проходима
+    private bool IsAreaWalkable(TileType[,] worldMask, int centerX, int centerY, int worldTilesX, int worldTilesY, int radius)
+    {
+        for (int dx = -radius; dx <= radius; dx++)
+        {
+            for (int dy = -radius; dy <= radius; dy++)
+            {
+                int x = centerX + dx;
+                int y = centerY + dy;
+                
+                if (x < 0 || x >= worldTilesX || y < 0 || y >= worldTilesY)
+                    return false;
+                
+                if (worldMask[x, y] != TileType.Room)
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    // Получает вероятность появления ресурса для биома
+    private float GetResourceSpawnChance(int biome)
+    {
+        switch (biome)
+        {
+            case 0: return 0.15f; // Grassland - умеренно
+            case 1: return 0.20f; // Forest - больше органических ресурсов
+            case 2: return 0.18f; // Desert - металлы и кристаллы
+            case 3: return 0.12f; // Ice - редкие ресурсы
+            case 4: return 0.25f; // Techno - много ресурсов
+            case 5: return 0.22f; // Anomal - необычные ресурсы
+            case 6: return 0.16f; // Lava Springs - специальные ресурсы
+            default: return 0.10f;
+        }
+    }
+
+    // Размещает ресурс в мировых координатах
+    private bool PlaceWorldResource(int worldX, int worldY, int biome)
+    {
+        try
+        {
+            if (ResourceNodeScene == null)
+            {
+                Logger.Error("ResourceNodeScene is not set!");
+                return false;
+            }
+            
+            // Создаем экземпляр ресурса напрямую из сцены
+            ResourceNode resourceNode = ResourceNodeScene.Instantiate<ResourceNode>();
+            
+            if (resourceNode != null)
+            {
+                // Определяем тип ресурса на основе биома
+                ResourceType resourceType = SelectResourceTypeForBiome(biome);
+                
+                // Настраиваем ресурс
+                resourceNode.Type = resourceType;
+                resourceNode.ResourceAmount = _random.Next(1, 4); // Случайное количество от 1 до 3
+                
+                // Преобразуем мировые тайловые координаты в изометрические пиксельные
+                Vector2 worldPosition = MapTileToIsometricWorld(new Vector2I(worldX, worldY));
+                worldPosition.Y += 16; // Смещение для правильного отображения
+                
+                resourceNode.Position = worldPosition;
+                
+                // Добавляем в YSortContainer
+                if (YSortContainer != null)
+                {
+                    YSortContainer.AddChild(resourceNode);
+                    Logger.Debug($"Successfully placed {resourceType} resource at world ({worldX}, {worldY})", false);
+                    return true;
+                }
+                else
+                {
+                    Logger.Error("YSortContainer not found for resource placement");
+                    resourceNode.QueueFree();
+                    return false;
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error placing world resource at ({worldX}, {worldY}): {e.Message}");
+        }
+        
+        return false;
+    }
+
+    // Размещает контейнер в мировых координатах
+    private bool PlaceWorldContainer(int worldX, int worldY, int biome)
+    {
+        try
+        {
+            if (ContainerScene == null)
+            {
+                Logger.Error("ContainerScene is not set!");
+                return false;
+            }
+            
+            // Создаем экземпляр контейнера напрямую из сцены
+            Container containerNode = ContainerScene.Instantiate<Container>();
+            
+            if (containerNode != null)
+            {
+                // Преобразуем мировые тайловые координаты в изометрические пиксельные
+                Vector2 worldPosition = MapTileToIsometricWorld(new Vector2I(worldX, worldY));
+                worldPosition.Y += 16; // Смещение для правильного отображения
+                
+                containerNode.Position = worldPosition;
+                
+                // Добавляем в YSortContainer
+                if (YSortContainer != null)
+                {
+                    YSortContainer.AddChild(containerNode);
+                    Logger.Debug($"Successfully placed container at world ({worldX}, {worldY}) in biome {GetBiomeName(biome)}", false);
+                    return true;
+                }
+                else
+                {
+                    Logger.Error("YSortContainer not found for container placement");
+                    containerNode.QueueFree();
+                    return false;
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error placing world container at ({worldX}, {worldY}): {e.Message}");
+        }
+        
+        return false;
+    }
+
+    // Выбирает тип ресурса на основе биома
+    private ResourceType SelectResourceTypeForBiome(int biome)
+    {
+        // Используем биом-специфичные вероятности
+        switch (biome)
+        {
+            case 0: // Grassland - сбалансированно
+                {
+                    float rand = (float)_random.NextDouble();
+                    if (rand < 0.4f) return ResourceType.Metal;
+                    if (rand < 0.6f) return ResourceType.Crystal;
+                    return ResourceType.Organic;
+                }
+            case 1: // Forest - больше органики
+                {
+                    float rand = (float)_random.NextDouble();
+                    if (rand < 0.6f) return ResourceType.Organic;
+                    if (rand < 0.8f) return ResourceType.Metal;
+                    return ResourceType.Crystal;
+                }
+            case 2: // Desert - металлы и кристаллы
+                {
+                    float rand = (float)_random.NextDouble();
+                    if (rand < 0.5f) return ResourceType.Metal;
+                    if (rand < 0.8f) return ResourceType.Crystal;
+                    return ResourceType.Energy;
+                }
+            case 3: // Ice - кристаллы
+                {
+                    float rand = (float)_random.NextDouble();
+                    if (rand < 0.5f) return ResourceType.Crystal;
+                    if (rand < 0.8f) return ResourceType.Metal;
+                    return ResourceType.Energy;
+                }
+            case 4: // Techno - энергия и композиты
+                {
+                    float rand = (float)_random.NextDouble();
+                    if (rand < 0.4f) return ResourceType.Energy;
+                    if (rand < 0.6f) return ResourceType.Metal;
+                    if (rand < 0.8f) return ResourceType.Composite;
+                    return ResourceType.Crystal;
+                }
+            case 5: // Anomal - все редкие
+                {
+                    float rand = (float)_random.NextDouble();
+                    if (rand < 0.4f) return ResourceType.Crystal;
+                    if (rand < 0.6f) return ResourceType.Energy;
+                    if (rand < 0.8f) return ResourceType.Composite;
+                    return ResourceType.Metal;
+                }
+            case 6: // Lava Springs - металлы и энергия
+                {
+                    float rand = (float)_random.NextDouble();
+                    if (rand < 0.5f) return ResourceType.Metal;
+                    if (rand < 0.8f) return ResourceType.Energy;
+                    return ResourceType.Crystal;
+                }
+            default:
+                return ResourceType.Metal;
+        }
+    }
 
     private void PreserveLargestWalkableComponent(MapSection section)
     {
@@ -1334,26 +1535,7 @@ public partial class LevelGenerator : Node
         return null;
     }
 
-    private void AddSectionResources(MapSection section)
-    {
-        if (_entitySpawner == null)
-        {
-            Logger.Error("EntitySpawner is not initialized!");
-            return;
-        }
-        
-        Logger.Debug($"Attempting to add resources to section ({section.GridX}, {section.GridY}) with {section.Rooms.Count} rooms, biome {GetBiomeName(section.BiomeType)}", false);
-        
-        int resourcesPlaced = _entitySpawner.AddResources(
-            section.Rooms,
-            section.BiomeType,
-            section.SectionMask,
-            section.WorldOffset,
-            YSortContainer
-            );
-
-        Logger.Debug($"Added {resourcesPlaced} resources to section ({section.GridX}, {section.GridY}) with biome {GetBiomeName(section.BiomeType)}", false);
-    }
+    // Удалено: AddSectionResources - заменено на GenerateWorldResources
 
     // Односекционный режим удалён
 
