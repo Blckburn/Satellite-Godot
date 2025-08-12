@@ -1186,7 +1186,11 @@ public partial class LevelGenerator : Node
         
         try
         {
-            Logger.Debug($"🎮 Creating SINGLE player at position: {position}", true);
+            Logger.Info($"🎮 СОЗДАНИЕ ИГРОКА: World Position: {position}");
+            
+            // Попробуем понять из какого tile это получилось (обратное преобразование)
+            Vector2I approximateTile = new Vector2I((int)(position.X / 64), (int)(position.Y / 32));
+            Logger.Info($"🗺️ ИГРОК: Приблизительные Tile координаты: {approximateTile}");
             
             // Создаем игрока
             Node2D player = PlayerScene.Instantiate<Node2D>();
@@ -1277,6 +1281,26 @@ public partial class LevelGenerator : Node
     {
         const int WALL_THICKNESS = 15; // ТОЛСТЫЕ стены НАРУЖУ!
         Logger.Debug($"Adding EPIC biome-based border walls AROUND map {worldTilesX}x{worldTilesY}, thickness: {WALL_THICKNESS}", true);
+        
+        // ===== 🎯 DEBUG: НАЙДЕМ КООРДИНАТЫ УГЛОВ ИГРОВОГО ПОЛЯ! =====
+        Vector2I topLeft = new Vector2I(0, 0);
+        Vector2I topRight = new Vector2I(worldTilesX - 1, 0);
+        Vector2I bottomLeft = new Vector2I(0, worldTilesY - 1);
+        Vector2I bottomRight = new Vector2I(worldTilesX - 1, worldTilesY - 1);
+        
+        // Переводим tile координаты в world координаты
+        Vector2 topLeftWorld = MapTileToIsometricWorld(topLeft);
+        Vector2 topRightWorld = MapTileToIsometricWorld(topRight);
+        Vector2 bottomLeftWorld = MapTileToIsometricWorld(bottomLeft);
+        Vector2 bottomRightWorld = MapTileToIsometricWorld(bottomRight);
+        
+        Logger.Info($"🎯 ИГРОВОЕ ПОЛЕ - УГЛЫ В TILE КООРДИНАТАХ:");
+        Logger.Info($"  TopLeft: {topLeft} -> World: {topLeftWorld}");
+        Logger.Info($"  TopRight: {topRight} -> World: {topRightWorld}");
+        Logger.Info($"  BottomLeft: {bottomLeft} -> World: {bottomLeftWorld}");
+        Logger.Info($"  BottomRight: {bottomRight} -> World: {bottomRightWorld}");
+        Logger.Info($"🗺️ ИГРОВОЕ ПОЛЕ РАЗМЕРЫ: {worldTilesX}x{worldTilesY} tiles");
+        Logger.Info($"🧱 СТЕНЫ: от ({-WALL_THICKNESS}, {-WALL_THICKNESS}) до ({worldTilesX + WALL_THICKNESS}, {worldTilesY + WALL_THICKNESS})");
         
         // Создаем стены ВОКРУГ карты, расширяя TileMap область
         // Стены будут от (-WALL_THICKNESS, -WALL_THICKNESS) до (worldTilesX + WALL_THICKNESS, worldTilesY + WALL_THICKNESS)
@@ -1618,7 +1642,8 @@ public partial class LevelGenerator : Node
         int resourceAttempts = 0;
         int maxResources = (worldTilesX * worldTilesY) / 50; // Примерно 2% тайлов могут содержать ресурсы (больше плотность)
         
-        Logger.Debug($"Starting world resource generation. World size: {worldTilesX}x{worldTilesY}, target resources: {maxResources}", true);
+        Logger.Info($"🎯 ГЕНЕРАЦИЯ РЕСУРСОВ: World size: {worldTilesX}x{worldTilesY}, target resources: {maxResources}");
+        Logger.Info($"🗺️ ИГРОВОЕ ПОЛЕ: от (0,0) до ({worldTilesX-1},{worldTilesY-1}) в tile координатах");
 
         // Проходим по всему миру и размещаем ресурсы
         for (int x = 0; x < worldTilesX && resourcesPlaced < maxResources; x += 2) // Шаг 2 для большей плотности
@@ -1647,7 +1672,8 @@ public partial class LevelGenerator : Node
                 if (PlaceWorldResource(x, y, biome))
                 {
                     resourcesPlaced++;
-                    Logger.Debug($"Placed resource {resourcesPlaced} at ({x}, {y}) in biome {GetBiomeName(biome)}", false);
+                    Vector2 worldPos = MapTileToIsometricWorld(new Vector2I(x, y));
+                    Logger.Info($"💎 Ресурс #{resourcesPlaced} размещен: Tile({x}, {y}) -> World({worldPos.X:F1}, {worldPos.Y:F1}) в биоме {GetBiomeName(biome)}");
                 }
             }
         }
