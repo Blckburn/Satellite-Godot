@@ -1302,6 +1302,10 @@ public partial class LevelGenerator : Node
         Logger.Info($"🗺️ ИГРОВОЕ ПОЛЕ РАЗМЕРЫ: {worldTilesX}x{worldTilesY} tiles");
         Logger.Info($"🧱 СТЕНЫ: от ({-WALL_THICKNESS}, {-WALL_THICKNESS}) до ({worldTilesX + WALL_THICKNESS}, {worldTilesY + WALL_THICKNESS})");
         
+        // 🎯 ОБНОВЛЯЕМ HUD с координатами углов карты
+        UIManager.SetMapCorners(topLeft, topRight, bottomLeft, bottomRight, 
+                               topLeftWorld, topRightWorld, bottomLeftWorld, bottomRightWorld);
+        
         // Создаем стены ВОКРУГ карты, расширяя TileMap область
         // Стены будут от (-WALL_THICKNESS, -WALL_THICKNESS) до (worldTilesX + WALL_THICKNESS, worldTilesY + WALL_THICKNESS)
         
