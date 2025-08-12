@@ -195,8 +195,8 @@ public partial class UIManager : CanvasLayer
         _debugCornersLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         _debugCornersLabel.VerticalAlignment = VerticalAlignment.Top;
         
-        // Изначально показываем только при ShowDebugInfo=true
-        _debugCornersLabel.Visible = true; // Пока всегда показываем для отладки
+        // Изначально скрыто - мешает анализу
+        _debugCornersLabel.Visible = false;
         
         // Добавляем к UI
         AddChild(_debugCornersLabel);

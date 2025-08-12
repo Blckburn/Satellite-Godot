@@ -1279,7 +1279,7 @@ public partial class LevelGenerator : Node
     // EPIC система толстых стен НАРУЖУ от карты! 💪
     private void AddBiomeBasedBorderWalls(TileType[,] worldMask, int[,] worldBiome, int worldTilesX, int worldTilesY)
     {
-        const int WALL_THICKNESS = 15; // ТОЛСТЫЕ стены НАРУЖУ!
+        const int WALL_THICKNESS = 1; // ТОНКИЕ стены для анализа координат!
         Logger.Debug($"Adding EPIC biome-based border walls AROUND map {worldTilesX}x{worldTilesY}, thickness: {WALL_THICKNESS}", true);
         
         // ===== 🎯 DEBUG: НАЙДЕМ КООРДИНАТЫ УГЛОВ ИГРОВОГО ПОЛЯ! =====
@@ -1328,13 +1328,40 @@ public partial class LevelGenerator : Node
                         Vector2I wallTile = _biome.GetWallTileForBiome(biomeForWall, tilePos);
                         WallsTileMap.SetCell(tilePos, WallsSourceID, wallTile);
                         
-                                                   // Logger.Debug($"Outer wall at ({x}, {y}) uses biome {biomeForWall} -> tile {wallTile}", false); // СПАМ!
+                        // 🎯 ДОБАВЛЯЕМ КООРДИНАТЫ НАД ТАЙЛОМ СТЕНЫ
+                        CreateCoordinateLabel(tilePos, $"W({x},{y})");
+                        
+                        // Logger.Debug($"Outer wall at ({x}, {y}) uses biome {biomeForWall} -> tile {wallTile}", false); // СПАМ!
                     }
                 }
             }
         }
         
         Logger.Debug($"EPIC biome-based outer walls added successfully! Wall thickness: {WALL_THICKNESS}", true);
+    }
+    
+    // ===== 🎯 МЕТОД ДЛЯ СОЗДАНИЯ КООРДИНАТНЫХ МЕТОК =====
+    private void CreateCoordinateLabel(Vector2I tilePos, string text)
+    {
+        // Создаем Label для отображения координат
+        var label = new Label();
+        label.Text = text;
+        label.Name = $"CoordLabel_{tilePos.X}_{tilePos.Y}";
+        
+        // Переводим tile позицию в world позицию
+        Vector2 worldPos = MapTileToIsometricWorld(tilePos);
+        
+        // Размещаем label чуть выше тайла
+        label.Position = new Vector2(worldPos.X, worldPos.Y - 30);
+        
+        // Стилизация для видимости
+        label.Modulate = Colors.Yellow;
+        label.AddThemeStyleboxOverride("normal", new StyleBoxFlat());
+        
+        // Добавляем в сцену
+        GetTree().CurrentScene.AddChild(label);
+        
+        Logger.Debug($"Created coordinate label '{text}' at tile {tilePos} -> world {worldPos}", false);
     }
     
     // Находит ближайший биом для НАРУЖНОЙ стены (проецируется к краю игровой области)
@@ -1678,6 +1705,9 @@ public partial class LevelGenerator : Node
                     resourcesPlaced++;
                     Vector2 worldPos = MapTileToIsometricWorld(new Vector2I(x, y));
                     Logger.Info($"💎 Ресурс #{resourcesPlaced} размещен: Tile({x}, {y}) -> World({worldPos.X:F1}, {worldPos.Y:F1}) в биоме {GetBiomeName(biome)}");
+                    
+                    // 🎯 ДОБАВЛЯЕМ КООРДИНАТЫ НАД РЕСУРСОМ 
+                    CreateCoordinateLabel(new Vector2I(x, y), $"R({x},{y})");
                 }
             }
         }
