@@ -35,3 +35,6 @@ mono_crash.*.json
 
 # Local dev journal
 /dev_journal/
+
+# Logs
+/logs/
