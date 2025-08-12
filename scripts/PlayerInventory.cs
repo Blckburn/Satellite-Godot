@@ -33,7 +33,7 @@ public partial class Player
                 Logger.Debug($"Player inventory changed. Items: {PlayerInventory.Items.Count}", true);
             }));
 
-            Logger.Debug($"Player inventory initialized with {inventorySize} slots", true);
+            // Logger.Debug($"Player inventory initialized with {inventorySize} slots", true); // СПАМ ОТКЛЮЧЕН
         }
     }
 

@@ -1,0 +1,108 @@
+[13:05:47.422] 🚀 ========== SATELLITE GAME LOG SESSION STARTED ==========
+[13:05:47.427] 📅 Date: 2025-08-12 13:05:47
+[13:05:47.428] 🎮 Godot Version: { "major": 4, "minor": 4, "patch": 0, "hex": 263168, "status": "stable", "build": "official", "hash": "4c311cbee68c0b66ff8ebb8b0defdd9979dd2a41", "timestamp": 0, "string": "4.4-stable (official)" }
+[13:05:47.428] 💻 Platform: Windows
+[13:05:47.428] 🚀 =========================================================
+[13:05:47.428] 
+[13:05:47.428] DEBUG: SaveManager initialized, save path: C:/Users/koval/AppData/Roaming/Godot/app_userdata/Satellite\saves\game_save.json
+[13:05:47.431] DEBUG: GameTimer initialized. Total play time: 00:00:00
+[13:05:47.435] DEBUG: Continue button state updated: enabled
+[13:05:47.435] DEBUG: Main menu initialized
+[13:05:47.853] DEBUG: Continue button pressed
+[13:05:47.871] DEBUG: Direct load completed successfully
+[13:05:47.875] DEBUG: Game loaded successfully
+[13:05:47.991] DEBUG: Module StartingModule initialized
+[13:05:47.992] DEBUG: Found RespawnCapsule at path: RespawnCapsule
+[13:05:47.992] DEBUG: Starting module initialized
+[13:05:47.994] DEBUG: Created interaction area for module TeleportationModule with radius 150
+[13:05:48.001] DEBUG: Teleport UI created
+[13:05:48.001] DEBUG: Module TeleportationModule initialized
+[13:05:48.002] DEBUG: Teleportation module initialized
+[13:05:48.003] DEBUG: Station teleporter initialized
+[13:05:48.004] DEBUG: Module StorageModule initialized
+[13:05:48.012] DEBUG: Container 'StorageContainer' inventory changed
+[13:05:48.013] DEBUG: Container 'StorageContainer' inventory changed
+[13:05:48.014] DEBUG: Container 'StorageContainer' force-updated UI
+[13:05:48.015] DEBUG: Module StorageModule2 initialized
+[13:05:48.015] DEBUG: Container 'StorageContainer' inventory changed
+[13:05:48.020] DEBUG: Container 'StorageContainer' inventory changed
+[13:05:48.020] DEBUG: Container 'StorageContainer' force-updated UI
+[13:05:48.026] ERROR: InventoryUI: Player not found
+[13:05:48.033] DEBUG: ItemTooltip initialized
+[13:05:48.038] DEBUG: InventoryContextMenu initialized
+[13:05:48.039] DEBUG: Signal handlers are connected to context menu
+[13:05:48.039] DEBUG: InventoryContextMenu created successfully
+[13:05:48.041] DEBUG: DEBUG HUD for corner coordinates created
+[13:05:48.042] ERROR: UIManager: InteractionSystem not found!
+[13:05:48.042] DEBUG: UIManager initialized
+[13:05:48.044] DEBUG: ItemTooltip created successfully for ContainerUI
+[13:05:48.045] DEBUG: InventoryContextMenu created successfully for ContainerUI
+[13:05:48.050] DEBUG: AutoSave initialized with interval: 300s, active monitoring: True
+[13:05:48.053] DEBUG: ForceSaveSystem initialized
+[13:05:48.057] DEBUG: Found TeleporterSpawnPoint at path: TeleporterSpawnPoint
+[13:05:48.093] DEBUG: Camera following player at (565, 217)
+[13:05:48.095] DEBUG: LoadInventory: Last inventory save time: 12/08/2025 13:05:47
+[13:05:48.095] DEBUG: LoadInventory: Found saved inventory data, loading...
+[13:05:48.095] DEBUG: LoadInventory: Found 15 items in saved inventory
+[13:05:48.095] DEBUG: LoadInventory: Item: Organic Matter x30 (ID: resource_organic_matter)
+[13:05:48.096] DEBUG: LoadInventory: Item: Metal Ore x20 (ID: resource_metal_ore)
+[13:05:48.096] DEBUG: LoadInventory: Item: Crystal x15 (ID: resource_crystal)
+[13:05:48.096] DEBUG: LoadInventory: Item: AntiMetal Ore x20 (ID: resource_antimetal_ore)
+[13:05:48.096] DEBUG: LoadInventory: Item: Metal Ore x11 (ID: resource_metal_ore)
+[13:05:48.097] DEBUG: LoadInventory: Item: AntiMetal Ore x1 (ID: resource_antimetal_ore)
+[13:05:48.097] DEBUG: LoadInventory: Item: Organic Matter x5 (ID: resource_organic_matter)
+[13:05:48.097] DEBUG: Player inventory changed. Items: 0
+[13:05:48.098] DEBUG: Player inventory changed. Items: 15
+[13:05:48.098] DEBUG: LoadInventory: Successfully deserialized inventory with 15 items
+[13:05:48.098] DEBUG: LoadInventory: After loading: Organic Matter x30 (ID: resource_organic_matter)
+[13:05:48.098] DEBUG: LoadInventory: After loading: Metal Ore x20 (ID: resource_metal_ore)
+[13:05:48.099] DEBUG: LoadInventory: After loading: Crystal x15 (ID: resource_crystal)
+[13:05:48.099] DEBUG: LoadInventory: After loading: AntiMetal Ore x20 (ID: resource_antimetal_ore)
+[13:05:48.099] DEBUG: LoadInventory: After loading: Metal Ore x11 (ID: resource_metal_ore)
+[13:05:48.099] DEBUG: LoadInventory: After loading: AntiMetal Ore x1 (ID: resource_antimetal_ore)
+[13:05:48.100] DEBUG: LoadInventory: After loading: Organic Matter x5 (ID: resource_organic_matter)
+[13:05:48.103] DEBUG: Player respawned at starting module
+[13:05:48.503] DEBUG: Container 'StorageContainer' inventory changed
+[13:05:48.504] DEBUG: Container 'StorageContainer' inventory changed
+[13:05:48.504] DEBUG: Container 'StorageContainer' force-updated UI
+[13:05:48.505] DEBUG: All icon sizes updated in container UI
+[13:05:48.505] DEBUG: Container 'StorageContainer' deferred UI update completed
+[13:05:50.607] DEBUG: Starting teleportation to world
+[13:05:50.608] DEBUG: Player inventory saved. Items count: 15
+[13:05:50.608] DEBUG: Player inventory saved before teleportation to world
+[13:05:51.605] DEBUG: Completing teleportation to world
+[13:05:51.606] DEBUG: Player position loaded: (598.09607, 766.2813)
+[13:05:51.607] DEBUG: Teleport destination saved: (598.09607, 766.2813)
+[13:05:51.607] DEBUG: Player position loaded: (598.09607, 766.2813)
+[13:05:51.663] ERROR: InventoryUI: Player not found
+[13:05:51.667] DEBUG: InteractionSystem found via exported path
+[13:05:51.668] ERROR: InteractionSystem: Player not found
+[13:05:51.669] INFO: 📁 File logging system initialized!
+[13:05:51.669] INFO: 🚀 LevelGenerator starting up...
+[13:05:51.683] DEBUG: AutoSave initialized with interval: 300s, active monitoring: True
+[13:05:52.106] DEBUG: Created section at grid (0,0) with biome Forest
+[13:05:52.106] DEBUG: Created section at grid (1,0) with biome Techno
+[13:05:52.107] DEBUG: Created section at grid (2,0) with biome Forest
+[13:05:52.107] DEBUG: Created section at grid (0,1) with biome Anomal
+[13:05:52.107] DEBUG: Created section at grid (1,1) with biome Techno
+[13:05:52.108] DEBUG: Created section at grid (2,1) with biome Desert
+[13:05:52.108] DEBUG: Created section at grid (0,2) with biome Desert
+[13:05:52.108] DEBUG: Created section at grid (1,2) with biome Techno
+[13:05:52.109] DEBUG: Created section at grid (2,2) with biome Lava Springs
+[13:05:52.349] INFO: 🗺️ КАРТА: 150x150
+[13:05:52.350] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[13:05:52.689] INFO: 🎯 РЕСУРСЫ: 450 размещено
+[13:05:52.699] INFO: 📦 КОНТЕЙНЕРЫ: 59 размещено
+[13:05:52.706] ERROR: 🚨 NO VALID SPAWN CORNERS FOUND! This should not happen!
+[13:05:52.707] ERROR: 🚨 No valid corner spawns found! Activating EMERGENCY spawn system!
+[13:05:52.709] INFO: 🆘 EMERGENCY spawn found at tile (74, 71) -> world (48, 1160)
+[13:05:52.709] INFO: 🎮 СОЗДАНИЕ ИГРОКА: World Position: (48, 1160)
+[13:05:52.709] INFO: 🗺️ ИГРОК: Приблизительные Tile координаты: (3, 145)
+[13:05:52.710] DEBUG: Camera following player at (48, 1160)
+[13:05:52.712] ERROR: Selected section at (0, 0) has no spawn position!
+[13:05:52.713] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[13:06:02.169] DEBUG: Saved play time: 00:00:14

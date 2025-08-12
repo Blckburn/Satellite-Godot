@@ -76,7 +76,7 @@ public partial class ContainerUI : Control
         // Добавляем в группу
         AddToGroup("ContainerUI");
 
-        Logger.Debug("ContainerUI initialized", true);
+        // Logger.Debug("ContainerUI initialized", true); // СПАМ ОТКЛЮЧЕН
     }
 
     public override void _Input(InputEvent @event)

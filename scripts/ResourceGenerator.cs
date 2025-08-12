@@ -151,7 +151,7 @@ public class ResourceGenerator
         {
             // Папка, содержащая ресурсы
             string resourcesDirectory = "res://scenes/resources/items/";
-            Logger.Debug($"Scanning for resource files in: {resourcesDirectory}", true);
+            // Logger.Debug($"Scanning for resource files in: {resourcesDirectory}", true);
 
             // Получаем список файлов .tres
             var dir = DirAccess.Open(resourcesDirectory);
@@ -170,18 +170,18 @@ public class ResourceGenerator
                 if (!dir.CurrentIsDir() && fileName.EndsWith(".tres"))
                 {
                     resourceFiles.Add(resourcesDirectory + fileName);
-                    Logger.Debug($"Found resource file: {fileName}", true);
+                    // Logger.Debug($"Found resource file: {fileName}", true);
                 }
                 fileName = dir.GetNext();
             }
             dir.ListDirEnd();
 
-            Logger.Debug($"Found {resourceFiles.Count} resource files", true);
+            // Logger.Debug($"Found {resourceFiles.Count} resource files", true);
 
             // Загружаем каждый найденный ресурс
             foreach (string filePath in resourceFiles)
             {
-                Logger.Debug($"Attempting to load resource from: {filePath}", false);
+                // Logger.Debug($"Attempting to load resource from: {filePath}", false);
 
                 try
                 {
@@ -193,7 +193,7 @@ public class ResourceGenerator
 
                         // Добавляем в список соответствующего типа
                         _resourceItems[resourceType].Add(item);
-                        Logger.Debug($"Loaded resource from {filePath}: {item.DisplayName} as {resourceType} (from {item.ResourceTypeEnum})", true);
+                        // Logger.Debug($"Loaded resource from {filePath}: {item.DisplayName} as {resourceType} (from {item.ResourceTypeEnum})", true);
                     }
                     else
                     {
@@ -209,14 +209,14 @@ public class ResourceGenerator
             // Выводим информацию о загруженных ресурсах по типам
             foreach (var kvp in _resourceItems)
             {
-                Logger.Debug($"ResourceType {kvp.Key}: loaded {kvp.Value.Count} resource variants", true);
+                // Logger.Debug($"ResourceType {kvp.Key}: loaded {kvp.Value.Count} resource variants", true);
                 foreach (var item in kvp.Value)
                 {
-                    Logger.Debug($"  - {item.DisplayName} (ID: {item.ID})", false);
+                    // Logger.Debug($"  - {item.DisplayName} (ID: {item.ID})", false);
                 }
             }
 
-            Logger.Debug($"Successfully loaded resources. Types with resources: {_resourceItems.Count(kvp => kvp.Value.Count > 0)}", true);
+            // Logger.Debug($"Successfully loaded resources. Types with resources: {_resourceItems.Count(kvp => kvp.Value.Count > 0)}", true);
         }
         catch (Exception e)
         {
@@ -264,7 +264,7 @@ public class ResourceGenerator
         // Проверяем, есть ли комнаты для размещения ресурсов
         if (rooms == null || rooms.Count == 0)
         {
-            Logger.Debug("No rooms available for resource placement", false);
+            // Logger.Debug("No rooms available for resource placement", false);
             return 0;
         }
 
@@ -315,7 +315,7 @@ public class ResourceGenerator
             }
         }
 
-        Logger.Debug($"Placed {resourcesPlaced} resources for biome {biomeType}", true);
+        // Logger.Debug($"Placed {resourcesPlaced} resources for biome {biomeType}", true);
         return resourcesPlaced;
     }
 
@@ -334,13 +334,13 @@ public class ResourceGenerator
             {
                 if (_resourceItems[type].Count > 0)
                 {
-                    Logger.Debug($"No valid probabilities, defaulting to first available resource: {type}", false);
+                    // Logger.Debug($"No valid probabilities, defaulting to first available resource: {type}", false);
                     return type;
                 }
             }
 
             // Если ресурсов нет вообще, возвращаем Metal
-            Logger.Debug("No resources available, defaulting to Metal", false);
+            // Logger.Debug("No resources available, defaulting to Metal", false);
             return ResourceType.Metal;
         }
 
@@ -361,7 +361,7 @@ public class ResourceGenerator
             {
                 if (_resourceItems[type].Count > 0)
                 {
-                    Logger.Debug($"Zero total probability, defaulting to first available resource: {type}", false);
+                    // Logger.Debug($"Zero total probability, defaulting to first available resource: {type}", false);
                     return type;
                 }
             }
@@ -533,7 +533,7 @@ public class ResourceGenerator
 
                 // Устанавливаем позицию: изометрическая формула + смещение до "пятки" тайла (tileHeight/2)
                 var iso = MapTileToIsometricWorld(worldPos);
-                iso.Y += 16; // половина высоты тайла (32/2)
+                iso.Y += 8; // половина высоты тайла (16/2)
                 resourceNode.Position = iso;
 
                 // Настраиваем свойства ресурса
@@ -549,17 +549,17 @@ public class ResourceGenerator
                     int randomIndex = _random.Next(0, availableItems.Count);
                     Item selectedItem = availableItems[randomIndex];
 
-                    Logger.Debug($"Selected {randomIndex + 1} of {availableItems.Count} available resources for type {resourceType}: {selectedItem.DisplayName}", false);
+                    // Logger.Debug($"Selected {randomIndex + 1} of {availableItems.Count} available resources for type {resourceType}: {selectedItem.DisplayName}", false);
 
                     // Устанавливаем предмет ресурса
                     Item itemCopy = selectedItem.Clone();
                     resourceNode.ResourceItem = itemCopy;
-                    Logger.Debug($"Set ResourceItem {itemCopy.DisplayName} (ID: {itemCopy.ID}) for {resourceType} resource", false);
+                    // Logger.Debug($"Set ResourceItem {itemCopy.DisplayName} (ID: {itemCopy.ID}) for {resourceType} resource", false);
 
                     // Проверяем, есть ли у предмета валидная иконка
                     if (itemCopy.Icon != null)
                     {
-                        Logger.Debug($"ResourceItem has icon: {itemCopy.IconPath}", false);
+                        // Logger.Debug($"ResourceItem has icon: {itemCopy.IconPath}", false);
                     }
                     else
                     {
@@ -578,7 +578,7 @@ public class ResourceGenerator
                 // Добавляем в родительский узел
                 parentNode.AddChild(resourceNode);
 
-                Logger.Debug($"Placed {resourceType} resource at world position {resourceNode.Position}", false);
+                // Logger.Debug($"Placed {resourceType} resource at world position {resourceNode.Position}", false);
             }
         }
         catch (Exception e)
@@ -595,7 +595,7 @@ public class ResourceGenerator
     private Vector2 MapTileToIsometricWorld(Vector2I tilePos)
     {
         // Размер тайла для изометрии (стандартные значения из проекта)
-        Vector2I tileSize = new Vector2I(64, 32);
+        Vector2I tileSize = new Vector2I(32, 16);
 
         // Формула преобразования для изометрии 2:1 
         float x = (tilePos.X - tilePos.Y) * tileSize.X / 2.0f;

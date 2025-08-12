@@ -55,7 +55,7 @@ public partial class Player : Character
         base._Ready();
 
         // Короткий однократный лог через наш Logger
-        Logger.Debug("[Player] _Ready() reached, script is active", true);
+        // Logger.Debug("[Player] _Ready() reached, script is active", true);
 
         // Мини-экранный HUD для диагностики ввода (только при включённом ShowDebugInfo)
         if (ShowDebugInfo)
@@ -80,17 +80,17 @@ public partial class Player : Character
 
         if (inventoryLoaded)
         {
-            Logger.Debug("Successfully loaded saved inventory", true);
+            // Logger.Debug("Successfully loaded saved inventory", true);
         }
         else
         {
-            Logger.Debug("Using fresh inventory (no saved data found)", true);
+            // Logger.Debug("Using fresh inventory (no saved data found)", true);
         }
 
         // Подписка на события инвентаря
         Connect("PlayerInventoryChanged", Callable.From(() =>
         {
-            Logger.Debug("Player inventory updated!", false);
+            // Logger.Debug("Player inventory updated!", false);
         }));
 
         // Инициализация компонентов - обновлено для AnimatedSprite2D
@@ -101,13 +101,13 @@ public partial class Player : Character
         // Проверяем, существует ли спрайт персонажа
         if (_playerSprite == null)
         {
-            Logger.Debug("AnimatedSprite2D node not found. Make sure to rename the sprite node.", true);
+            // Logger.Debug("AnimatedSprite2D node not found. Make sure to rename the sprite node.", true);
         }
         else
         {
             // Инициализируем анимацию покоя
             UpdatePlayerAnimation();
-            Logger.Debug("AnimatedSprite2D found and animation initialized", true);
+            // Logger.Debug("AnimatedSprite2D found and animation initialized", true);
         }
 
         // Проверяем, существует ли интерактивная область, если нет - создаем
@@ -246,7 +246,7 @@ public partial class Player : Character
             if (_playerSprite.Animation != animationName || !_playerSprite.IsPlaying())
             {
                 _playerSprite.Play(animationName);
-                Logger.Debug($"Playing animation: {animationName}", false);
+                // Logger.Debug($"Playing animation: {animationName}", false);
             }
         }
         else
@@ -255,25 +255,25 @@ public partial class Player : Character
             if (_playerSprite.SpriteFrames != null && _playerSprite.SpriteFrames.HasAnimation("idle_down"))
             {
                 _playerSprite.Play("idle_down");
-                Logger.Debug($"Animation {animationName} not found, playing idle_down instead", false);
+                // Logger.Debug($"Animation {animationName} not found, playing idle_down instead", false);
             }
             else
             {
-                Logger.Debug($"No animations found in SpriteFrames or SpriteFrames is null", false);
+                // Logger.Debug($"No animations found in SpriteFrames or SpriteFrames is null", false);
             }
         }
     }
 
     private void TeleportToStation()
     {
-        Logger.Debug("Starting teleportation to station via keyboard shortcut", true);
+        // Logger.Debug("Starting teleportation to station via keyboard shortcut", true);
 
         // Сохраняем текущую позицию игрока
         SavePlayerPosition();
 
         // Сохраняем инвентарь игрока
         SaveInventory();
-        Logger.Debug("Player inventory saved before teleportation to station via keyboard", true);
+        // Logger.Debug("Player inventory saved before teleportation to station via keyboard", true);
 
         // Показываем эффекты телепортации
         if (_teleportEffects != null)
@@ -316,13 +316,13 @@ public partial class Player : Character
         {
             // Сохраняем позицию через GameManager
             gameManager.SetData("LastWorldPosition", GlobalPosition);
-            Logger.Debug($"Player position saved: {GlobalPosition}", false);
+            // Logger.Debug($"Player position saved: {GlobalPosition}", false);
         }
         else
         {
             // Сохраняем в ProjectSettings если GameManager отсутствует
             ProjectSettings.SetSetting("LastWorldPosition", GlobalPosition);
-            Logger.Debug($"Player position saved via ProjectSettings: {GlobalPosition}", false);
+            // Logger.Debug($"Player position saved via ProjectSettings: {GlobalPosition}", false);
         }
     }
     private void SetupInputMap()
@@ -340,7 +340,7 @@ public partial class Player : Character
             // Добавляем событие к действию
             InputMap.ActionAddEvent("teleport_to_station", eventT);
 
-            Logger.Debug("Added 'teleport_to_station' action to InputMap with key T", true);
+            // Logger.Debug("Added 'teleport_to_station' action to InputMap with key T", true);
         }
     }
 
@@ -456,7 +456,7 @@ public partial class Player : Character
         _interactionArea.AreaEntered += OnAreaEnteredInteractionArea;
         _interactionArea.AreaExited += OnAreaExitedInteractionArea;
 
-        Logger.Debug("InteractionArea created with radius: " + INTERACTION_RADIUS, true);
+        // Logger.Debug("InteractionArea created with radius: " + INTERACTION_RADIUS, true);
     }
 
     private void TryInteract()
@@ -466,11 +466,11 @@ public partial class Player : Character
             bool success = _currentInteractable.Interact(this);
             if (!success)
             {
-                Logger.Debug("Interaction failed", false);
+                // Logger.Debug("Interaction failed", false);
             }
             else
             {
-                Logger.Debug($"Interaction successful with {_currentInteractable}", false);
+                // Logger.Debug($"Interaction successful with {_currentInteractable}", false);
             }
         }
         else
@@ -482,11 +482,11 @@ public partial class Player : Character
                 bool success = nearestInteractable.Interact(this);
                 if (!success)
                 {
-                    Logger.Debug("Interaction with nearest object failed", false);
+                    // Logger.Debug("Interaction with nearest object failed", false);
                 }
                 else
                 {
-                    Logger.Debug($"Interaction successful with {nearestInteractable}", false);
+                    // Logger.Debug($"Interaction successful with {nearestInteractable}", false);
                 }
             }
         }
@@ -520,7 +520,7 @@ public partial class Player : Character
         if (body is IInteractable interactable)
         {
             _currentInteractable = interactable;
-            Logger.Debug($"Can interact with: {body.Name}", false);
+            // Logger.Debug($"Can interact with: {body.Name}", false);
         }
     }
 
@@ -538,7 +538,7 @@ public partial class Player : Character
         if (area is IInteractable areaInteractable)
         {
             _currentInteractable = areaInteractable;
-            Logger.Debug($"Can interact with area: {area.Name}", false);
+            // Logger.Debug($"Can interact with area: {area.Name}", false);
             return;
         }
 
@@ -546,7 +546,7 @@ public partial class Player : Character
         if (area.Owner is IInteractable ownerInteractable)
         {
             _currentInteractable = ownerInteractable;
-            Logger.Debug($"Can interact with area owner: {area.Owner.Name}", false);
+            // Logger.Debug($"Can interact with area owner: {area.Owner.Name}", false);
         }
     }
 
@@ -581,7 +581,7 @@ public partial class Player : Character
             if (ui is InventoryUI inventoryUI)
             {
                 inventoryUI.UpdateInventoryUI();
-                Logger.Debug("Player: Forced inventory UI update from Player", true);
+                // Logger.Debug("Player: Forced inventory UI update from Player", true);
             }
         }
     }

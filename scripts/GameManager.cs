@@ -36,7 +36,7 @@ public partial class GameManager : Node
             return;
         }
 
-        Logger.Debug("GameManager initialized", true);
+        // // Logger.Debug("GameManager initialized", true); // СПАМ ОТКЛЮЧЕН
 
         // Инициализация
         Initialize();
@@ -78,7 +78,7 @@ public partial class GameManager : Node
         if (currentSceneRoot != null)
         {
             _currentScene = currentSceneRoot.SceneFilePath;
-            Logger.Debug($"Scene changed to: {_currentScene}", false);
+            // Logger.Debug($"Scene changed to: {_currentScene}", false);
         }
 
         // Восстанавливаем защищенные данные после смены сцены
@@ -140,7 +140,7 @@ public partial class GameManager : Node
 public void ClearData()
 {
     _data.Clear();
-    Logger.Debug("GameManager data cleared", true);
+    // Logger.Debug("GameManager data cleared", true);
 }
 
 
@@ -229,7 +229,7 @@ public void ClearData()
             // Устанавливаем флаг подключения
             SetData("SaveManagerConnected", true);
 
-            Logger.Debug("GameManager connected to SaveManager", true);
+            // // Logger.Debug("GameManager connected to SaveManager", true); // СПАМ ОТКЛЮЧЕН
         }
         else
         {
@@ -242,7 +242,7 @@ public void ClearData()
     /// </summary>
     private void OnSaveCompleted()
     {
-        Logger.Debug("Save completed successfully", true);
+        // Logger.Debug("Save completed successfully", true);
 
         // Здесь можно добавить любую логику, которая должна выполняться после сохранения
         // Например, показать уведомление пользователю
@@ -256,7 +256,7 @@ public void ClearData()
         // Проверяем наличие данных инвентаря
         if (!HasData("PlayerInventorySaved"))
         {
-            Logger.Debug("GameManager: No player inventory data to restore", true);
+            // Logger.Debug("GameManager: No player inventory data to restore", true);
             return;
         }
 
@@ -264,7 +264,7 @@ public void ClearData()
         var players = GetTree().GetNodesInGroup("Player");
         if (players.Count == 0)
         {
-            Logger.Debug("GameManager: No player found in scene to restore inventory", true);
+            // Logger.Debug("GameManager: No player found in scene to restore inventory", true);
             return;
         }
 
@@ -276,9 +276,9 @@ public void ClearData()
                 // Если инвентарь пуст или его нет, загружаем сохраненный
                 if (player.PlayerInventory == null || player.PlayerInventory.Items.Count == 0)
                 {
-                    Logger.Debug("GameManager: Player with empty inventory found, restoring...", true);
+                    // Logger.Debug("GameManager: Player with empty inventory found, restoring...", true);
                     bool result = player.LoadInventory();
-                    Logger.Debug($"GameManager: Inventory restore result: {result}", true);
+                    // Logger.Debug($"GameManager: Inventory restore result: {result}", true);
 
                     // Принудительно обновляем UI инвентаря
                     var inventoryUIs = GetTree().GetNodesInGroup("InventoryUI");
@@ -287,13 +287,13 @@ public void ClearData()
                         if (uiNode is InventoryUI ui)
                         {
                             ui.UpdateInventoryUI();
-                            Logger.Debug("GameManager: Forced inventory UI update", true);
+                            // Logger.Debug("GameManager: Forced inventory UI update", true);
                         }
                     }
                 }
                 else
                 {
-                    Logger.Debug($"GameManager: Player already has inventory with {player.PlayerInventory.Items.Count} items", true);
+                    // Logger.Debug($"GameManager: Player already has inventory with {player.PlayerInventory.Items.Count} items", true);
                 }
             }
         }
@@ -304,7 +304,7 @@ public void ClearData()
     /// </summary>
     public void EnsureStorageModulesLoaded()
     {
-        Logger.Debug("GameManager: Starting storage modules data check with ENHANCED logging", true);
+        // Logger.Debug("GameManager: Starting storage modules data check with ENHANCED logging", true);
 
         // Список всех обнаруженных данных хранилищ и их ключей
         Dictionary<string, Dictionary<string, object>> storageData = new Dictionary<string, Dictionary<string, object>>();
@@ -315,7 +315,7 @@ public void ClearData()
         {
             allKeys.Add(key);
         }
-        Logger.Debug($"GameManager: ALL KEYS in GameManager ({allKeys.Count}): {string.Join(", ", allKeys)}", true);
+        // Logger.Debug($"GameManager: ALL KEYS in GameManager ({allKeys.Count}): {string.Join(", ", allKeys)}", true);
 
         // Собираем все данные хранилищ
         foreach (string key in _data.Keys)
@@ -341,7 +341,7 @@ public void ClearData()
                         itemsList = items;
                     }
 
-                    Logger.Debug($"GameManager: Found storage data for '{storageKey}' with {itemCount} items", true);
+                    // Logger.Debug($"GameManager: Found storage data for '{storageKey}' with {itemCount} items", true);
 
                     // Выводим информацию о первых нескольких предметах для отладки
                     if (itemsList != null && itemsList.Count > 0)
@@ -352,20 +352,20 @@ public void ClearData()
                             string name = item.ContainsKey("display_name") ? item["display_name"].ToString() : "Unknown";
                             int qty = item.ContainsKey("quantity") ? Convert.ToInt32(item["quantity"]) : 0;
                             string id = item.ContainsKey("id") ? item["id"].ToString() : "Unknown";
-                            Logger.Debug($"GameManager: Item {i + 1} to load: {name} x{qty} (ID: {id})", true);
+                            // Logger.Debug($"GameManager: Item {i + 1} to load: {name} x{qty} (ID: {id})", true);
                         }
                     }
                 }
                 else
                 {
-                    Logger.Debug($"GameManager: Found key '{key}' but data is null", true);
+                    // Logger.Debug($"GameManager: Found key '{key}' but data is null", true);
                 }
             }
         }
 
         if (storageData.Count == 0)
         {
-            Logger.Debug("GameManager: No storage data found to restore", true);
+            // Logger.Debug("GameManager: No storage data found to restore", true);
             return;
         }
 
@@ -373,11 +373,11 @@ public void ClearData()
         var storageModules = GetTree().GetNodesInGroup("StorageModules");
         if (storageModules.Count == 0)
         {
-            Logger.Debug("GameManager: No storage modules found in scene", true);
+            // Logger.Debug("GameManager: No storage modules found in scene", true);
             return;
         }
 
-        Logger.Debug($"GameManager: Found {storageModules.Count} storage modules in scene", true);
+        // Logger.Debug($"GameManager: Found {storageModules.Count} storage modules in scene", true);
 
         // Для каждого модуля хранилища пытаемся загрузить данные
         foreach (var moduleNode in storageModules)
@@ -388,28 +388,28 @@ public void ClearData()
                 string storageId = storageModule.StorageID;
                 string containerName = "StorageContainer"; // Имя по умолчанию для контейнера
 
-                Logger.Debug($"GameManager: Processing storage module '{storageId}' (Node name: {storageModule.Name})", true);
+                // Logger.Debug($"GameManager: Processing storage module '{storageId}' (Node name: {storageModule.Name})", true);
 
                 // Пытаемся получить фактическое имя контейнера
                 var container = storageModule.GetNode<Container>("StorageContainer");
                 if (container != null)
                 {
                     containerName = container.Name;
-                    Logger.Debug($"GameManager: Found container '{containerName}' in module '{storageId}'", true);
+                    // Logger.Debug($"GameManager: Found container '{containerName}' in module '{storageId}'", true);
 
                     // Проверяем, инициализирован ли инвентарь контейнера
                     if (container.ContainerInventory == null)
                     {
-                        Logger.Debug($"GameManager: Container inventory is NULL for '{storageId}'", true);
+                        // Logger.Debug($"GameManager: Container inventory is NULL for '{storageId}'", true);
                     }
                     else
                     {
-                        Logger.Debug($"GameManager: Container inventory exists for '{storageId}', current items: {container.ContainerInventory.Items.Count}", true);
+                        // Logger.Debug($"GameManager: Container inventory exists for '{storageId}', current items: {container.ContainerInventory.Items.Count}", true);
                     }
                 }
                 else
                 {
-                    Logger.Debug($"GameManager: NO CONTAINER found in module '{storageId}'", true);
+                    // Logger.Debug($"GameManager: NO CONTAINER found in module '{storageId}'", true);
                 }
 
                 // Проверяем все возможные ключи, по которым могут быть сохранены данные
@@ -417,20 +417,20 @@ public void ClearData()
                 string usedKey = null;
 
                 // Выводим все доступные ключи хранилищ для отладки
-                Logger.Debug($"GameManager: Available storage keys: {string.Join(", ", storageData.Keys)}", true);
+                // Logger.Debug($"GameManager: Available storage keys: {string.Join(", ", storageData.Keys)}", true);
 
                 // Проверяем сначала StorageID, затем имя контейнера, а потом все остальные ключи
                 if (storageData.ContainsKey(storageId))
                 {
                     dataToLoad = storageData[storageId];
                     usedKey = storageId;
-                    Logger.Debug($"GameManager: Found data by StorageID match: '{storageId}'", true);
+                    // Logger.Debug($"GameManager: Found data by StorageID match: '{storageId}'", true);
                 }
                 else if (storageData.ContainsKey(containerName))
                 {
                     dataToLoad = storageData[containerName];
                     usedKey = containerName;
-                    Logger.Debug($"GameManager: Found data by container name match: '{containerName}'", true);
+                    // Logger.Debug($"GameManager: Found data by container name match: '{containerName}'", true);
                 }
                 else
                 {
@@ -441,7 +441,7 @@ public void ClearData()
                         {
                             dataToLoad = entry.Value;
                             usedKey = entry.Key;
-                            Logger.Debug($"GameManager: Using fallback data from key: '{usedKey}'", true);
+                            // Logger.Debug($"GameManager: Using fallback data from key: '{usedKey}'", true);
                             break;
                         }
                     }
@@ -450,7 +450,7 @@ public void ClearData()
                 // Если нашли подходящие данные, загружаем их напрямую в контейнер
                 if (dataToLoad != null && container != null && container.ContainerInventory != null)
                 {
-                    Logger.Debug($"GameManager: Loading data for storage '{storageId}' from key '{usedKey}'", true);
+                    // Logger.Debug($"GameManager: Loading data for storage '{storageId}' from key '{usedKey}'", true);
 
                     // Очищаем текущий инвентарь контейнера
                     container.ContainerInventory.Clear();
@@ -462,7 +462,7 @@ public void ClearData()
 
                         // Подсчитываем количество загруженных предметов
                         int loadedItems = container.ContainerInventory.Items.Count;
-                        Logger.Debug($"GameManager: Successfully loaded {loadedItems} items into storage '{storageId}'", true);
+                        // Logger.Debug($"GameManager: Successfully loaded {loadedItems} items into storage '{storageId}'", true);
 
                         // Выводим информацию о первых загруженных предметах
                         if (loadedItems > 0)
@@ -470,7 +470,7 @@ public void ClearData()
                             for (int i = 0; i < Math.Min(loadedItems, 3); i++)
                             {
                                 var item = container.ContainerInventory.Items[i];
-                                Logger.Debug($"GameManager: Loaded item {i + 1}: {item.DisplayName} x{item.Quantity}", true);
+                                // Logger.Debug($"GameManager: Loaded item {i + 1}: {item.DisplayName} x{item.Quantity}", true);
                             }
                         }
 
@@ -489,35 +489,35 @@ public void ClearData()
                 {
                     if (dataToLoad == null)
                     {
-                        Logger.Debug($"GameManager: No data found for storage module '{storageId}'", true);
+                        // Logger.Debug($"GameManager: No data found for storage module '{storageId}'", true);
                     }
                     else if (container == null)
                     {
-                        Logger.Debug($"GameManager: Container is null for storage module '{storageId}'", true);
+                        // Logger.Debug($"GameManager: Container is null for storage module '{storageId}'", true);
                     }
                     else
                     {
-                        Logger.Debug($"GameManager: Container inventory is null for storage module '{storageId}'", true);
+                        // Logger.Debug($"GameManager: Container inventory is null for storage module '{storageId}'", true);
                     }
                 }
             }
             else
             {
-                Logger.Debug($"GameManager: Node {moduleNode.Name} is not a StorageModule", true);
+                // Logger.Debug($"GameManager: Node {moduleNode.Name} is not a StorageModule", true);
             }
         }
 
         // Если остались неиспользованные данные хранилищ, выводим информацию об этом
         if (storageData.Count > 0)
         {
-            Logger.Debug($"GameManager: {storageData.Count} storage data entries were not applied to any module:", true);
+            // Logger.Debug($"GameManager: {storageData.Count} storage data entries were not applied to any module:", true);
             foreach (var key in storageData.Keys)
             {
-                Logger.Debug($"GameManager: - Unused storage data key: '{key}'", true);
+                // Logger.Debug($"GameManager: - Unused storage data key: '{key}'", true);
             }
         }
 
-        Logger.Debug("GameManager: Storage modules data check completed", true);
+        // Logger.Debug("GameManager: Storage modules data check completed", true);
     }
 
 
@@ -527,7 +527,7 @@ public void ClearData()
     /// </summary>
     private void OnLoadCompleted()
     {
-        Logger.Debug("Load completed successfully", true);
+        // Logger.Debug("Load completed successfully", true);
 
         // Принудительно восстанавливаем инвентарь игрока
         EnsurePlayerInventoryLoaded();
@@ -553,7 +553,7 @@ public void ClearData()
                 {
                     // Переключаемся на сцену из сохранения
                     GetTree().ChangeSceneToFile(currentScene);
-                    Logger.Debug($"Changing scene to: {currentScene}", true);
+                    // Logger.Debug($"Changing scene to: {currentScene}", true);
                 }
             }
         }*/
@@ -635,7 +635,7 @@ public void ClearData()
             if (HasData(key))
             {
                 backupData[key] = _data[key];
-                Logger.Debug($"GameManager: Protected data '{key}'", true);
+                // Logger.Debug($"GameManager: Protected data '{key}'", true);
             }
         }
 
@@ -652,13 +652,13 @@ public void ClearData()
 
         if (storageKeys.Count > 0)
         {
-            Logger.Debug($"GameManager: Protected {storageKeys.Count} storage inventories", true);
+            // Logger.Debug($"GameManager: Protected {storageKeys.Count} storage inventories", true);
         }
 
         // Сохраняем резервные копии в специальное хранилище
         SetData("_BackupData", backupData);
         SetData("_BackupTime", DateTime.Now.ToString());
-        Logger.Debug("GameManager: Created data backup", true);
+        // Logger.Debug("GameManager: Created data backup", true);
     }
 
     /// <summary>
@@ -668,19 +668,19 @@ public void ClearData()
     {
         if (!HasData("_BackupData"))
         {
-            Logger.Debug("GameManager: No backup data found", true);
+            // Logger.Debug("GameManager: No backup data found", true);
             return;
         }
 
         var backupData = GetData<Dictionary<string, object>>("_BackupData");
         if (backupData == null || backupData.Count == 0)
         {
-            Logger.Debug("GameManager: Backup data is empty", true);
+            // Logger.Debug("GameManager: Backup data is empty", true);
             return;
         }
 
         string backupTime = HasData("_BackupTime") ? GetData<string>("_BackupTime") : "unknown";
-        Logger.Debug($"GameManager: Restoring backup data from {backupTime}", true);
+        // Logger.Debug($"GameManager: Restoring backup data from {backupTime}", true);
 
         // Восстанавливаем данные
         int restoredCount = 0;
@@ -693,7 +693,7 @@ public void ClearData()
             }
         }
 
-        Logger.Debug($"GameManager: Restored {restoredCount} data entries", true);
+        // Logger.Debug($"GameManager: Restored {restoredCount} data entries", true);
 
         // Очищаем резервные копии
         RemoveData("_BackupData");
@@ -708,7 +708,7 @@ public void ClearData()
 
         _currentScene = scenePath;
         SetData("CurrentScene", scenePath);
-        Logger.Debug($"GameManager: Current scene explicitly updated to {scenePath}", true);
+        // Logger.Debug($"GameManager: Current scene explicitly updated to {scenePath}", true);
     }
 
 }

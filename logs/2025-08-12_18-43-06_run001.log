@@ -1,0 +1,120 @@
+[18:43:06.059] 🚀 ========== SATELLITE GAME LOG SESSION STARTED ==========
+[18:43:06.073] 📅 Date: 2025-08-12 18:43:06
+[18:43:06.074] 🎮 Godot Version: { "major": 4, "minor": 4, "patch": 0, "hex": 263168, "status": "stable", "build": "official", "hash": "4c311cbee68c0b66ff8ebb8b0defdd9979dd2a41", "timestamp": 0, "string": "4.4-stable (official)" }
+[18:43:06.075] 💻 Platform: Windows
+[18:43:06.075] 🚀 =========================================================
+[18:43:06.075] 
+[18:43:06.076] DEBUG: SaveManager initialized, save path: C:/Users/koval/AppData/Roaming/Godot/app_userdata/Satellite\saves\game_save.json
+[18:43:06.078] DEBUG: GameTimer initialized. Total play time: 00:00:00
+[18:43:06.081] DEBUG: Continue button state updated: enabled
+[18:43:06.082] DEBUG: Main menu initialized
+[18:43:06.658] DEBUG: Continue button pressed
+[18:43:06.676] DEBUG: Direct load completed successfully
+[18:43:06.680] DEBUG: Game loaded successfully
+[18:43:06.790] DEBUG: Module StartingModule initialized
+[18:43:06.791] DEBUG: Found RespawnCapsule at path: RespawnCapsule
+[18:43:06.791] DEBUG: Starting module initialized
+[18:43:06.794] DEBUG: Created interaction area for module TeleportationModule with radius 150
+[18:43:06.802] DEBUG: Teleport UI created
+[18:43:06.802] DEBUG: Module TeleportationModule initialized
+[18:43:06.802] DEBUG: Teleportation module initialized
+[18:43:06.803] DEBUG: Station teleporter initialized
+[18:43:06.804] DEBUG: Module StorageModule initialized
+[18:43:06.812] DEBUG: Container 'StorageContainer' inventory changed
+[18:43:06.813] DEBUG: Container 'StorageContainer' inventory changed
+[18:43:06.814] DEBUG: Container 'StorageContainer' force-updated UI
+[18:43:06.815] DEBUG: Module StorageModule2 initialized
+[18:43:06.815] DEBUG: Container 'StorageContainer' inventory changed
+[18:43:06.819] DEBUG: Container 'StorageContainer' inventory changed
+[18:43:06.819] DEBUG: Container 'StorageContainer' force-updated UI
+[18:43:06.825] ERROR: InventoryUI: Player not found
+[18:43:06.832] DEBUG: ItemTooltip initialized
+[18:43:06.837] DEBUG: InventoryContextMenu initialized
+[18:43:06.837] DEBUG: Signal handlers are connected to context menu
+[18:43:06.837] DEBUG: InventoryContextMenu created successfully
+[18:43:06.839] DEBUG: DEBUG HUD for corner coordinates created
+[18:43:06.841] ERROR: UIManager: InteractionSystem not found!
+[18:43:06.841] DEBUG: UIManager initialized
+[18:43:06.843] DEBUG: ItemTooltip created successfully for ContainerUI
+[18:43:06.844] DEBUG: InventoryContextMenu created successfully for ContainerUI
+[18:43:06.848] DEBUG: AutoSave initialized with interval: 300s, active monitoring: True
+[18:43:06.851] DEBUG: ForceSaveSystem initialized
+[18:43:06.854] DEBUG: Found TeleporterSpawnPoint at path: TeleporterSpawnPoint
+[18:43:06.897] DEBUG: Camera following player at (565, 217)
+[18:43:06.899] DEBUG: LoadInventory: Last inventory save time: 12/08/2025 18:43:06
+[18:43:06.899] DEBUG: LoadInventory: Found saved inventory data, loading...
+[18:43:06.899] DEBUG: LoadInventory: Found 15 items in saved inventory
+[18:43:06.900] DEBUG: LoadInventory: Item: Organic Matter x30 (ID: resource_organic_matter)
+[18:43:06.900] DEBUG: LoadInventory: Item: Metal Ore x20 (ID: resource_metal_ore)
+[18:43:06.900] DEBUG: LoadInventory: Item: Crystal x15 (ID: resource_crystal)
+[18:43:06.901] DEBUG: LoadInventory: Item: AntiMetal Ore x20 (ID: resource_antimetal_ore)
+[18:43:06.901] DEBUG: LoadInventory: Item: Metal Ore x11 (ID: resource_metal_ore)
+[18:43:06.901] DEBUG: LoadInventory: Item: AntiMetal Ore x1 (ID: resource_antimetal_ore)
+[18:43:06.902] DEBUG: LoadInventory: Item: Organic Matter x5 (ID: resource_organic_matter)
+[18:43:06.902] DEBUG: Player inventory changed. Items: 0
+[18:43:06.902] DEBUG: Player inventory changed. Items: 15
+[18:43:06.902] DEBUG: LoadInventory: Successfully deserialized inventory with 15 items
+[18:43:06.903] DEBUG: LoadInventory: After loading: Organic Matter x30 (ID: resource_organic_matter)
+[18:43:06.903] DEBUG: LoadInventory: After loading: Metal Ore x20 (ID: resource_metal_ore)
+[18:43:06.903] DEBUG: LoadInventory: After loading: Crystal x15 (ID: resource_crystal)
+[18:43:06.904] DEBUG: LoadInventory: After loading: AntiMetal Ore x20 (ID: resource_antimetal_ore)
+[18:43:06.904] DEBUG: LoadInventory: After loading: Metal Ore x11 (ID: resource_metal_ore)
+[18:43:06.904] DEBUG: LoadInventory: After loading: AntiMetal Ore x1 (ID: resource_antimetal_ore)
+[18:43:06.904] DEBUG: LoadInventory: After loading: Organic Matter x5 (ID: resource_organic_matter)
+[18:43:06.908] DEBUG: Player respawned at starting module
+[18:43:07.291] DEBUG: Container 'StorageContainer' inventory changed
+[18:43:07.292] DEBUG: Container 'StorageContainer' inventory changed
+[18:43:07.292] DEBUG: Container 'StorageContainer' force-updated UI
+[18:43:07.293] DEBUG: All icon sizes updated in container UI
+[18:43:07.293] DEBUG: Container 'StorageContainer' deferred UI update completed
+[18:43:09.594] DEBUG: Starting teleportation to world
+[18:43:09.595] DEBUG: Player inventory saved. Items count: 15
+[18:43:09.595] DEBUG: Player inventory saved before teleportation to world
+[18:43:10.593] DEBUG: Completing teleportation to world
+[18:43:10.594] DEBUG: Player position loaded: (-132.55943, 381.01764)
+[18:43:10.594] DEBUG: Teleport destination saved: (-132.55943, 381.01764)
+[18:43:10.595] DEBUG: Player position loaded: (-132.55943, 381.01764)
+[18:43:10.657] ERROR: InventoryUI: Player not found
+[18:43:10.662] DEBUG: InteractionSystem found via exported path
+[18:43:10.663] ERROR: InteractionSystem: Player not found
+[18:43:10.663] INFO: 📁 File logging system initialized!
+[18:43:10.664] INFO: 🚀 LevelGenerator starting up...
+[18:43:10.680] DEBUG: AutoSave initialized with interval: 300s, active monitoring: True
+[18:43:11.093] DEBUG: Created section at grid (0,0) with biome Grassland
+[18:43:11.094] DEBUG: Created section at grid (1,0) with biome Forest
+[18:43:11.094] DEBUG: Created section at grid (2,0) with biome Grassland
+[18:43:11.095] DEBUG: Created section at grid (0,1) with biome Grassland
+[18:43:11.095] DEBUG: Created section at grid (1,1) with biome Ice
+[18:43:11.095] DEBUG: Created section at grid (2,1) with biome Techno
+[18:43:11.096] DEBUG: Created section at grid (0,2) with biome Techno
+[18:43:11.096] DEBUG: Created section at grid (1,2) with biome Desert
+[18:43:11.096] DEBUG: Created section at grid (2,2) with biome Anomal
+[18:43:11.337] INFO: 🗺️ КАРТА: 150x150
+[18:43:11.338] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[18:43:11.348] INFO: 🎯 ИГРОК: TopRight (107, 23) -> (1344, 1040)
+[18:43:11.349] DEBUG: Camera following player at (1344, 1040)
+[18:43:11.352] ERROR: Selected section at (1, 2) has no spawn position!
+[18:43:11.353] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[18:43:13.811] DEBUG: Created section at grid (0,0) with biome Anomal
+[18:43:13.812] DEBUG: Created section at grid (1,0) with biome Anomal
+[18:43:13.812] DEBUG: Created section at grid (2,0) with biome Ice
+[18:43:13.812] DEBUG: Created section at grid (0,1) with biome Anomal
+[18:43:13.813] DEBUG: Created section at grid (1,1) with biome Techno
+[18:43:13.813] DEBUG: Created section at grid (2,1) with biome Grassland
+[18:43:13.813] DEBUG: Created section at grid (0,2) with biome Forest
+[18:43:13.814] DEBUG: Created section at grid (1,2) with biome Grassland
+[18:43:13.814] DEBUG: Created section at grid (2,2) with biome Grassland
+[18:43:13.932] INFO: 🗺️ КАРТА: 150x150
+[18:43:13.932] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[18:43:13.938] INFO: 🎯 ИГРОК: BottomLeft (6, 117) -> (-1776, 984)
+[18:43:13.939] DEBUG: Camera following player at (-1776, 984)
+[18:43:13.940] ERROR: Selected section at (2, 0) has no spawn position!
+[18:43:13.941] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!

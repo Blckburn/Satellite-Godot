@@ -19,16 +19,23 @@ public sealed class BiomePalette
     {
         switch (biomeType)
         {
-            // ОБНОВЛЕННЫЕ КООРДИНАТЫ floors.png
-            // 0: Grass, 1: Stone, 2: Ground, 3: Snow, 4: Sand, 5: Water
-            // 0-й ряд; 1-й ряд: 0: Ice, 1: Lava, 2: ForestFloor, 3: Techno, 4: Anomal, 5: Empty
-            case 1: return new Vector2I(2, 0); // Forest → Ground
-            case 2: return new Vector2I(4, 0); // Desert → Sand
-            case 3: return new Vector2I(3, 0); // Ice → Snow (пол)
-            case 4: return new Vector2I(4, 1); // Techno → Anomal
-            case 5: return new Vector2I(3, 1); // Anomal → Techno
-            case 6: return new Vector2I(2, 0); // Lava Springs → Ground
-            default: return new Vector2I(0, 0); // Grassland → Grass
+            case 0: // Grassland — только базовые тайлы для всех вызовов вне основного прохода
+                {
+                    var grassBaseTiles = new Vector2I[] { new Vector2I(5, 2), new Vector2I(6, 2) };
+                    return grassBaseTiles[_random.Next(grassBaseTiles.Length)];
+                }
+            // Forest: базовые тайлы
+            case 1:
+                {
+                    var forestBaseTiles = new Vector2I[] { new Vector2I(0, 2), new Vector2I(1, 2), new Vector2I(2, 2) };
+                    return forestBaseTiles[_random.Next(forestBaseTiles.Length)];
+                }
+            case 2: return new Vector2I(9, 0); // Desert базовый
+            case 3: return new Vector2I(10, 10); // Ice базовый под стенами и в коридорах
+            case 4: return new Vector2I(8, 5); // Techno базовый
+            case 5: return new Vector2I(6, 8); // Anomal базовый
+            case 6: return new Vector2I(8, 5); // Lava Springs базовый
+            default: return new Vector2I(2, 9); // Заглушка по умолчанию
         }
     }
 
@@ -48,24 +55,62 @@ public sealed class BiomePalette
 
     public Vector2I GetWallTileForBiome(int biomeType, Vector2I _)
     {
-        // ОБНОВЛЕННЫЕ КООРДИНАТЫ для стен walls.png
-        // Подбираем стабильные, нерандомные значения, чтобы стены точно отличались от пола
         switch (biomeType)
         {
+            case 0: // Grassland - случайный выбор из вариантов стен
+                {
+                var grassWallTiles = new Vector2I[]
+                {
+                    new Vector2I(7, 2), new Vector2I(8, 2), new Vector2I(9, 2),
+                    new Vector2I(10, 2), new Vector2I(0, 3), new Vector2I(1, 3),
+                    new Vector2I(2, 3), new Vector2I(3, 3)
+                };
+                    return grassWallTiles[_random.Next(grassWallTiles.Length)];
+                }
+            // ОБНОВЛЕННЫЕ КООРДИНАТЫ для стен walls.png
+            // Подбираем стабильные, нерандомные значения, чтобы стены точно отличались от пола
             case 1: return new Vector2I(0, 0); // Forest wall
             case 2: return new Vector2I(1, 0); // Desert wall
             case 3: return new Vector2I(0, 1); // Ice wall
             case 4: return new Vector2I(3, 1); // Techno wall
             case 5: return new Vector2I(4, 1); // Anomal wall
             case 6: return new Vector2I(1, 1); // Lava wall
-            default: return new Vector2I(2, 0); // Grassland → Ground wall
+            default: return new Vector2I(2, 0); // Fallback
+        }
+    }
+
+    // Возвращает пару: (sourceId, atlasCoords) для стен — нужно, если один биом использует несколько TileSets
+    public (int sourceId, Vector2I tile) GetWallTileForBiomeEx(int biomeType, Vector2I pos)
+    {
+        switch (biomeType)
+        {
+            case 0: // Grassland — матрица со смешанными Atlas ID
+                {
+                    var options = new (int src, Vector2I tile)[]
+                    {
+                        (4, new Vector2I(4, 4)), (4, new Vector2I(5, 4)), (4, new Vector2I(6, 4)),
+                        (4, new Vector2I(7, 4)), (4, new Vector2I(8, 4)),
+                        (0, new Vector2I(41, 18)), (0, new Vector2I(74, 10)),
+                        (5, new Vector2I(16, 16)), (5, new Vector2I(4, 30)), (5, new Vector2I(24, 0))
+                    };
+                    var pick = options[_random.Next(options.Length)];
+                    return (pick.src, pick.tile);
+                }
+            // Для прочих биомов — используем текущий дефолт Atlas 4 и прежние координаты
+            case 1: return (4, new Vector2I(0, 0));
+            case 2: return (4, new Vector2I(1, 0));
+            case 3: return (4, new Vector2I(0, 1));
+            case 4: return (4, new Vector2I(3, 1));
+            case 5: return (4, new Vector2I(4, 1));
+            case 6: return (4, new Vector2I(1, 1));
+            default: return (4, new Vector2I(2, 0));
         }
     }
 
     public Vector2I GetBridgeTile(bool horizontal, int width)
     {
-        // Без специальных мостов: твёрдый каменный пол
-        return new Vector2I(1, 0); // Stone
+        // Для единообразия: общий базовый тайл пола
+        return new Vector2I(3, 0);
     }
 }
 

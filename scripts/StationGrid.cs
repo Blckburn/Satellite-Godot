@@ -7,8 +7,8 @@ using System;
 public partial class StationGrid : Node2D
 {
     // Размеры тайла
-    [Export] public float TileWidth { get; set; } = 64f;
-    [Export] public float TileHeight { get; set; } = 32f;
+    [Export] public float TileWidth { get; set; } = 32f;
+    [Export] public float TileHeight { get; set; } = 16f;
 
     // Размеры сетки в тайлах
     [Export] public int GridWidth { get; set; } = 20;

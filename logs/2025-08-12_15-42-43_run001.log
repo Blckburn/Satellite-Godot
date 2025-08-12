@@ -1,0 +1,405 @@
+[15:42:43.353] 🚀 ========== SATELLITE GAME LOG SESSION STARTED ==========
+[15:42:43.358] 📅 Date: 2025-08-12 15:42:43
+[15:42:43.359] 🎮 Godot Version: { "major": 4, "minor": 4, "patch": 0, "hex": 263168, "status": "stable", "build": "official", "hash": "4c311cbee68c0b66ff8ebb8b0defdd9979dd2a41", "timestamp": 0, "string": "4.4-stable (official)" }
+[15:42:43.359] 💻 Platform: Windows
+[15:42:43.359] 🚀 =========================================================
+[15:42:43.359] 
+[15:42:43.360] DEBUG: SaveManager initialized, save path: C:/Users/koval/AppData/Roaming/Godot/app_userdata/Satellite\saves\game_save.json
+[15:42:43.372] DEBUG: GameTimer initialized. Total play time: 00:00:00
+[15:42:43.376] DEBUG: Continue button state updated: enabled
+[15:42:43.376] DEBUG: Main menu initialized
+[15:42:44.735] DEBUG: Continue button pressed
+[15:42:44.753] DEBUG: Direct load completed successfully
+[15:42:44.755] DEBUG: Game loaded successfully
+[15:42:44.867] DEBUG: Module StartingModule initialized
+[15:42:44.869] DEBUG: Found RespawnCapsule at path: RespawnCapsule
+[15:42:44.869] DEBUG: Starting module initialized
+[15:42:44.871] DEBUG: Created interaction area for module TeleportationModule with radius 150
+[15:42:44.878] DEBUG: Teleport UI created
+[15:42:44.878] DEBUG: Module TeleportationModule initialized
+[15:42:44.879] DEBUG: Teleportation module initialized
+[15:42:44.880] DEBUG: Station teleporter initialized
+[15:42:44.881] DEBUG: Module StorageModule initialized
+[15:42:44.891] DEBUG: Container 'StorageContainer' inventory changed
+[15:42:44.891] DEBUG: Container 'StorageContainer' inventory changed
+[15:42:44.892] DEBUG: Container 'StorageContainer' force-updated UI
+[15:42:44.893] DEBUG: Module StorageModule2 initialized
+[15:42:44.894] DEBUG: Container 'StorageContainer' inventory changed
+[15:42:44.898] DEBUG: Container 'StorageContainer' inventory changed
+[15:42:44.898] DEBUG: Container 'StorageContainer' force-updated UI
+[15:42:44.904] ERROR: InventoryUI: Player not found
+[15:42:44.911] DEBUG: ItemTooltip initialized
+[15:42:44.916] DEBUG: InventoryContextMenu initialized
+[15:42:44.917] DEBUG: Signal handlers are connected to context menu
+[15:42:44.917] DEBUG: InventoryContextMenu created successfully
+[15:42:44.919] DEBUG: DEBUG HUD for corner coordinates created
+[15:42:44.921] ERROR: UIManager: InteractionSystem not found!
+[15:42:44.921] DEBUG: UIManager initialized
+[15:42:44.923] DEBUG: ItemTooltip created successfully for ContainerUI
+[15:42:44.924] DEBUG: InventoryContextMenu created successfully for ContainerUI
+[15:42:44.928] DEBUG: AutoSave initialized with interval: 300s, active monitoring: True
+[15:42:44.931] DEBUG: ForceSaveSystem initialized
+[15:42:44.935] DEBUG: Found TeleporterSpawnPoint at path: TeleporterSpawnPoint
+[15:42:44.974] DEBUG: Camera following player at (565, 217)
+[15:42:44.976] DEBUG: LoadInventory: Last inventory save time: 12/08/2025 15:42:44
+[15:42:44.976] DEBUG: LoadInventory: Found saved inventory data, loading...
+[15:42:44.976] DEBUG: LoadInventory: Found 15 items in saved inventory
+[15:42:44.977] DEBUG: LoadInventory: Item: Organic Matter x30 (ID: resource_organic_matter)
+[15:42:44.977] DEBUG: LoadInventory: Item: Metal Ore x20 (ID: resource_metal_ore)
+[15:42:44.977] DEBUG: LoadInventory: Item: Crystal x15 (ID: resource_crystal)
+[15:42:44.978] DEBUG: LoadInventory: Item: AntiMetal Ore x20 (ID: resource_antimetal_ore)
+[15:42:44.978] DEBUG: LoadInventory: Item: Metal Ore x11 (ID: resource_metal_ore)
+[15:42:44.978] DEBUG: LoadInventory: Item: AntiMetal Ore x1 (ID: resource_antimetal_ore)
+[15:42:44.978] DEBUG: LoadInventory: Item: Organic Matter x5 (ID: resource_organic_matter)
+[15:42:44.979] DEBUG: Player inventory changed. Items: 0
+[15:42:44.979] DEBUG: Player inventory changed. Items: 15
+[15:42:44.980] DEBUG: LoadInventory: Successfully deserialized inventory with 15 items
+[15:42:44.980] DEBUG: LoadInventory: After loading: Organic Matter x30 (ID: resource_organic_matter)
+[15:42:44.980] DEBUG: LoadInventory: After loading: Metal Ore x20 (ID: resource_metal_ore)
+[15:42:44.980] DEBUG: LoadInventory: After loading: Crystal x15 (ID: resource_crystal)
+[15:42:44.981] DEBUG: LoadInventory: After loading: AntiMetal Ore x20 (ID: resource_antimetal_ore)
+[15:42:44.981] DEBUG: LoadInventory: After loading: Metal Ore x11 (ID: resource_metal_ore)
+[15:42:44.981] DEBUG: LoadInventory: After loading: AntiMetal Ore x1 (ID: resource_antimetal_ore)
+[15:42:44.981] DEBUG: LoadInventory: After loading: Organic Matter x5 (ID: resource_organic_matter)
+[15:42:44.985] DEBUG: Player respawned at starting module
+[15:42:45.368] DEBUG: Container 'StorageContainer' inventory changed
+[15:42:45.369] DEBUG: Container 'StorageContainer' inventory changed
+[15:42:45.371] DEBUG: Container 'StorageContainer' force-updated UI
+[15:42:45.372] DEBUG: All icon sizes updated in container UI
+[15:42:45.372] DEBUG: Container 'StorageContainer' deferred UI update completed
+[15:42:48.154] DEBUG: Starting teleportation to world
+[15:42:48.155] DEBUG: Player inventory saved. Items count: 15
+[15:42:48.155] DEBUG: Player inventory saved before teleportation to world
+[15:42:49.158] DEBUG: Completing teleportation to world
+[15:42:49.159] DEBUG: Player position loaded: (119.301414, 348.1832)
+[15:42:49.159] DEBUG: Teleport destination saved: (119.301414, 348.1832)
+[15:42:49.160] DEBUG: Player position loaded: (119.301414, 348.1832)
+[15:42:49.215] ERROR: InventoryUI: Player not found
+[15:42:49.219] DEBUG: InteractionSystem found via exported path
+[15:42:49.220] ERROR: InteractionSystem: Player not found
+[15:42:49.221] INFO: 📁 File logging system initialized!
+[15:42:49.222] INFO: 🚀 LevelGenerator starting up...
+[15:42:49.235] DEBUG: AutoSave initialized with interval: 300s, active monitoring: True
+[15:42:49.635] DEBUG: Created section at grid (0,0) with biome Desert
+[15:42:49.636] DEBUG: Created section at grid (1,0) with biome Ice
+[15:42:49.636] DEBUG: Created section at grid (2,0) with biome Techno
+[15:42:49.636] DEBUG: Created section at grid (0,1) with biome Desert
+[15:42:49.637] DEBUG: Created section at grid (1,1) with biome Desert
+[15:42:49.637] DEBUG: Created section at grid (2,1) with biome Ice
+[15:42:49.637] DEBUG: Created section at grid (0,2) with biome Techno
+[15:42:49.638] DEBUG: Created section at grid (1,2) with biome Anomal
+[15:42:49.638] DEBUG: Created section at grid (2,2) with biome Techno
+[15:42:49.906] INFO: 🗺️ КАРТА: 150x150
+[15:42:49.907] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:42:50.127] INFO: 🎯 РЕСУРСЫ: 450 размещено
+[15:42:50.138] INFO: 📦 КОНТЕЙНЕРЫ: 60 размещено
+[15:42:50.153] INFO: 🎯 ИГРОК: BottomLeft (6, 107) -> (-1616, 904)
+[15:42:50.154] DEBUG: Camera following player at (-1616, 904)
+[15:42:50.156] ERROR: Selected section at (1, 0) has no spawn position!
+[15:42:50.157] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:42:53.706] DEBUG: Created section at grid (0,0) with biome Forest
+[15:42:53.707] DEBUG: Created section at grid (1,0) with biome Desert
+[15:42:53.707] DEBUG: Created section at grid (2,0) with biome Grassland
+[15:42:53.707] DEBUG: Created section at grid (0,1) with biome Techno
+[15:42:53.708] DEBUG: Created section at grid (1,1) with biome Desert
+[15:42:53.708] DEBUG: Created section at grid (2,1) with biome Ice
+[15:42:53.708] DEBUG: Created section at grid (0,2) with biome Anomal
+[15:42:53.708] DEBUG: Created section at grid (1,2) with biome Anomal
+[15:42:53.709] DEBUG: Created section at grid (2,2) with biome Desert
+[15:42:53.895] INFO: 🗺️ КАРТА: 150x150
+[15:42:53.895] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:42:54.176] INFO: 🎯 РЕСУРСЫ: 450 размещено
+[15:42:54.187] INFO: 📦 КОНТЕЙНЕРЫ: 63 размещено
+[15:42:54.193] ERROR: 🚨 NO VALID SPAWN CORNERS FOUND! This should not happen!
+[15:42:54.194] ERROR: 🚨 No valid corner spawns found! Activating EMERGENCY spawn system!
+[15:42:54.195] INFO: 🆘 EMERGENCY spawn found at tile (73, 71) -> world (32, 1152)
+[15:42:54.196] DEBUG: Camera following player at (32, 1152)
+[15:42:54.197] ERROR: Selected section at (0, 0) has no spawn position!
+[15:42:54.198] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:42:54.590] DEBUG: Created section at grid (0,0) with biome Grassland
+[15:42:54.590] DEBUG: Created section at grid (1,0) with biome Forest
+[15:42:54.591] DEBUG: Created section at grid (2,0) with biome Ice
+[15:42:54.591] DEBUG: Created section at grid (0,1) with biome Forest
+[15:42:54.591] DEBUG: Created section at grid (1,1) with biome Anomal
+[15:42:54.591] DEBUG: Created section at grid (2,1) with biome Forest
+[15:42:54.592] DEBUG: Created section at grid (0,2) with biome Grassland
+[15:42:54.592] DEBUG: Created section at grid (1,2) with biome Ice
+[15:42:54.592] DEBUG: Created section at grid (2,2) with biome Forest
+[15:42:54.695] INFO: 🗺️ КАРТА: 150x150
+[15:42:54.695] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:42:54.925] INFO: 🎯 РЕСУРСЫ: 450 размещено
+[15:42:54.935] INFO: 📦 КОНТЕЙНЕРЫ: 57 размещено
+[15:42:54.939] INFO: 🎯 ИГРОК: BottomRight (107, 107) -> (0, 1712)
+[15:42:54.940] DEBUG: Camera following player at (0, 1712)
+[15:42:54.941] ERROR: Selected section at (2, 0) has no spawn position!
+[15:42:54.942] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:42:55.309] DEBUG: Created section at grid (0,0) with biome Desert
+[15:42:55.309] DEBUG: Created section at grid (1,0) with biome Grassland
+[15:42:55.310] DEBUG: Created section at grid (2,0) with biome Anomal
+[15:42:55.310] DEBUG: Created section at grid (0,1) with biome Lava Springs
+[15:42:55.310] DEBUG: Created section at grid (1,1) with biome Desert
+[15:42:55.310] DEBUG: Created section at grid (2,1) with biome Desert
+[15:42:55.311] DEBUG: Created section at grid (0,2) with biome Lava Springs
+[15:42:55.311] DEBUG: Created section at grid (1,2) with biome Grassland
+[15:42:55.311] DEBUG: Created section at grid (2,2) with biome Anomal
+[15:42:55.423] INFO: 🗺️ КАРТА: 150x150
+[15:42:55.423] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:42:55.639] INFO: 🎯 РЕСУРСЫ: 434 размещено
+[15:42:55.647] INFO: 📦 КОНТЕЙНЕРЫ: 46 размещено
+[15:42:55.652] INFO: 🎯 ИГРОК: TopRight (107, 32) -> (1200, 1112)
+[15:42:55.652] DEBUG: Camera following player at (1200, 1112)
+[15:42:55.653] ERROR: Selected section at (1, 1) has no spawn position!
+[15:42:55.654] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:42:56.022] DEBUG: Created section at grid (0,0) with biome Desert
+[15:42:56.022] DEBUG: Created section at grid (1,0) with biome Anomal
+[15:42:56.022] DEBUG: Created section at grid (2,0) with biome Forest
+[15:42:56.023] DEBUG: Created section at grid (0,1) with biome Forest
+[15:42:56.023] DEBUG: Created section at grid (1,1) with biome Desert
+[15:42:56.023] DEBUG: Created section at grid (2,1) with biome Lava Springs
+[15:42:56.024] DEBUG: Created section at grid (0,2) with biome Lava Springs
+[15:42:56.024] DEBUG: Created section at grid (1,2) with biome Grassland
+[15:42:56.024] DEBUG: Created section at grid (2,2) with biome Lava Springs
+[15:42:56.177] INFO: 🗺️ КАРТА: 150x150
+[15:42:56.178] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:42:56.398] INFO: 🎯 РЕСУРСЫ: 450 размещено
+[15:42:56.409] INFO: 📦 КОНТЕЙНЕРЫ: 72 размещено
+[15:42:56.413] INFO: 🎯 ИГРОК: BottomLeft (6, 107) -> (-1616, 904)
+[15:42:56.415] ERROR: Selected section at (2, 0) has no spawn position!
+[15:42:56.415] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:42:56.701] DEBUG: Created section at grid (0,0) with biome Desert
+[15:42:56.702] DEBUG: Created section at grid (1,0) with biome Techno
+[15:42:56.702] DEBUG: Created section at grid (2,0) with biome Techno
+[15:42:56.702] DEBUG: Created section at grid (0,1) with biome Forest
+[15:42:56.703] DEBUG: Created section at grid (1,1) with biome Ice
+[15:42:56.703] DEBUG: Created section at grid (2,1) with biome Desert
+[15:42:56.703] DEBUG: Created section at grid (0,2) with biome Grassland
+[15:42:56.704] DEBUG: Created section at grid (1,2) with biome Ice
+[15:42:56.704] DEBUG: Created section at grid (2,2) with biome Lava Springs
+[15:42:56.796] INFO: 🗺️ КАРТА: 150x150
+[15:42:56.797] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:42:57.011] INFO: 🎯 РЕСУРСЫ: 450 размещено
+[15:42:57.021] INFO: 📦 КОНТЕЙНЕРЫ: 60 размещено
+[15:42:57.026] ERROR: 🚨 NO VALID SPAWN CORNERS FOUND! This should not happen!
+[15:42:57.027] ERROR: 🚨 No valid corner spawns found! Activating EMERGENCY spawn system!
+[15:42:57.027] INFO: 🆘 EMERGENCY spawn found at tile (73, 76) -> world (-48, 1192)
+[15:42:57.028] DEBUG: Camera following player at (-48, 1192)
+[15:42:57.029] ERROR: Selected section at (0, 0) has no spawn position!
+[15:42:57.030] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:42:57.379] DEBUG: Created section at grid (0,0) with biome Anomal
+[15:42:57.379] DEBUG: Created section at grid (1,0) with biome Techno
+[15:42:57.379] DEBUG: Created section at grid (2,0) with biome Desert
+[15:42:57.380] DEBUG: Created section at grid (0,1) with biome Lava Springs
+[15:42:57.380] DEBUG: Created section at grid (1,1) with biome Lava Springs
+[15:42:57.380] DEBUG: Created section at grid (2,1) with biome Desert
+[15:42:57.381] DEBUG: Created section at grid (0,2) with biome Grassland
+[15:42:57.381] DEBUG: Created section at grid (1,2) with biome Desert
+[15:42:57.381] DEBUG: Created section at grid (2,2) with biome Ice
+[15:42:57.473] INFO: 🗺️ КАРТА: 150x150
+[15:42:57.473] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:42:57.713] INFO: 🎯 РЕСУРСЫ: 450 размещено
+[15:42:57.725] INFO: 📦 КОНТЕЙНЕРЫ: 53 размещено
+[15:42:57.729] INFO: 🎯 ИГРОК: TopLeft (6, 25) -> (-304, 248)
+[15:42:57.730] DEBUG: Camera following player at (-304, 248)
+[15:42:57.731] ERROR: Selected section at (0, 2) has no spawn position!
+[15:42:57.732] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:42:58.032] DEBUG: Created section at grid (0,0) with biome Forest
+[15:42:58.033] DEBUG: Created section at grid (1,0) with biome Desert
+[15:42:58.033] DEBUG: Created section at grid (2,0) with biome Techno
+[15:42:58.033] DEBUG: Created section at grid (0,1) with biome Techno
+[15:42:58.033] DEBUG: Created section at grid (1,1) with biome Lava Springs
+[15:42:58.034] DEBUG: Created section at grid (2,1) with biome Anomal
+[15:42:58.034] DEBUG: Created section at grid (0,2) with biome Lava Springs
+[15:42:58.034] DEBUG: Created section at grid (1,2) with biome Grassland
+[15:42:58.035] DEBUG: Created section at grid (2,2) with biome Techno
+[15:42:58.140] INFO: 🗺️ КАРТА: 150x150
+[15:42:58.140] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:42:58.356] INFO: 🎯 РЕСУРСЫ: 447 размещено
+[15:42:58.365] INFO: 📦 КОНТЕЙНЕРЫ: 51 размещено
+[15:42:58.369] INFO: 🎯 ИГРОК: BottomRight (120, 107) -> (208, 1816)
+[15:42:58.370] DEBUG: Camera following player at (208, 1816)
+[15:42:58.371] ERROR: Selected section at (0, 0) has no spawn position!
+[15:42:58.372] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:42:58.802] DEBUG: Created section at grid (0,0) with biome Lava Springs
+[15:42:58.802] DEBUG: Created section at grid (1,0) with biome Lava Springs
+[15:42:58.803] DEBUG: Created section at grid (2,0) with biome Desert
+[15:42:58.803] DEBUG: Created section at grid (0,1) with biome Ice
+[15:42:58.803] DEBUG: Created section at grid (1,1) with biome Techno
+[15:42:58.804] DEBUG: Created section at grid (2,1) with biome Techno
+[15:42:58.804] DEBUG: Created section at grid (0,2) with biome Forest
+[15:42:58.804] DEBUG: Created section at grid (1,2) with biome Desert
+[15:42:58.805] DEBUG: Created section at grid (2,2) with biome Grassland
+[15:42:58.923] INFO: 🗺️ КАРТА: 150x150
+[15:42:58.923] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:42:59.141] INFO: 🎯 РЕСУРСЫ: 450 размещено
+[15:42:59.153] INFO: 📦 КОНТЕЙНЕРЫ: 73 размещено
+[15:42:59.158] ERROR: 🚨 NO VALID SPAWN CORNERS FOUND! This should not happen!
+[15:42:59.158] ERROR: 🚨 No valid corner spawns found! Activating EMERGENCY spawn system!
+[15:42:59.158] INFO: 🆘 EMERGENCY spawn found at tile (73, 75) -> world (-32, 1184)
+[15:42:59.159] DEBUG: Camera following player at (-32, 1184)
+[15:42:59.160] ERROR: Selected section at (1, 0) has no spawn position!
+[15:42:59.161] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:42:59.734] DEBUG: Created section at grid (0,0) with biome Lava Springs
+[15:42:59.734] DEBUG: Created section at grid (1,0) with biome Forest
+[15:42:59.734] DEBUG: Created section at grid (2,0) with biome Ice
+[15:42:59.735] DEBUG: Created section at grid (0,1) with biome Lava Springs
+[15:42:59.735] DEBUG: Created section at grid (1,1) with biome Grassland
+[15:42:59.735] DEBUG: Created section at grid (2,1) with biome Grassland
+[15:42:59.735] DEBUG: Created section at grid (0,2) with biome Anomal
+[15:42:59.736] DEBUG: Created section at grid (1,2) with biome Grassland
+[15:42:59.736] DEBUG: Created section at grid (2,2) with biome Lava Springs
+[15:42:59.882] INFO: 🗺️ КАРТА: 150x150
+[15:42:59.883] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:43:00.120] INFO: 🎯 РЕСУРСЫ: 450 размещено
+[15:43:00.130] INFO: 📦 КОНТЕЙНЕРЫ: 55 размещено
+[15:43:00.135] INFO: 🎯 ИГРОК: BottomRight (107, 107) -> (0, 1712)
+[15:43:00.136] ERROR: Selected section at (2, 1) has no spawn position!
+[15:43:00.137] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:43:01.713] DEBUG: Created section at grid (0,0) with biome Desert
+[15:43:01.713] DEBUG: Created section at grid (1,0) with biome Lava Springs
+[15:43:01.713] DEBUG: Created section at grid (2,0) with biome Grassland
+[15:43:01.714] DEBUG: Created section at grid (0,1) with biome Desert
+[15:43:01.714] DEBUG: Created section at grid (1,1) with biome Forest
+[15:43:01.714] DEBUG: Created section at grid (2,1) with biome Ice
+[15:43:01.715] DEBUG: Created section at grid (0,2) with biome Anomal
+[15:43:01.715] DEBUG: Created section at grid (1,2) with biome Lava Springs
+[15:43:01.715] DEBUG: Created section at grid (2,2) with biome Lava Springs
+[15:43:01.895] INFO: 🗺️ КАРТА: 150x150
+[15:43:01.895] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:43:02.137] INFO: 🎯 РЕСУРСЫ: 450 размещено
+[15:43:02.150] INFO: 📦 КОНТЕЙНЕРЫ: 75 размещено
+[15:43:02.155] INFO: 🎯 ИГРОК: BottomRight (107, 107) -> (0, 1712)
+[15:43:02.157] ERROR: Selected section at (0, 1) has no spawn position!
+[15:43:02.158] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:43:02.692] DEBUG: Created section at grid (0,0) with biome Anomal
+[15:43:02.692] DEBUG: Created section at grid (1,0) with biome Ice
+[15:43:02.692] DEBUG: Created section at grid (2,0) with biome Techno
+[15:43:02.693] DEBUG: Created section at grid (0,1) with biome Forest
+[15:43:02.693] DEBUG: Created section at grid (1,1) with biome Techno
+[15:43:02.693] DEBUG: Created section at grid (2,1) with biome Desert
+[15:43:02.694] DEBUG: Created section at grid (0,2) with biome Forest
+[15:43:02.694] DEBUG: Created section at grid (1,2) with biome Anomal
+[15:43:02.695] DEBUG: Created section at grid (2,2) with biome Anomal
+[15:43:02.805] INFO: 🗺️ КАРТА: 150x150
+[15:43:02.805] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:43:03.024] INFO: 🎯 РЕСУРСЫ: 440 размещено
+[15:43:03.035] INFO: 📦 КОНТЕЙНЕРЫ: 58 размещено
+[15:43:03.039] INFO: 🎯 ИГРОК: BottomRight (116, 107) -> (144, 1784)
+[15:43:03.040] DEBUG: Camera following player at (144, 1784)
+[15:43:03.041] ERROR: Selected section at (0, 2) has no spawn position!
+[15:43:03.042] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:43:03.543] DEBUG: Created section at grid (0,0) with biome Desert
+[15:43:03.544] DEBUG: Created section at grid (1,0) with biome Anomal
+[15:43:03.544] DEBUG: Created section at grid (2,0) with biome Anomal
+[15:43:03.544] DEBUG: Created section at grid (0,1) with biome Anomal
+[15:43:03.545] DEBUG: Created section at grid (1,1) with biome Desert
+[15:43:03.545] DEBUG: Created section at grid (2,1) with biome Grassland
+[15:43:03.545] DEBUG: Created section at grid (0,2) with biome Desert
+[15:43:03.546] DEBUG: Created section at grid (1,2) with biome Desert
+[15:43:03.546] DEBUG: Created section at grid (2,2) with biome Grassland
+[15:43:03.701] INFO: 🗺️ КАРТА: 150x150
+[15:43:03.702] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:43:03.981] INFO: 🎯 РЕСУРСЫ: 450 размещено
+[15:43:03.997] INFO: 📦 КОНТЕЙНЕРЫ: 60 размещено
+[15:43:04.002] INFO: 🎯 ИГРОК: TopRight (107, 6) -> (1616, 904)
+[15:43:04.003] DEBUG: Camera following player at (1616, 904)
+[15:43:04.004] ERROR: Selected section at (0, 1) has no spawn position!
+[15:43:04.005] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:43:04.549] DEBUG: Created section at grid (0,0) with biome Anomal
+[15:43:04.549] DEBUG: Created section at grid (1,0) with biome Ice
+[15:43:04.549] DEBUG: Created section at grid (2,0) with biome Desert
+[15:43:04.550] DEBUG: Created section at grid (0,1) with biome Forest
+[15:43:04.550] DEBUG: Created section at grid (1,1) with biome Grassland
+[15:43:04.550] DEBUG: Created section at grid (2,1) with biome Anomal
+[15:43:04.551] DEBUG: Created section at grid (0,2) with biome Forest
+[15:43:04.551] DEBUG: Created section at grid (1,2) with biome Forest
+[15:43:04.551] DEBUG: Created section at grid (2,2) with biome Techno
+[15:43:04.658] INFO: 🗺️ КАРТА: 150x150
+[15:43:04.659] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:43:04.887] INFO: 🎯 РЕСУРСЫ: 450 размещено
+[15:43:04.900] INFO: 📦 КОНТЕЙНЕРЫ: 70 размещено
+[15:43:04.904] ERROR: 🚨 NO VALID SPAWN CORNERS FOUND! This should not happen!
+[15:43:04.905] ERROR: 🚨 No valid corner spawns found! Activating EMERGENCY spawn system!
+[15:43:04.905] INFO: 🆘 EMERGENCY spawn found at tile (71, 73) -> world (-32, 1152)
+[15:43:04.906] DEBUG: Camera following player at (-32, 1152)
+[15:43:04.907] ERROR: Selected section at (0, 0) has no spawn position!
+[15:43:04.908] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:43:05.413] DEBUG: Created section at grid (0,0) with biome Desert
+[15:43:05.414] DEBUG: Created section at grid (1,0) with biome Ice
+[15:43:05.414] DEBUG: Created section at grid (2,0) with biome Desert
+[15:43:05.414] DEBUG: Created section at grid (0,1) with biome Lava Springs
+[15:43:05.415] DEBUG: Created section at grid (1,1) with biome Forest
+[15:43:05.415] DEBUG: Created section at grid (2,1) with biome Techno
+[15:43:05.415] DEBUG: Created section at grid (0,2) with biome Desert
+[15:43:05.416] DEBUG: Created section at grid (1,2) with biome Lava Springs
+[15:43:05.416] DEBUG: Created section at grid (2,2) with biome Anomal
+[15:43:05.533] INFO: 🗺️ КАРТА: 150x150
+[15:43:05.533] DEBUG: Updated DEBUG HUD with corners info: 🎯 УГЛЫ КАРТЫ:
+TopLeft: (0, 0) -> (0, 0)
+TopRight: (149, 0) -> (2384, 1192)
+BottomLeft: (0, 149) -> (-2384, 1192)
+BottomRight: (149, 149) -> (0, 2384)
+[15:43:05.761] INFO: 🎯 РЕСУРСЫ: 429 размещено
+[15:43:05.770] INFO: 📦 КОНТЕЙНЕРЫ: 50 размещено
+[15:43:05.775] ERROR: 🚨 NO VALID SPAWN CORNERS FOUND! This should not happen!
+[15:43:05.776] ERROR: 🚨 No valid corner spawns found! Activating EMERGENCY spawn system!
+[15:43:05.776] INFO: 🆘 EMERGENCY spawn found at tile (76, 77) -> world (-16, 1224)
+[15:43:05.777] DEBUG: Camera following player at (-16, 1224)
+[15:43:05.778] ERROR: Selected section at (2, 2) has no spawn position!
+[15:43:05.779] ERROR: ❌ CRITICAL: Multi-section spawn position is ZERO! Using emergency fallback!
+[15:43:09.429] DEBUG: Saved play time: 00:00:24

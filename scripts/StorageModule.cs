@@ -68,15 +68,15 @@ public partial class StorageModule : BaseStationModule
         timer.WaitTime = 0.5f;  // Достаточная задержка для инициализации
         timer.OneShot = true;
         timer.Timeout += () => {
-            Logger.Debug($"Delayed loading of storage '{StorageID}'", true);
+            // Logger.Debug($"Delayed loading of storage '{StorageID}'", true);
             bool loaded = LoadStorageInventory();
-            Logger.Debug($"Storage '{StorageID}' loaded: {loaded}, Items: {_storageContainer?.ContainerInventory?.Items.Count ?? 0}", true);
+            // Logger.Debug($"Storage '{StorageID}' loaded: {loaded}, Items: {_storageContainer?.ContainerInventory?.Items.Count ?? 0}", true);
             timer.QueueFree();
         };
         AddChild(timer);
         timer.Start();
 
-        Logger.Debug($"Storage module '{Name}' initialized", true);
+        // // Logger.Debug($"Storage module '{Name}' initialized", true); // СПАМ ОТКЛЮЧЕН
 
         // Находим визуальную модель
         if (!string.IsNullOrEmpty(StorageModelPath))
@@ -102,11 +102,11 @@ public partial class StorageModule : BaseStationModule
 
         // Подключаем обработку эскейпа для закрытия хранилища
         Connect("tree_entered", Callable.From(() => {
-            Logger.Debug("Adding input handling for storage module", true);
+            // Logger.Debug("Adding input handling for storage module", true);
             SetProcess(true);
         }));
 
-        Logger.Debug($"StorageModule '{Name}' initialized with {StorageCapacity} slots", true);
+        // // Logger.Debug($"StorageModule '{Name}' initialized with {StorageCapacity} slots", true); // СПАМ ОТКЛЮЧЕН
     }
     public override void _Process(double delta)
     {
@@ -115,7 +115,7 @@ public partial class StorageModule : BaseStationModule
         // Проверяем нажатие Esc для закрытия контейнера
         if (_isContainerOpen && Input.IsKeyPressed(Key.Escape))
         {
-            Logger.Debug("Escape key detected, closing storage", true);
+            // Logger.Debug("Escape key detected, closing storage", true);
             CloseStorage();
 
         }
@@ -144,10 +144,10 @@ public partial class StorageModule : BaseStationModule
                 // Закроем и снова откроем UI, чтобы обновить слоты
                 _containerUI.CloseContainerUI();
                 _containerUI.OpenContainerUI(_storageContainer);
-                Logger.Debug($"Reopened container UI after size update to {StorageCapacity}", true);
+                // Logger.Debug($"Reopened container UI after size update to {StorageCapacity}", true);
             }
 
-            Logger.Debug($"Updated container size to {StorageCapacity}", true);
+            // Logger.Debug($"Updated container size to {StorageCapacity}", true);
         }
     }
 
@@ -159,12 +159,12 @@ public partial class StorageModule : BaseStationModule
         var containerUIs = GetTree().GetNodesInGroup("ContainerUI");
         bool uiFound = containerUIs.Count > 0;
 
-        Logger.Debug($"Container UI check: found {containerUIs.Count} UIs, _isContainerOpen={_isContainerOpen}", true);
+        // Logger.Debug($"Container UI check: found {containerUIs.Count} UIs, _isContainerOpen={_isContainerOpen}", true);
 
         if (!uiFound && _isContainerOpen)
         {
             // UI исчез, но у нас флаг открытия - скорее всего произошло преждевременное закрытие
-            Logger.Debug("Container UI disappeared unexpectedly, restoring...", true);
+            // Logger.Debug("Container UI disappeared unexpectedly, restoring...", true);
             _isContainerOpen = false;
 
             // Пробуем снова открыть контейнер с задержкой
@@ -172,7 +172,7 @@ public partial class StorageModule : BaseStationModule
             reopenTimer.WaitTime = 0.2f;
             reopenTimer.OneShot = true;
             reopenTimer.Timeout += () => {
-                Logger.Debug("Attempting to reopen container...", true);
+                // Logger.Debug("Attempting to reopen container...", true);
                 ManuallyOpenContainerUI();
             };
             AddChild(reopenTimer);
@@ -182,13 +182,13 @@ public partial class StorageModule : BaseStationModule
         {
             // UI есть, но флаг закрыт - обновляем флаг
             _isContainerOpen = true;
-            Logger.Debug("Container UI found, updating open flag", true);
+            // Logger.Debug("Container UI found, updating open flag", true);
         }
         else if (!uiFound && !_isContainerOpen)
         {
             // UI закрыт и флаг закрыт - можно остановить наблюдатель
             _containerWatcher.Stop();
-            Logger.Debug("Container UI properly closed, stopping watcher", true);
+            // Logger.Debug("Container UI properly closed, stopping watcher", true);
         }
     }
 
@@ -213,7 +213,7 @@ public partial class StorageModule : BaseStationModule
             _storageContainer.Position = Vector2.Zero;
             _storageContainer.Visible = false; // Скрываем визуальное представление контейнера
 
-            Logger.Debug($"Storage container created with {StorageCapacity} slots", true);
+            // Logger.Debug($"Storage container created with {StorageCapacity} slots", true);
         }
         else
         {
@@ -221,7 +221,7 @@ public partial class StorageModule : BaseStationModule
             if (_storageContainer.InventorySize != StorageCapacity)
             {
                 _storageContainer.InventorySize = StorageCapacity;
-                Logger.Debug($"Updated storage container capacity to {StorageCapacity}", true);
+                // Logger.Debug($"Updated storage container capacity to {StorageCapacity}", true);
             }
         }
         LoadStorageInventory();
@@ -236,7 +236,7 @@ public partial class StorageModule : BaseStationModule
         if (_isContainerOpen)
             return;
 
-        Logger.Debug("Manually opening container UI", true);
+        // Logger.Debug("Manually opening container UI", true);
 
         // Первый шаг - найдем или создадим ContainerUI
         _containerUI = null;
@@ -245,7 +245,7 @@ public partial class StorageModule : BaseStationModule
         if (existingUIs.Count > 0 && existingUIs[0] is ContainerUI ui)
         {
             _containerUI = ui;
-            Logger.Debug("Found existing ContainerUI", true);
+            // Logger.Debug("Found existing ContainerUI", true);
         }
         else
         {
@@ -264,7 +264,7 @@ public partial class StorageModule : BaseStationModule
                         // Добавляем в корень сцены или CanvasLayer для UI
                         var uiRoot = GetUIRoot();
                         uiRoot.AddChild(_containerUI);
-                        Logger.Debug("Created new ContainerUI", true);
+                        // Logger.Debug("Created new ContainerUI", true);
                     }
                 }
             }
@@ -281,7 +281,7 @@ public partial class StorageModule : BaseStationModule
             if (_storageContainer != null && !_storageContainer.IsConnected(Container.SignalName.ContainerClosed, Callable.From<Container>(OnContainerClosed)))
             {
                 _storageContainer.Connect(Container.SignalName.ContainerClosed, Callable.From<Container>(OnContainerClosed));
-                Logger.Debug("Connected ContainerClosed signal", true);
+                // Logger.Debug("Connected ContainerClosed signal", true);
             }
 
             // Открываем UI с нашим контейнером
@@ -291,7 +291,7 @@ public partial class StorageModule : BaseStationModule
             // Запускаем наблюдатель
             _containerWatcher.Start();
 
-            Logger.Debug("Container UI opened manually", true);
+            // Logger.Debug("Container UI opened manually", true);
         }
         else
         {
@@ -308,7 +308,7 @@ public partial class StorageModule : BaseStationModule
             _isContainerOpen = true;
             // Запускаем наблюдатель
             _containerWatcher.Start();
-            Logger.Debug("Container opened signal received", true);
+            // Logger.Debug("Container opened signal received", true);
         }
     }
 
@@ -320,7 +320,7 @@ public partial class StorageModule : BaseStationModule
         // Проверяем, что это наш контейнер
         if (container == _storageContainer)
         {
-            Logger.Debug("Container closed signal received", true);
+            // Logger.Debug("Container closed signal received", true);
             _isContainerOpen = false;
             _containerWatcher.Stop();
 
@@ -360,7 +360,7 @@ public partial class StorageModule : BaseStationModule
             uiCanvas = new CanvasLayer();
             uiCanvas.Name = "UICanvas";
             GetTree().Root.AddChild(uiCanvas);
-            Logger.Debug("Created new UICanvas for container UI", true);
+            // Logger.Debug("Created new UICanvas for container UI", true);
         }
 
         return uiCanvas;
@@ -371,7 +371,7 @@ public partial class StorageModule : BaseStationModule
     /// </summary>
     public void OpenStorage()
     {
-        Logger.Debug("OpenStorage called", true);
+        // Logger.Debug("OpenStorage called", true);
 
         // Убедимся, что данные хранилища загружены
         if (_storageContainer != null && _storageContainer.ContainerInventory != null &&
@@ -395,7 +395,7 @@ public partial class StorageModule : BaseStationModule
     /// </summary>
     public void CloseStorage()
     {
-        Logger.Debug("CloseStorage called", true);
+        // Logger.Debug("CloseStorage called", true);
 
         if (_isContainerOpen)
         {
@@ -412,14 +412,14 @@ public partial class StorageModule : BaseStationModule
             if (containerUIs.Count > 0 && containerUIs[0] is ContainerUI ui)
             {
                 ui.CloseContainerUI();
-                Logger.Debug("Closed container UI directly from CloseStorage", true);
+                // Logger.Debug("Closed container UI directly from CloseStorage", true);
             }
 
             // Сбрасываем флаг
             _isContainerOpen = false;
             _containerWatcher.Stop();
 
-            Logger.Debug("Storage closed successfully", true);
+            // Logger.Debug("Storage closed successfully", true);
         }
     }
 
@@ -430,7 +430,7 @@ public partial class StorageModule : BaseStationModule
         // Сохраняем инвентарь хранилища
         SaveStorageInventory();
 
-        Logger.Debug("StorageModule saved inventory before exiting tree", true);
+        // Logger.Debug("StorageModule saved inventory before exiting tree", true);
     }
 
     /// <summary>
@@ -468,7 +468,7 @@ public partial class StorageModule : BaseStationModule
         // Если это игрок, обновляем подсказку
         if (body is Player)
         {
-            Logger.Debug($"Player entered storage module area", false);
+            // Logger.Debug($"Player entered storage module area", false);
         }
     }
 
@@ -482,7 +482,7 @@ public partial class StorageModule : BaseStationModule
         // Если это игрок, убираем подсказку
         if (body is Player)
         {
-            Logger.Debug($"Player exited storage module area", false);
+            // Logger.Debug($"Player exited storage module area", false);
         }
     }
 
@@ -496,7 +496,7 @@ public partial class StorageModule : BaseStationModule
             bool result = _storageContainer.AddItemToContainer(item);
             if (result)
             {
-                Logger.Debug($"Added {item.DisplayName} x{item.Quantity} to storage module", false);
+                // Logger.Debug($"Added {item.DisplayName} x{item.Quantity} to storage module", false);
             }
             return result;
         }
@@ -549,7 +549,7 @@ private void CheckPlayerDistance()
         // Если игрок ушел слишком далеко, закрываем хранилище
         if (distance > MaxInteractionDistance)
         {
-            Logger.Debug($"Player moved too far ({distance:F2} > {MaxInteractionDistance:F2}), closing storage", true);
+            // Logger.Debug($"Player moved too far ({distance:F2} > {MaxInteractionDistance:F2}), closing storage", true);
             CloseStorage();
         }
     }
@@ -567,7 +567,7 @@ private void CheckPlayerDistance()
     {
         if (_storageContainer == null || _storageContainer.ContainerInventory == null)
         {
-            Logger.Debug("Cannot save storage inventory - container or inventory is null", true);
+            // Logger.Debug("Cannot save storage inventory - container or inventory is null", true);
             return;
         }
 
@@ -603,15 +603,15 @@ private void CheckPlayerDistance()
         int itemCount = _storageContainer.ContainerInventory.Items.Count;
 
         // Выводим детальную информацию о сохранении
-        Logger.Debug($"Storage inventory for '{StorageID}' saved successfully with {itemCount} items using keys:", true);
-        Logger.Debug($"  - Primary key: {storageKey}", false);
-        Logger.Debug($"  - Container name key: {containerKey}", false);
+        // Logger.Debug($"Storage inventory for '{StorageID}' saved successfully with {itemCount} items using keys:", true);
+        // Logger.Debug($"  - Primary key: {storageKey}", false);
+        // Logger.Debug($"  - Container name key: {containerKey}", false);
 
         // Если есть хотя бы один предмет, выводим информацию о первом предмете для отладки
         if (itemCount > 0)
         {
             var firstItem = _storageContainer.ContainerInventory.Items[0];
-            Logger.Debug($"  First item: {firstItem.DisplayName} x{firstItem.Quantity}", false);
+            // Logger.Debug($"  First item: {firstItem.DisplayName} x{firstItem.Quantity}", false);
         }
         EmitSignal(SignalName.StorageChanged);
 
@@ -631,7 +631,7 @@ private void CheckPlayerDistance()
 
         if (_storageContainer.ContainerInventory == null)
         {
-            Logger.Debug("Cannot load storage inventory - container inventory is null", true);
+            // Logger.Debug("Cannot load storage inventory - container inventory is null", true);
             return false;
         }
 
@@ -639,7 +639,7 @@ private void CheckPlayerDistance()
         // просто возвращаем успех
         if (!forceReload && _storageContainer.ContainerInventory.Items.Count > 0)
         {
-            Logger.Debug($"Storage '{StorageID}' already has {_storageContainer.ContainerInventory.Items.Count} items, skipping load", true);
+            // Logger.Debug($"Storage '{StorageID}' already has {_storageContainer.ContainerInventory.Items.Count} items, skipping load", true);
             return true;
         }
 
@@ -655,7 +655,7 @@ private void CheckPlayerDistance()
         string storageKey = GetStorageInventoryKey();
 
         // Подробное логирование
-        Logger.Debug($"Attempting to load storage '{StorageID}' with key '{storageKey}'", true);
+        // Logger.Debug($"Attempting to load storage '{StorageID}' with key '{storageKey}'", true);
 
         // Проверяем наличие сохраненных данных по основному ключу
         bool foundData = false;
@@ -668,7 +668,7 @@ private void CheckPlayerDistance()
             if (inventoryData != null)
             {
                 foundData = true;
-                Logger.Debug($"Found storage data using StorageID key: '{storageKey}'", true);
+                // Logger.Debug($"Found storage data using StorageID key: '{storageKey}'", true);
             }
         }
 
@@ -682,7 +682,7 @@ private void CheckPlayerDistance()
                 if (inventoryData != null)
                 {
                     foundData = true;
-                    Logger.Debug($"Found storage data using container name key: '{containerKey}'", true);
+                    // Logger.Debug($"Found storage data using container name key: '{containerKey}'", true);
                 }
             }
         }
@@ -697,7 +697,7 @@ private void CheckPlayerDistance()
                 if (inventoryData != null)
                 {
                     foundData = true;
-                    Logger.Debug($"Found storage data using container display name key: '{nameKey}'", true);
+                    // Logger.Debug($"Found storage data using container display name key: '{nameKey}'", true);
                 }
             }
         }
@@ -705,7 +705,7 @@ private void CheckPlayerDistance()
         // Если данные не найдены ни по одному ключу
         if (!foundData)
         {
-            Logger.Debug($"No saved storage inventory data found for '{StorageID}'", true);
+            // Logger.Debug($"No saved storage inventory data found for '{StorageID}'", true);
             return false;
         }
 
@@ -716,7 +716,7 @@ private void CheckPlayerDistance()
             if (inventoryData.ContainsKey("items") && inventoryData["items"] is List<Dictionary<string, object>> items)
             {
                 itemCount = items.Count;
-                Logger.Debug($"Found {itemCount} items in saved storage'{StorageID}'", true);
+                // Logger.Debug($"Found {itemCount} items in saved storage'{StorageID}'", true);
 
                 // Вывод информации о каждом предмете для отладки
                 for (int i = 0; i < Math.Min(items.Count, 5); i++)
@@ -724,7 +724,7 @@ private void CheckPlayerDistance()
                     var item = items[i];
                     string name = item.ContainsKey("display_name") ? item["display_name"].ToString() : "Unknown";
                     int qty = item.ContainsKey("quantity") ? Convert.ToInt32(item["quantity"]) : 0;
-                    Logger.Debug($"Storage item {i + 1}: {name} x{qty}", true);
+                    // Logger.Debug($"Storage item {i + 1}: {name} x{qty}", true);
                 }
             }
 
@@ -737,7 +737,7 @@ private void CheckPlayerDistance()
             // Обновляем UI, если хранилище открыто
             ForceUpdateContainerUI();
 
-            Logger.Debug($"Storage inventory for '{StorageID}' loaded successfully. Items count: {_storageContainer.ContainerInventory.Items.Count}", true);
+            // Logger.Debug($"Storage inventory for '{StorageID}' loaded successfully. Items count: {_storageContainer.ContainerInventory.Items.Count}", true);
             return true;
         }
         catch (Exception ex)
@@ -762,18 +762,18 @@ private void CheckPlayerDistance()
             // Для отладки выводим содержимое инвентаря
             if (_storageContainer.ContainerInventory != null && _storageContainer.ContainerInventory.Items.Count > 0)
             {
-                Logger.Debug($"Force updated UI for storage '{StorageID}' with {_storageContainer.ContainerInventory.Items.Count} items:", true);
+                // Logger.Debug($"Force updated UI for storage '{StorageID}' with {_storageContainer.ContainerInventory.Items.Count} items:", true);
 
                 // Выводим информацию о первых 5 предметах (для отладки)
                 for (int i = 0; i < Math.Min(_storageContainer.ContainerInventory.Items.Count, 5); i++)
                 {
                     var item = _storageContainer.ContainerInventory.Items[i];
-                    Logger.Debug($"  Item {i + 1}: {item.DisplayName} x{item.Quantity}", false);
+                    // Logger.Debug($"  Item {i + 1}: {item.DisplayName} x{item.Quantity}", false);
                 }
             }
             else
             {
-                Logger.Debug($"Force updated UI for storage '{StorageID}' (empty or null inventory)", true);
+                // Logger.Debug($"Force updated UI for storage '{StorageID}' (empty or null inventory)", true);
             }
         }
     }
@@ -785,7 +785,7 @@ private void CheckPlayerDistance()
     {
         if (_storageContainer == null || _storageContainer.ContainerInventory == null)
         {
-            Logger.Debug("Cannot save container by name - container or inventory is null", true);
+            // Logger.Debug("Cannot save container by name - container or inventory is null", true);
             return;
         }
 
@@ -804,7 +804,7 @@ private void CheckPlayerDistance()
         string nameKey = $"StorageInventory_{_storageContainer.Name}";
         gameManager.SetData(nameKey, inventoryData);
 
-        Logger.Debug($"Saved container '{_storageContainer.Name}' with {_storageContainer.ContainerInventory.Items.Count} items using name key", true);
+        // Logger.Debug($"Saved container '{_storageContainer.Name}' with {_storageContainer.ContainerInventory.Items.Count} items using name key", true);
     }
 
     public void OnContainerInventoryChanged()
@@ -812,7 +812,7 @@ private void CheckPlayerDistance()
         // Автоматически сохраняем состояние хранилища при изменении
         SaveStorageInventory();
         EmitSignal(SignalName.StorageChanged);
-        Logger.Debug($"Auto-saved storage '{StorageID}' after inventory change", false);
+        // Logger.Debug($"Auto-saved storage '{StorageID}' after inventory change", false);
     }
 
 }

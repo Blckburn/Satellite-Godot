@@ -14,7 +14,7 @@ public partial class Character : CharacterBody2D, IDamageable
 
     [Export] public bool ShowDebugInfo { get; set; } = false;
     [Export] public NodePath TileMapPath { get; set; }
-    [Export] public Vector2 TileSize { get; set; } = new Vector2(64, 32);
+    [Export] public Vector2 TileSize { get; set; } = new Vector2(32, 16);
     [Export] public NodePath SpritePath { get; set; } = "Sprite2D"; // Путь к спрайту по умолчанию
 
     protected float _currentHealth;

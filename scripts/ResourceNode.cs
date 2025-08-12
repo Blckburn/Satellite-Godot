@@ -41,7 +41,7 @@ public partial class ResourceNode : InteractiveObject, IInteraction
             _resourceItem = value;
             if (_resourceItem != null)
             {
-                Logger.Debug($"ResourceItem set: {_resourceItem.DisplayName}", false);
+                // Logger.Debug($"ResourceItem set: {_resourceItem.DisplayName}", false); // СПАМ ОТКЛЮЧЕН
                 // Обновляем визуал при установке нового предмета
                 UpdateVisuals();
             }
@@ -127,7 +127,7 @@ public partial class ResourceNode : InteractiveObject, IInteraction
             staticBody.CollisionMask = 0;
         }
 
-        Logger.Debug($"ResourceNode '{Name}' initialized with type: {Type}", true);
+        // Logger.Debug($"ResourceNode '{Name}' initialized with type: {Type}", true); // СПАМ ОТКЛЮЧЕН
     }
 
     // Создание элементов прогресса
@@ -178,7 +178,7 @@ public partial class ResourceNode : InteractiveObject, IInteraction
         // Скрываем контейнер изначально
         progressContainer.Visible = false;
 
-        Logger.Debug("Progress UI elements created for resource node", false);
+        // Logger.Debug("Progress UI elements created for resource node", false); // СПАМ ОТКЛЮЧЕН
     }
 
     public override void _Process(double delta)
@@ -357,7 +357,7 @@ public partial class ResourceNode : InteractiveObject, IInteraction
             {
                 // Используем текстуру непосредственно из Item
                 _sprite.Texture = ResourceItem.Icon;
-                Logger.Debug($"Updated sprite texture from ResourceItem.Icon for {Type} resource", false);
+                // Logger.Debug($"Updated sprite texture from ResourceItem.Icon for {Type} resource", false); // СПАМ ОТКЛЮЧЕН
             }
             else
             {
@@ -368,7 +368,7 @@ public partial class ResourceNode : InteractiveObject, IInteraction
                 if (texture != null)
                 {
                     _sprite.Texture = texture;
-                    Logger.Debug($"Updated sprite texture from path for {Type} resource: {texturePath}", false);
+                    // Logger.Debug($"Updated sprite texture from path for {Type} resource: {texturePath}", false); // СПАМ ОТКЛЮЧЕН
                 }
                 else
                 {

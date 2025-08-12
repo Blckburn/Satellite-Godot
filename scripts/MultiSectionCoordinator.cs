@@ -72,8 +72,9 @@ public sealed class MultiSectionCoordinator
 
     private Vector2 MapTileToIsometricWorld(Vector2I tilePos)
     {
-        float tileWidth = 64.0f;
-        float tileHeight = 32.0f;
+        // Согласуем с формулой проекта (тайл 32x16, соотношение 2:1)
+        float tileWidth = 32.0f;
+        float tileHeight = 16.0f;
         float x = (tilePos.X - tilePos.Y) * tileWidth / 2.0f;
         float y = (tilePos.X + tilePos.Y) * tileHeight / 2.0f;
         return new Vector2(x, y);
