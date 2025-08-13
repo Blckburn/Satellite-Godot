@@ -15,6 +15,8 @@ public partial class UIManager : CanvasLayer
     
     // DEBUG HUD для координат углов карты
     private Label _debugCornersLabel;
+    private Label _seedLabel;
+    private int _currentSeed = -1;
 
     // Ссылка на InteractionSystem
     private InteractionSystem _interactionSystem;
@@ -104,12 +106,37 @@ public partial class UIManager : CanvasLayer
         
         // Инициализация DEBUG HUD для координат углов
         CreateDebugCornersHUD();
+        CreateSeedHUD();
     }
 
     public override void _Process(double delta)
     {
         if (_interactionSystem != null)
             UpdateInteractionUI();
+    }
+
+    public override void _Input(InputEvent @event)
+    {
+        if (@event is InputEventKey key && key.Pressed && !key.Echo)
+        {
+            if (key.CtrlPressed && key.AltPressed && key.Keycode == Key.C)
+            {
+                if (_currentSeed >= 0)
+                {
+                    DisplayServer.ClipboardSet(_currentSeed.ToString());
+                    // временно изменим текст на подтверждение
+                    if (_seedLabel != null)
+                    {
+                        string prev = _seedLabel.Text;
+                        _seedLabel.Text = $"Seed: {_currentSeed}  (copied)";
+                        GetTree().CreateTimer(1.2).Timeout += () =>
+                        {
+                            UpdateSeedLabelText();
+                        };
+                    }
+                }
+            }
+        }
     }
 
     private void UpdateInteractionUI()
@@ -211,6 +238,34 @@ public partial class UIManager : CanvasLayer
             _debugCornersLabel.Text = cornersInfo;
             Logger.Debug($"Updated DEBUG HUD with corners info: {cornersInfo}", false);
         }
+    }
+
+    private void CreateSeedHUD()
+    {
+        _seedLabel = new Label();
+        _seedLabel.Name = "SeedLabel";
+        _seedLabel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.TopRight);
+        _seedLabel.Position = new Vector2(-300, 10);
+        _seedLabel.Size = new Vector2(290, 38);
+        _seedLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _seedLabel.Visible = true;
+        AddChild(_seedLabel);
+    }
+
+    public static void ShowSeed(int seed)
+    {
+        if (Instance?. _seedLabel != null)
+        {
+            Instance._currentSeed = seed;
+            Instance.UpdateSeedLabelText();
+            Instance._seedLabel.Visible = true;
+        }
+    }
+
+    private void UpdateSeedLabelText()
+    {
+        if (_seedLabel == null) return;
+        _seedLabel.Text = $"Seed: {_currentSeed}\nPress Ctrl+Alt+C to copy";
     }
     
     public static void SetMapCorners(Vector2I topLeft, Vector2I topRight, Vector2I bottomLeft, Vector2I bottomRight, 

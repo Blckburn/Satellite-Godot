@@ -33,11 +33,13 @@ public sealed class NodeLocator
                                ?? FindNodeRecursive<Node2D>(IsometricTileset, "YSortContainer");
             WallsTileMap ??= IsometricTileset.GetNodeOrNull<Godot.TileMapLayer>("Walls")
                                ?? FindNodeRecursive<Godot.TileMapLayer>(IsometricTileset, "Walls");
+            // Удалён слой «WallsTop»
         }
         else
         {
             FloorsTileMap ??= FindNodeRecursive<Godot.TileMapLayer>(context.GetTree().Root, "Floors");
             WallsTileMap ??= FindNodeRecursive<Godot.TileMapLayer>(context.GetTree().Root, "Walls");
+            // Удалён слой «WallsTop»
             YSortContainer ??= FindNodeRecursive<Node2D>(context.GetTree().Root, "YSortContainer");
         }
 
@@ -55,6 +57,10 @@ public sealed class NodeLocator
                               ?? context.GetTree().Root.GetNodeOrNull<TileMap>("Walls");
             WallsTileMap = TryCreateLayerFromLegacy(wallsLegacy);
         }
+
+        // Удалён код автосоздания слоя «WallsTop»
+
+        // Дополнительная сортировка, связанная со слоем «WallsTop», удалена
     }
 
     public void EnsureSortingWorks()

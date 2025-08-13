@@ -58,6 +58,7 @@ public sealed class WorldBiomesGenerator
 
         // Лёгкая рандомизация параметров
         var rng = _random;
+        int seedBase = rng.Next(int.MaxValue);
         int locRiverCount = riverCount;
         int locRiverWidth = riverWidth;
         int locCarveGlobalTrailsWidth = carveGlobalTrailsWidth;
@@ -82,9 +83,13 @@ public sealed class WorldBiomesGenerator
 
         // 1) Poisson-lite центры биомов
         var centers = new List<(Vector2I pos, int biome)>();
-        int attempts = 0; int maxAttempts = (worldWidth * worldHeight + 1) * 200;
-        int spacing = Math.Max(2, 12); // BiomeMinSpacing по умолчанию 12
-        while (centers.Count < (worldWidth * worldHeight) && attempts++ < maxAttempts)
+        // Динамическое количество биомов от площади карты
+        int worldArea = worldTilesX * worldTilesY;
+        int desiredBiomeArea = Math.Max(mapWidth * mapHeight * 4, 8000); // больше целевая площадь биома → гарантированный холл
+        int targetBiomeCount = Math.Max(4, Math.Min(16, Math.Max((int)MathF.Round(worldArea / (float)desiredBiomeArea), 4)));
+        int attempts = 0; int maxAttempts = (targetBiomeCount + 1) * 500;
+        int spacing = Math.Max(18, (int)MathF.Round(MathF.Sqrt(desiredBiomeArea) * 0.40f)); // шире разводим биомы
+        while (centers.Count < targetBiomeCount && attempts++ < maxAttempts)
         {
             int x = rng.Next(4, worldTilesX - 4);
             int y = rng.Next(4, worldTilesY - 4);
@@ -97,7 +102,7 @@ public sealed class WorldBiomesGenerator
             if (!ok) continue;
             int biome = rng.Next(0, maxBiomeTypes);
             centers.Add((new Vector2I(x, y), biome));
-            if (attempts % ((worldWidth * worldHeight + 1) * 20) == 0 && spacing > 4) spacing -= 2;
+            if (attempts % ((targetBiomeCount + 1) * 20) == 0 && spacing > 12) spacing -= 2;
         }
         if (centers.Count == 0)
             centers.Add((new Vector2I(worldTilesX / 2, worldTilesY / 2), 0));
@@ -919,40 +924,8 @@ public sealed class WorldBiomesGenerator
                 }
             }
         }
-        // 6) MST между центрами и карвинг глобальных троп
-        var edges = new List<(int a, int b, int w)>();
-        for (int i = 0; i < centers.Count; i++)
-        for (int j = i + 1; j < centers.Count; j++)
-        {
-            int dx = centers[i].pos.X - centers[j].pos.X;
-            int dy = centers[i].pos.Y - centers[j].pos.Y;
-            edges.Add((i, j, dx * dx + dy * dy));
-        }
-        edges.Sort((e1, e2) => e1.w.CompareTo(e2.w));
-        var parent = new int[centers.Count]; for (int i = 0; i < parent.Length; i++) parent[i] = i;
-        int FindP(int x) { while (parent[x] != x) x = parent[x] = parent[parent[x]]; return x; }
-        bool UnionP(int x, int y) { x = FindP(x); y = FindP(y); if (x == y) return false; parent[y] = x; return true; }
-        var chosen = new List<(int a, int b)>();
-        foreach (var e in edges) if (UnionP(e.a, e.b)) chosen.Add((e.a, e.b));
-
-        foreach (var c in chosen)
-        {
-            var path = FindWorldPathOrganic(centers[c.a].pos, centers[c.b].pos);
-            if (path == null) continue;
-            var tile = _biome.GetBridgeTile(true, locCarveGlobalTrailsWidth);
-            foreach (var wp in path)
-            {
-                for (int w = -(locCarveGlobalTrailsWidth / 2); w <= (locCarveGlobalTrailsWidth / 2); w++)
-                {
-                    foreach (var d in new[] { new Vector2I(1, 0), new Vector2I(0, 1) })
-                    {
-                        var p = new Vector2I(wp.X + d.X * w, wp.Y + d.Y * w);
-                        _floorsTileMap.SetCell(p, _floorsSourceId, tile);
-                        _wallsTileMap.EraseCell(p);
-                    }
-                }
-            }
-        }
+        // 6) Магистраль/глобальные тропы — отключено: магистраль используется только в логике, без отрисовки
+        // [disabled]
 
         // 7) Локальные связки от «зал» к ближайшим комнатам внутри биома
         var biomeLocal = worldBiome; // избегаем использования out-параметра внутри локальной функции
@@ -988,140 +961,55 @@ public sealed class WorldBiomesGenerator
             return null;
         }
 
-        foreach (var c in centers)
-        {
-            var hub = c.pos;
-            int searchR = Math.Max(8, locBiomeHallRadius + 18);
-            for (int x = Math.Max(0, hub.X - searchR); x < Math.Min(worldTilesX, hub.X + searchR); x++)
-            {
-                for (int y = Math.Max(0, hub.Y - searchR); y < Math.Min(worldTilesY, hub.Y + searchR); y++)
-                {
-                    if (biomeLocal[x, y] != c.biome) continue;
-                    if (worldMask[x, y] != LevelGenerator.TileType.Room) continue;
-                    int dx0 = x - hub.X, dy0 = y - hub.Y; if (dx0 * dx0 + dy0 * dy0 <= locBiomeHallRadius * locBiomeHallRadius) continue;
-                    if (((x + y) % 11) != 0) continue;
-                    var path = FindWorldPathConstrainedLocal(hub, new Vector2I(x, y), c.biome);
-                    if (path == null) continue;
-                    var tile = _biome.GetFloorTileForBiome(c.biome);
-                    foreach (var wp in path)
-                    {
-                        for (int w = -(locLocalCorridorWidth / 2); w <= (locLocalCorridorWidth / 2); w++)
-                        {
-                            foreach (var d in new[] { new Vector2I(1, 0), new Vector2I(0, 1) })
-                            {
-                                var p = new Vector2I(wp.X + d.X * w, wp.Y + d.Y * w);
-                                _floorsTileMap.SetCell(p, _floorsSourceId, tile);
-                                _wallsTileMap.EraseCell(p);
-                                if (p.X >= 0 && p.X < worldTilesX && p.Y >= 0 && p.Y < worldTilesY)
-                                    worldMask[p.X, p.Y] = LevelGenerator.TileType.Room;
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        // 7) Локальные связки от «зал» к ближайшим комнатам — отключено: не влияет на отрисовку пола
+        // [disabled]
 
-        // 8) Реки
-        for (int ri = 0; ri < locRiverCount; ri++)
-        {
-            bool horizontal = rng.NextDouble() < 0.5;
-            if (horizontal)
-            {
-                int y0 = rng.Next(worldTilesY);
-                for (int x = 0; x < worldTilesX; x++)
-                {
-                    int y = y0 + (int)(Math.Sin(x * locRiverNoiseFreq) * locRiverNoiseAmp);
-                    for (int w = -locRiverWidth / 2; w <= locRiverWidth / 2; w++)
-                    {
-                        int yy = y + w; if (yy < 0 || yy >= worldTilesY) continue;
-                        // Реки: принудительно (0,10) из атласа 4
-                        var liquidTile = new Vector2I(0, 10);
-                        _floorsTileMap.SetCell(new Vector2I(x, yy), _floorsSourceId, liquidTile);
-                        _wallsTileMap.EraseCell(new Vector2I(x, yy));
-                        worldMask[x, yy] = LevelGenerator.TileType.Background;
-                        waterMask[x, yy] = true;
-                    }
-                }
-            }
-            else
-            {
-                int x0 = rng.Next(worldTilesX);
-                for (int y = 0; y < worldTilesY; y++)
-                {
-                    int x = x0 + (int)(Math.Sin(y * locRiverNoiseFreq) * locRiverNoiseAmp);
-                    for (int w = -locRiverWidth / 2; w <= locRiverWidth / 2; w++)
-                    {
-                        int xx = x + w; if (xx < 0 || xx >= worldTilesX) continue;
-                        // Реки: принудительно (0,10) из атласа 4
-                        var liquidTile = new Vector2I(0, 10);
-                        _floorsTileMap.SetCell(new Vector2I(xx, y), _floorsSourceId, liquidTile);
-                        _wallsTileMap.EraseCell(new Vector2I(xx, y));
-                        worldMask[xx, y] = LevelGenerator.TileType.Background;
-                        waterMask[xx, y] = true;
-                    }
-                }
-            }
-        }
+        // 8) Реки — временно отключены для MVP стен
+        // [disabled]
 
-        // 9) Мосты над реками по траекториям MST
-        foreach (var c in chosen)
-        {
-            var path = FindWorldPathOrganic(centers[c.a].pos, centers[c.b].pos);
-            if (path == null) continue;
-            var tile = _biome.GetBridgeTile(false, locCarveGlobalTrailsWidth);
-            for (int i = 0; i < path.Count; i++)
-            {
-                var wp = path[i];
-                if (wp.X < 1 || wp.X >= worldTilesX - 1 || wp.Y < 1 || wp.Y >= worldTilesY - 1) continue;
-                if (!waterMask[wp.X, wp.Y] && !waterMask[wp.X + 1, wp.Y] && !waterMask[wp.X - 1, wp.Y] && !waterMask[wp.X, wp.Y + 1] && !waterMask[wp.X, wp.Y - 1])
-                    continue;
+        // 9) Мосты — временно отключены
+        // [disabled]
 
-                int waterRunX = 0; for (int dx = -6; dx <= 6; dx++) if (wp.X + dx >= 0 && wp.X + dx < worldTilesX && waterMask[wp.X + dx, wp.Y]) waterRunX++;
-                int waterRunY = 0; for (int dy = -6; dy <= 6; dy++) if (wp.Y + dy >= 0 && wp.Y + dy < worldTilesY && waterMask[wp.X, wp.Y + dy]) waterRunY++;
-                bool riverVertical = waterRunY >= waterRunX;
-
-                int halfBridge = Math.Max((locCarveGlobalTrailsWidth + 2) / 2, 3);
-                int halfSpan = Math.Max(locRiverWidth / 2 + 2, 5);
-
-                if (riverVertical)
-                {
-                    for (int ox = -halfSpan; ox <= halfSpan; ox++)
-                    for (int w = -halfBridge; w <= halfBridge; w++)
-                    {
-                        var p = new Vector2I(wp.X + ox, wp.Y + w);
-                        if (p.X < 0 || p.X >= worldTilesX || p.Y < 0 || p.Y >= worldTilesY) continue;
-                        _floorsTileMap.SetCell(p, _floorsSourceId, tile);
-                        _wallsTileMap.EraseCell(p);
-                        worldMask[p.X, p.Y] = LevelGenerator.TileType.Room; waterMask[p.X, p.Y] = false;
-                    }
-                }
-                else
-                {
-                    for (int oy = -halfSpan; oy <= halfSpan; oy++)
-                    for (int w = -halfBridge; w <= halfBridge; w++)
-                    {
-                        var p = new Vector2I(wp.X + w, wp.Y + oy);
-                        if (p.X < 0 || p.X >= worldTilesX || p.Y < 0 || p.Y >= worldTilesY) continue;
-                        _floorsTileMap.SetCell(p, _floorsSourceId, tile);
-                        _wallsTileMap.EraseCell(p);
-                        worldMask[p.X, p.Y] = LevelGenerator.TileType.Room; waterMask[p.X, p.Y] = false;
-                    }
-                }
-            }
-        }
-
-        // 10) Внешние стены (через утилиту) + обновление HUD углов
-        BorderWallsBuilder.AddBiomeBasedBorderWalls(
-            worldMask,
-            worldBiome,
-            worldTilesX,
-            worldTilesY,
+        // 9b) Стены/коридоры/холлы/комнаты — включаем (логика без перекраски пола; стены рисуются)
+        WallSystem.BuildTopology(
+            rng,
+            _floorsTileMap,
             _wallsTileMap,
+            _floorsSourceId,
             _wallsSourceId,
             _biome,
-            onCornersComputed
+            worldBiome,
+            worldMask,
+            worldTilesX,
+            worldTilesY,
+            centers,
+            new WallSystem.Params { MainCorridorWidth = locCarveGlobalTrailsWidth, LocalCorridorWidth = locLocalCorridorWidth, HallRadiusScale = 0.06f }
         );
+
+        // Логика «шапок» удалена
+
+        // 10) Обновление HUD углов (вместо старого BorderWallsBuilder)
+        onCornersComputed?.Invoke(
+            new Vector2I(0, 0),
+            LocalMapTileToIsometricWorld(new Vector2I(0, 0)),
+            LocalMapTileToIsometricWorld(new Vector2I(worldTilesX - 1, 0)),
+            LocalMapTileToIsometricWorld(new Vector2I(0, worldTilesY - 1)),
+            LocalMapTileToIsometricWorld(new Vector2I(worldTilesX - 1, worldTilesY - 1))
+        );
+
+        // Показ сида в HUD
+        UIManager.ShowSeed(seedBase);
     }
+
+    private static Vector2 LocalMapTileToIsometricWorld(Vector2I tilePos)
+    {
+        Vector2I tileSize = new Vector2I(32, 16);
+        float x = (tilePos.X - tilePos.Y) * tileSize.X / 2.0f;
+        float y = (tilePos.X + tilePos.Y) * tileSize.Y / 2.0f;
+        return new Vector2(x, y);
+    }
+
+    // Удалён помощник «шапок»
 
     // Поиск пути по мировым тайлам для MST/мостов
     private List<Vector2I> FindWorldPathOrganic(Vector2I startWp, Vector2I goalWp)

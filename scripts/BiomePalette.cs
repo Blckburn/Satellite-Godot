@@ -86,24 +86,114 @@ public sealed class BiomePalette
         {
             case 0: // Grassland — матрица со смешанными Atlas ID
                 {
-                    var options = new (int src, Vector2I tile)[]
+                    // БАЗОВЫЕ СТЕНЫ (как у пола: 2 варианта, детерминированный шум и лёгкий джиттер)
+                    var baseTiles = new (int src, Vector2I tile)[]
                     {
-                        (4, new Vector2I(4, 4)), (4, new Vector2I(5, 4)), (4, new Vector2I(6, 4)),
-                        (4, new Vector2I(7, 4)), (4, new Vector2I(8, 4)),
-                        (0, new Vector2I(41, 18)), (0, new Vector2I(74, 10)),
-                        (5, new Vector2I(16, 16)), (5, new Vector2I(4, 30)), (5, new Vector2I(24, 0))
+                        (0, new Vector2I(90, 10)),
+                        (0, new Vector2I(58, 18))
                     };
-                    var pick = options[_random.Next(options.Length)];
+                    var rareTiles = new (int src, Vector2I tile)[]
+                    {
+                        (0, new Vector2I(0, 0)),
+                        (0, new Vector2I(46, 10)),
+                        (0, new Vector2I(93, 1))
+                    };
+
+                    // Когерентный шум по крупной сетке, как для пола
+                    int rx = pos.X / 4; int ry = pos.Y / 4;
+                    int h = Hash2D(rx, ry, 733); // устойчивый хеш
+                    int idx = Math.Abs(h) % baseTiles.Length;
+                    // Небольшой джиттер для разрушения прямых границ
+                    int j = Hash2D(pos.X, pos.Y, 2115);
+                    if ((j % 100) < 15) idx = (idx + 1) % baseTiles.Length; // ~15%
+
+                    // РЕДКИЕ ВАРИАЦИИ (как у пола — ~20%)
+                    int r = Hash2D(pos.X, pos.Y, 2026) % 1000;
+                    if (r < 200)
+                    {
+                        var rare = rareTiles[_random.Next(rareTiles.Length)];
+                        return (rare.src, rare.tile);
+                    }
+                    var pick = baseTiles[idx];
                     return (pick.src, pick.tile);
                 }
-            // Для прочих биомов — используем текущий дефолт Atlas 4 и прежние координаты
-            case 1: return (4, new Vector2I(0, 0));
-            case 2: return (4, new Vector2I(1, 0));
+            case 1: // Forest — матрица, как у пола Forest (база + редкие с низкой плотностью)
+                {
+                    // Новая матрица для Forest
+                    var baseTiles = new (int src, Vector2I tile)[]
+                    {
+                        (0, new Vector2I(0, 0)),
+                        (0, new Vector2I(8, 0)),
+                        (0, new Vector2I(52, 0))
+                    };
+                    var rareTiles = new (int src, Vector2I tile)[]
+                    {
+                        (0, new Vector2I(44, 1)),
+                        (0, new Vector2I(43, 0)),
+                        (0, new Vector2I(60, 0)),
+                        (0, new Vector2I(68, 0))
+                    };
+
+                    int rx = pos.X / 4; int ry = pos.Y / 4;
+                    int h = Hash2D(rx, ry, 1723);
+                    int idx = Math.Abs(h) % baseTiles.Length;
+                    // Forest: более мягкий джиттер 12%
+                    int j = Hash2D(pos.X, pos.Y, 1912);
+                    if ((j % 100) < 12) idx = (idx + 1) % baseTiles.Length;
+
+                    // Редкие Forest — как у пола ~7%
+                    int r = Hash2D(pos.X, pos.Y, 3026) % 1000;
+                    if (r < 70)
+                    {
+                        var rare = rareTiles[_random.Next(rareTiles.Length)];
+                        return (rare.src, rare.tile);
+                    }
+                    var pick = baseTiles[idx];
+                    return (pick.src, pick.tile);
+                }
+            case 2: // Desert — базовый один тайл, остальные как редкие ~7%
+                {
+                    var baseTiles = new (int src, Vector2I tile)[]
+                    {
+                        (4, new Vector2I(3, 1))
+                    };
+                    var rareTiles = new (int src, Vector2I tile)[]
+                    {
+                        (4, new Vector2I(4, 1)),
+                        (4, new Vector2I(5, 1)),
+                        (4, new Vector2I(2, 5)),
+                        (4, new Vector2I(4, 5)),
+                        (4, new Vector2I(5, 5))
+                    };
+                    int rx = pos.X / 4; int ry = pos.Y / 4;
+                    int h = Hash2D(rx, ry, 2711);
+                    int idx = Math.Abs(h) % baseTiles.Length;
+                    int r = Hash2D(pos.X, pos.Y, 4026) % 1000;
+                    if (r < 70)
+                    {
+                        var rare = rareTiles[_random.Next(rareTiles.Length)];
+                        return (rare.src, rare.tile);
+                    }
+                    var pick = baseTiles[idx];
+                    return (pick.src, pick.tile);
+                }
             case 3: return (4, new Vector2I(0, 1));
             case 4: return (4, new Vector2I(3, 1));
             case 5: return (4, new Vector2I(4, 1));
             case 6: return (4, new Vector2I(1, 1));
             default: return (4, new Vector2I(2, 0));
+        }
+    }
+
+    private static int Hash2D(int x, int y, int seed)
+    {
+        unchecked
+        {
+            int h = seed;
+            h = (h ^ (x * 374761393)) * 668265263;
+            h = (h ^ (y * 1274126177)) * 461845907;
+            h ^= h >> 13; h *= 1274126177; h ^= h >> 16;
+            return h & int.MaxValue;
         }
     }
 

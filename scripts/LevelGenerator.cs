@@ -97,8 +97,8 @@ public partial class LevelGenerator : Node
 
     // WorldBiomes params
     [Export] public int WorldBiomeCount { get; set; } = 6; // сколько регионов биомов
-    [Export] public int WorldWidth { get; set; } = 3;      // секции по X (временно переиспользуем сетку как холст)
-    [Export] public int WorldHeight { get; set; } = 3;     // секции по Y
+    [Export] public int WorldWidth { get; set; } = 6;      // секции по X (увеличено для гарантированных холлов)
+    [Export] public int WorldHeight { get; set; } = 6;     // секции по Y
     [Export] public int BiomeMinSpacing { get; set; } = 12;
     [Export] public bool WorldBlendBorders { get; set; } = true;
     [Export(PropertyHint.Range, "0,1,0.01")] public float WorldOpenTarget { get; set; } = 0.38f; // целевая доля проходимых тайлов внутри мира

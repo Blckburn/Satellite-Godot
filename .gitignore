@@ -38,3 +38,6 @@ mono_crash.*.json
 
 # Logs
 /logs/
+
+# Local design docs folder
+/Satellite/

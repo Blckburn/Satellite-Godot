@@ -59,8 +59,8 @@ public partial class GameManager : Node
         if (_initialized)
             return;
 
-        // Подключаемся к сигналу смены сцены
-        GetTree().Root.Connect("scene_changed", Callable.From(() => OnSceneChanged()));
+        // Подключаться к SceneChanged небезопасно — вызываем OnSceneChanged вручную, когда нужно.
+        // Удалён неработающий connect к несуществующему сигналу.
 
         _initialized = true;
     }
