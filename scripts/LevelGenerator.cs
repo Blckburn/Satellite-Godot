@@ -15,6 +15,7 @@ public partial class LevelGenerator : Node
     // Ссылки на раздельные TileMap и контейнеры
     [Export] public Godot.TileMapLayer FloorsTileMap { get; set; } // Для пола
     [Export] public Godot.TileMapLayer WallsTileMap { get; set; }  // Для стен и декораций
+    [Export] public Godot.TileMapLayer WallsOverlayTileMap { get; set; }  // Для верхнего слоя стен (оверлей)
     [Export] public Node2D YSortContainer { get; set; }       // Контейнер для игрока и сортировки
 
     // Ссылка на родительский узел, содержащий все тайлмапы
@@ -200,7 +201,7 @@ public partial class LevelGenerator : Node
     private RoomPlacer _roomPlacer;
     private CorridorCarver _corridorCarver; // постепенный вынос карвинга
     private SectionConnector _sectionConnector; // постепенный вынос межсекционных связей
-    private Decorator _decorator; // постепенный вынос декора
+    // Decorator удален - декорации будем делать через новую систему
     private MultiSectionCoordinator _multiSectionCoordinator; // постепенный вынос мультисекции
 
     public override void _Ready()
@@ -225,6 +226,7 @@ public partial class LevelGenerator : Node
         IsometricTileset = _nodeLocator.IsometricTileset;
         FloorsTileMap = _nodeLocator.FloorsTileMap;
         WallsTileMap = _nodeLocator.WallsTileMap;
+        WallsOverlayTileMap = _nodeLocator.WallsOverlayTileMap;
         YSortContainer = _nodeLocator.YSortContainer;
 
         // Logger.Debug($"TileMapLayer найдены: Floors: {FloorsTileMap?.Name}, Walls: {WallsTileMap?.Name}, YSort: {YSortContainer?.Name}", true); // СПАМ ОТКЛЮЧЕН
@@ -276,7 +278,7 @@ public partial class LevelGenerator : Node
         // EntitySpawner удалён как неиспользуемый (ресурсы/контейнеры создаются напрямую)
         _corridorCarver = new CorridorCarver(_random);
         _sectionConnector = new SectionConnector(_random);
-        _decorator = new Decorator(_random);
+        // _decorator удален
         _multiSectionCoordinator = new MultiSectionCoordinator(_random);
         // Используем исходные TileSet источники floors/walls из проекта без автогенерации
         _biome = new BiomePalette(_random, () => UseVariedWalls);
@@ -576,7 +578,7 @@ public partial class LevelGenerator : Node
         // Новый делегат генерации «большого мира»: перенос тяжёлой логики во внешний класс
         try
         {
-            var generator = new WorldBiomesGenerator(_random, _biome, FloorsTileMap, WallsTileMap, FloorsSourceID, WallsSourceID);
+            var generator = new WorldBiomesGenerator(_random, _biome, FloorsTileMap, WallsTileMap, WallsOverlayTileMap, FloorsSourceID, WallsSourceID);
             LevelGenerator.TileType[,] wm;
             int[,] wb;
             generator.GenerateWorld(
@@ -642,6 +644,7 @@ public partial class LevelGenerator : Node
             Logger.Error($"WorldBiomes generation failed in delegate: {ex.Message}. Falling back to legacy path.");
         }
     }
+
 
     // 🚀 РЕВОЛЮЦИОННАЯ СИСТЕМА: Создание SpawnPoint узлов в углах карты!
     private void CreateCornerSpawnPointsAndPlayer(
@@ -1793,6 +1796,12 @@ public partial class LevelGenerator : Node
                 WallsTileMap.Clear();
                 // Logger.Debug("WallsTileMap cleared successfully", false);
             }
+
+                if (WallsOverlayTileMap != null)
+                {
+                    WallsOverlayTileMap.Clear();
+                    // Logger.Debug("WallsOverlayTileMap cleared successfully", false);
+                }
         }
         catch (Exception e)
         {

@@ -8,6 +8,8 @@ public sealed class WorldBiomesGenerator
     private readonly BiomePalette _biome;
     private readonly TileMapLayer _floorsTileMap;
     private readonly TileMapLayer _wallsTileMap;
+    // Новый слой для верхних стен
+    private readonly TileMapLayer _wallsOverlayTileMap;
     private readonly int _floorsSourceId;
     private readonly int _wallsSourceId;
 
@@ -16,6 +18,7 @@ public sealed class WorldBiomesGenerator
         BiomePalette biome,
         TileMapLayer floorsTileMap,
         TileMapLayer wallsTileMap,
+        TileMapLayer wallsOverlayTileMap,
         int floorsSourceId,
         int wallsSourceId)
     {
@@ -23,6 +26,7 @@ public sealed class WorldBiomesGenerator
         _biome = biome ?? throw new ArgumentNullException(nameof(biome));
         _floorsTileMap = floorsTileMap ?? throw new ArgumentNullException(nameof(floorsTileMap));
         _wallsTileMap = wallsTileMap ?? throw new ArgumentNullException(nameof(wallsTileMap));
+        _wallsOverlayTileMap = wallsOverlayTileMap; // может быть null, тогда оверлей не рисуем
         _floorsSourceId = floorsSourceId;
         _wallsSourceId = wallsSourceId;
     }
@@ -215,14 +219,14 @@ public sealed class WorldBiomesGenerator
         var desertRareTiles = new Vector2I[]
         {
             new Vector2I(0, 1), new Vector2I(1, 1), new Vector2I(2, 1),
-            new Vector2I(4, 1), new Vector2I(5, 1)
+            new Vector2I(5, 1)
         };
 
         // Ice (биом 3)
-        var iceBaseTiles = new Vector2I[] { new Vector2I(10, 10) };
+        var iceBaseTiles = new Vector2I[] { new Vector2I(10, 8) };
         var iceRareTiles = new Vector2I[]
         {
-            new Vector2I(4, 6), new Vector2I(5, 6)
+            new Vector2I(4, 6), new Vector2I(5, 6), new Vector2I(9, 9)
         };
 
         // Techno (биом 4)
@@ -310,18 +314,20 @@ public sealed class WorldBiomesGenerator
                 // Прочие биомы (пока без явной базы): заглушка (2,9)
                 floorTile = new Vector2I(2, 9);
             }
-            _floorsTileMap.SetCell(wp, _floorsSourceId, floorTile);
+            // ЖЕЛЕЗНАЯ СИНХРОНИЗАЦИЯ: используем TileCoordinateManager для гарантированной синхронизации
+            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, floorTile);
 
-            if (worldMask[x, y] == LevelGenerator.TileType.Room)
-            {
-                _wallsTileMap.EraseCell(wp);
-            }
-            else if (worldBlendBorders)
-            {
-                // Стены временно отключены
-                // var wallInfo = _biome.GetWallTileForBiomeEx(biome, wp);
-                // _wallsTileMap.SetCell(wp, wallInfo.sourceId, wallInfo.tile);
-            }
+            // ИСПРАВЛЕНИЕ: Убираем старую логику стен - теперь стены управляются только через WallSystem
+            // if (worldMask[x, y] == LevelGenerator.TileType.Room)
+            // {
+            //     _wallsTileMap.EraseCell(wp);
+            // }
+            // else if (worldBlendBorders)
+            // {
+            //     // Стены временно отключены
+            //     // var wallInfo = _biome.GetWallTileForBiomeEx(biome, wp);
+            //     // _wallsTileMap.SetCell(wp, wallInfo.sourceId, wallInfo.tile);
+            // }
         }
 
         // 5b) Редкие «вкрапления» для Grassland (без соседних таких же тайлов)
@@ -366,7 +372,7 @@ public sealed class WorldBiomesGenerator
             }
             if (blocked) continue;
             var rareTile = grassRareTiles[_random.Next(grassRareTiles.Length)];
-            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rareTile);
+            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rareTile);
             placed[x, y] = true;
             windowCount[wx, wy]++;
         }
@@ -407,7 +413,7 @@ public sealed class WorldBiomesGenerator
                             if (blocked) continue;
 
                             var rareTile = grassRareTiles[_random.Next(grassRareTiles.Length)];
-                            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rareTile);
+                            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rareTile);
                             placed[x, y] = true;
                             windowCount[wx, wy]++;
                             need--;
@@ -457,7 +463,7 @@ public sealed class WorldBiomesGenerator
             }
             if (blocked) continue;
             var rareTile = forestRareTiles[_random.Next(forestRareTiles.Length)];
-            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rareTile);
+            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rareTile);
             placedF[x, y] = true;
             windowCountF[wx, wy]++;
         }
@@ -492,7 +498,7 @@ public sealed class WorldBiomesGenerator
                             }
                             if (blocked) continue;
                             var rareTile = forestRareTiles[_random.Next(forestRareTiles.Length)];
-                            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rareTile);
+                            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rareTile);
                             placedF[x, y] = true;
                             windowCountF[wx, wy]++;
                             need--;
@@ -504,6 +510,7 @@ public sealed class WorldBiomesGenerator
 
         // РЕДКИЕ ВКРАПЛЕНИЯ ДЛЯ DESERT (биом 2) — те же правила
         const float desertRareDensity = 0.07f; // 7%
+        var desertRarePositions = new System.Collections.Generic.HashSet<Vector2I>();
         var wantD = new System.Collections.Generic.List<Vector2I>();
         for (int x = 0; x < worldTilesX; x++)
         for (int y = 0; y < worldTilesY; y++)
@@ -591,7 +598,7 @@ public sealed class WorldBiomesGenerator
                 }
                 if (blocked) continue;
             }
-            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rare);
+            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rare);
             if (rare.X == 6 && rare.Y == 5) placedL65[x, y] = true;
             else if (rare.X == 7 && rare.Y == 5) placedL75[x, y] = true;
             else if (rare.X == 9 && rare.Y == 8) placedL98[x, y] = true;
@@ -631,7 +638,7 @@ public sealed class WorldBiomesGenerator
                                 }
                                 if (blocked) continue;
                             }
-                            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rare);
+                            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rare);
                             if (rare.X == 6 && rare.Y == 5) placedL65[x, y] = true;
                             else if (rare.X == 7 && rare.Y == 5) placedL75[x, y] = true;
                             else if (rare.X == 9 && rare.Y == 8) placedL98[x, y] = true;
@@ -669,7 +676,7 @@ public sealed class WorldBiomesGenerator
             }
             if (blocked) continue;
             var rareTile = anomalRareTiles[_random.Next(anomalRareTiles.Length)];
-            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rareTile);
+            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rareTile);
             placedA[x, y] = true;
             windowCountA[wx, wy]++;
         }
@@ -704,7 +711,7 @@ public sealed class WorldBiomesGenerator
                             }
                             if (blocked) continue;
                             var rareTile = anomalRareTiles[_random.Next(anomalRareTiles.Length)];
-                            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rareTile);
+                            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rareTile);
                             placedA[x, y] = true;
                             windowCountA[wx, wy]++;
                             need--;
@@ -739,7 +746,7 @@ public sealed class WorldBiomesGenerator
             }
             if (blocked) continue;
             var rareTile = technoRareTiles[_random.Next(technoRareTiles.Length)];
-            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rareTile);
+            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rareTile);
             placedT[x, y] = true;
             windowCountT[wx, wy]++;
         }
@@ -774,7 +781,7 @@ public sealed class WorldBiomesGenerator
                             }
                             if (blocked) continue;
                             var rareTile = technoRareTiles[_random.Next(technoRareTiles.Length)];
-                            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rareTile);
+                            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rareTile);
                             placedT[x, y] = true;
                             windowCountT[wx, wy]++;
                             need--;
@@ -810,7 +817,7 @@ public sealed class WorldBiomesGenerator
             }
             if (blocked) continue;
             var rareTile = iceRareTiles[_random.Next(iceRareTiles.Length)];
-            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rareTile);
+            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rareTile);
             placedI[x, y] = true;
             windowCountI[wx, wy]++;
         }
@@ -845,7 +852,7 @@ public sealed class WorldBiomesGenerator
                             }
                             if (blocked) continue;
                             var rareTile = iceRareTiles[_random.Next(iceRareTiles.Length)];
-                            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rareTile);
+                            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rareTile);
                             placedI[x, y] = true;
                             windowCountI[wx, wy]++;
                             need--;
@@ -880,7 +887,8 @@ public sealed class WorldBiomesGenerator
             }
             if (blocked) continue;
             var rareTile = desertRareTiles[_random.Next(desertRareTiles.Length)];
-            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rareTile);
+            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rareTile);
+            desertRarePositions.Add(new Vector2I(x, y));
             placedD[x, y] = true;
             windowCountD[wx, wy]++;
         }
@@ -915,7 +923,8 @@ public sealed class WorldBiomesGenerator
                             }
                             if (blocked) continue;
                             var rareTile = desertRareTiles[_random.Next(desertRareTiles.Length)];
-                            _floorsTileMap.SetCell(new Vector2I(x, y), _floorsSourceId, rareTile);
+                            TileCoordinateManager.PlaceFloorTile(_floorsTileMap, x, y, _floorsSourceId, rareTile);
+                            desertRarePositions.Add(new Vector2I(x, y));
                             placedD[x, y] = true;
                             windowCountD[wx, wy]++;
                             need--;
@@ -970,6 +979,10 @@ public sealed class WorldBiomesGenerator
         // 9) Мосты — временно отключены
         // [disabled]
 
+        // 9a) КОНФИГУРАЦИЯ СТЕН ОТКЛЮЧЕНА: TileData нельзя менять во время выполнения в Godot 4
+        // WallTileConfigurator.ConfigureWallTiles(_wallsTileMap);
+        // Вместо этого используем смещение координат в TileCoordinateManager
+
         // 9b) Стены/коридоры/холлы/комнаты — включаем (логика без перекраски пола; стены рисуются)
         WallSystem.BuildTopology(
             rng,
@@ -986,6 +999,22 @@ public sealed class WorldBiomesGenerator
             new WallSystem.Params { MainCorridorWidth = locCarveGlobalTrailsWidth, LocalCorridorWidth = locLocalCorridorWidth, HallRadiusScale = 0.06f }
         );
 
+        // 9c) ДОБАВЛЯЕМ ВЕРХНИЙ СЛОЙ СТЕН ТОЛЬКО ДЛЯ ПУСТЫНИ (биом 2): 1–3 «полоски» вдоль краёв стен,
+        // с пропусками и без «торчания» над землёй. Если оверлей-слой недоступен — пропускаем.
+        if (_wallsOverlayTileMap != null)
+        {
+            // Генерируем оверлей только если в мире реально есть пустынные стены
+            bool hasDesert = false;
+            for (int x = 0; x < worldTilesX && !hasDesert; x++)
+            for (int y = 0; y < worldTilesY && !hasDesert; y++)
+                if (worldBiome[x, y] == 2 && worldMask[x, y] == LevelGenerator.TileType.Wall)
+                    hasDesert = true;
+            if (hasDesert)
+                AddDesertWallOverlays(rng, _wallsOverlayTileMap, _wallsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY, desertRarePositions);
+            else
+                _wallsOverlayTileMap.Clear();
+        }
+
         // Логика «шапок» удалена
 
         // 10) Обновление HUD углов (вместо старого BorderWallsBuilder)
@@ -999,6 +1028,179 @@ public sealed class WorldBiomesGenerator
 
         // Показ сида в HUD
         UIManager.ShowSeed(seedBase);
+    }
+
+    private static int Hash2D(int x, int y, int seed)
+    {
+        unchecked
+        {
+            int h = seed;
+            h = (h ^ (x * 374761393)) * 668265263;
+            h = (h ^ (y * 1274126177)) * 461845907;
+            h ^= h >> 13; h *= 1274126177; h ^= h >> 16;
+            return h & int.MaxValue;
+        }
+    }
+
+    // Оверлей для пустынных стен: короткие полосы 1–3 клетки строго базовым тайлом пустынной стены.
+    // Избегаем клеток, у которых ниже по Y находится комната/коридор (чтобы не «торчали»),
+    // и не ставим рядом с редкими пустынными тайлами пола.
+    private void AddDesertWallOverlays(Random rng, TileMapLayer overlay, int wallsSourceId, LevelGenerator.TileType[,] worldMask, int[,] worldBiome, int w, int h, System.Collections.Generic.HashSet<Vector2I> desertRarePositions)
+    {
+        Vector2I overlayTile = new Vector2I(3, 1); // тот же, что базовая стена пустыни
+
+        var edges = new System.Collections.Generic.List<Vector2I>();
+        var dirs = new[] { new Vector2I(1,0), new Vector2I(-1,0), new Vector2I(0,1), new Vector2I(0,-1) };
+        for (int x = 1; x < w - 1; x++)
+        for (int y = 1; y < h - 1; y++)
+        {
+            if (worldBiome[x, y] != 2) continue;
+            if (worldMask[x, y] != LevelGenerator.TileType.Wall) continue;
+            bool boundary = false;
+            foreach (var d in dirs)
+            {
+                int nx = x + d.X, ny = y + d.Y;
+                if (nx < 0 || nx >= w || ny < 0 || ny >= h) { boundary = true; break; }
+                if (worldMask[nx, ny] != LevelGenerator.TileType.Wall) { boundary = true; break; }
+            }
+            if (boundary) edges.Add(new Vector2I(x, y));
+        }
+
+        foreach (var start in edges)
+        {
+            int hsh = Hash2D(start.X, start.Y, 8713);
+            if ((hsh & 255) >= 128) continue; // ~50%
+
+            Vector2I[] normals = new[] { new Vector2I(0, 1), new Vector2I(0, -1), new Vector2I(1, 0), new Vector2I(-1, 0) };
+            Vector2I normal = new Vector2I(0, 0);
+            foreach (var n in normals)
+            {
+                int nx = start.X + n.X, ny = start.Y + n.Y;
+                if (nx <= 0 || nx >= w - 1 || ny <= 0 || ny >= h - 1) continue;
+                if (worldMask[nx, ny] == LevelGenerator.TileType.Wall) { normal = n; break; }
+            }
+            if (normal == new Vector2I(0, 0)) continue;
+
+            int openX = 0, openY = 0;
+            if (worldMask[start.X + 1, start.Y] != LevelGenerator.TileType.Wall) openX++;
+            if (worldMask[start.X - 1, start.Y] != LevelGenerator.TileType.Wall) openX++;
+            if (worldMask[start.X, start.Y + 1] != LevelGenerator.TileType.Wall) openY++;
+            if (worldMask[start.X, start.Y - 1] != LevelGenerator.TileType.Wall) openY++;
+            Vector2I tangent = openX > openY ? new Vector2I(1, 0) : new Vector2I(0, 1);
+            if ((hsh & 1) == 1) tangent *= -1;
+
+            int length = 1 + (hsh % 3); // 1..3
+            int inwardOffset = Hash2D(start.X, start.Y, 19009) % 4; // 0..3
+            Vector2I p = new Vector2I(start.X + normal.X * inwardOffset, start.Y + normal.Y * inwardOffset);
+            for (int i = 0; i < length; i++)
+            {
+                int x = p.X, y = p.Y;
+                if (x <= 0 || x >= w - 1 || y <= 0 || y >= h - 1) break;
+                if (worldBiome[x, y] != 2 || worldMask[x, y] != LevelGenerator.TileType.Wall) break;
+
+                if (worldMask[x, y + 1] == LevelGenerator.TileType.Room || worldMask[x, y + 1] == LevelGenerator.TileType.Corridor) break;
+
+                bool nearRare = false;
+                for (int dx = -1; dx <= 1 && !nearRare; dx++)
+                for (int dy = -1; dy <= 1 && !nearRare; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    var rp = new Vector2I(x + dx, y + dy);
+                    if (rp.X < 0 || rp.X >= w || rp.Y < 0 || rp.Y >= h) continue;
+                    if (desertRarePositions.Contains(rp)) nearRare = true;
+                }
+                if (nearRare) { p += tangent; continue; }
+
+                int jitter = Hash2D(x, y, 2221) & 15;
+                if (jitter < 3) { p += tangent; continue; }
+
+                overlay.SetCell(new Vector2I(x, y), wallsSourceId, overlayTile);
+
+                p += tangent;
+            }
+        }
+
+        // Глубокие участки внутри стены: далеко от любого пола/фона
+        int deepRadius = 3;
+        var deepCells = new System.Collections.Generic.List<Vector2I>();
+        for (int x = deepRadius; x < w - deepRadius; x++)
+        for (int y = deepRadius; y < h - deepRadius; y++)
+        {
+            if (worldBiome[x, y] != 2) continue;
+            if (worldMask[x, y] != LevelGenerator.TileType.Wall) continue;
+            bool deep = true;
+            for (int dx = -deepRadius; dx <= deepRadius && deep; dx++)
+            for (int dy = -deepRadius; dy <= deepRadius && deep; dy++)
+            {
+                if (dx == 0 && dy == 0) continue;
+                int nx = x + dx, ny = y + dy;
+                if (worldMask[nx, ny] != LevelGenerator.TileType.Wall) deep = false;
+            }
+            if (deep) deepCells.Add(new Vector2I(x, y));
+        }
+
+        // Увеличиваем насыпанность оверлея глубоко внутри: длиннее и чаще, но с ограничением по окнам
+        var overlayPlaced = new bool[w, h];
+        int deepWindow = 8;
+        int[,] deepWindowCount = new int[(w + deepWindow - 1) / deepWindow, (h + deepWindow - 1) / deepWindow];
+        int deepMaxPerWindow = 6;
+
+        foreach (var start in deepCells)
+        {
+            int hsh = Hash2D(start.X, start.Y, 11939);
+            if ((hsh & 255) >= 160) continue; // ~62%
+
+            // Случайное направление (горизонталь/вертикаль)
+            Vector2I dir = ((hsh >> 1) & 1) == 0 ? new Vector2I(1, 0) : new Vector2I(0, 1);
+            if ((hsh & 1) == 1) dir *= -1;
+
+            int length = 3 + (Hash2D(start.X, start.Y, 19073) % 4); // 3..6
+            Vector2I p = start;
+            for (int i = 0; i < length; i++)
+            {
+                int x = p.X, y = p.Y;
+                if (x <= 0 || x >= w - 1 || y <= 0 || y >= h - 1) break;
+                if (worldBiome[x, y] != 2 || worldMask[x, y] != LevelGenerator.TileType.Wall) break;
+
+                // Разрывы для натуральности
+                int jitter = Hash2D(x, y, 3221) & 15;
+                if (jitter < 3) { p += dir; continue; }
+
+                // Не рядом с редкими пустынными тайлами и открытым пространством (радиус 2)
+                bool nearRare = false;
+                for (int dx = -2; dx <= 2 && !nearRare; dx++)
+                for (int dy = -2; dy <= 2 && !nearRare; dy++)
+                {
+                    var rp = new Vector2I(x + dx, y + dy);
+                    if (rp.X < 0 || rp.X >= w || rp.Y < 0 || rp.Y >= h) continue;
+                    if (desertRarePositions.Contains(rp)) nearRare = true;
+                    if (worldMask[rp.X, rp.Y] == LevelGenerator.TileType.Room || worldMask[rp.X, rp.Y] == LevelGenerator.TileType.Corridor)
+                        nearRare = true;
+                }
+                if (nearRare) { p += dir; continue; }
+
+                // Минимальное расстояние между оверлей-тайлами (1 клетка)
+                bool tooClose = false;
+                for (int dx = -1; dx <= 1 && !tooClose; dx++)
+                for (int dy = -1; dy <= 1 && !tooClose; dy++)
+                {
+                    int nx = x + dx, ny = y + dy;
+                    if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+                    if (overlayPlaced[nx, ny]) tooClose = true;
+                }
+                if (tooClose) { p += dir; continue; }
+
+                // Ограничение по окнам
+                int wxi = x / deepWindow, wyi = y / deepWindow;
+                if (deepWindowCount[wxi, wyi] >= deepMaxPerWindow) { p += dir; continue; }
+
+                overlay.SetCell(new Vector2I(x, y), wallsSourceId, overlayTile);
+                overlayPlaced[x, y] = true;
+                deepWindowCount[wxi, wyi]++;
+
+                p += dir;
+            }
+        }
     }
 
     private static Vector2 LocalMapTileToIsometricWorld(Vector2I tilePos)

@@ -31,7 +31,7 @@ public sealed class BiomePalette
                     return forestBaseTiles[_random.Next(forestBaseTiles.Length)];
                 }
             case 2: return new Vector2I(9, 0); // Desert базовый
-            case 3: return new Vector2I(10, 10); // Ice базовый под стенами и в коридорах
+            case 3: return new Vector2I(10, 8); // Ice базовый под стенами и в коридорах (Atlas ID 4)
             case 4: return new Vector2I(8, 5); // Techno базовый
             case 5: return new Vector2I(6, 8); // Anomal базовый
             case 6: return new Vector2I(8, 5); // Lava Springs базовый
@@ -71,10 +71,10 @@ public sealed class BiomePalette
             // Подбираем стабильные, нерандомные значения, чтобы стены точно отличались от пола
             case 1: return new Vector2I(0, 0); // Forest wall
             case 2: return new Vector2I(1, 0); // Desert wall
-            case 3: return new Vector2I(0, 1); // Ice wall
-            case 4: return new Vector2I(3, 1); // Techno wall
-            case 5: return new Vector2I(4, 1); // Anomal wall
-            case 6: return new Vector2I(1, 1); // Lava wall
+            case 3: return new Vector2I(3, 0); // Ice wall - Atlas ID 4
+            case 4: return new Vector2I(3, 0); // Techno wall - Atlas ID 4
+            case 5: return new Vector2I(3, 0); // Anomal wall - Atlas ID 4
+            case 6: return new Vector2I(3, 0); // Lava wall - Atlas ID 4
             default: return new Vector2I(2, 0); // Fallback
         }
     }
@@ -177,10 +177,42 @@ public sealed class BiomePalette
                     var pick = baseTiles[idx];
                     return (pick.src, pick.tile);
                 }
-            case 3: return (4, new Vector2I(0, 1));
-            case 4: return (4, new Vector2I(3, 1));
-            case 5: return (4, new Vector2I(4, 1));
-            case 6: return (4, new Vector2I(1, 1));
+            case 3: // Ice — матрица, как у пола Ice: 2 базовых варианта (src 0) + редкие с очень низкой плотностью
+                {
+                    var baseTiles = new (int src, Vector2I tile)[]
+                    {
+                        (0, new Vector2I(15, 10)),
+                        (0, new Vector2I(23, 10))
+                    };
+                    var rareTiles = new (int src, Vector2I tile)[]
+                    {
+                        (0, new Vector2I(16, 0)),
+                        (0, new Vector2I(25, 0)),
+                        (0, new Vector2I(1, 18)),
+                        (0, new Vector2I(62, 18)),
+                        (4, new Vector2I(5, 7))
+                    };
+
+                    // Когерентный выбор базового варианта по крупной сетке + мягкий джиттер
+                    int rx = pos.X / 4; int ry = pos.Y / 4;
+                    int h = Hash2D(rx, ry, 4123);
+                    int idx = Math.Abs(h) % baseTiles.Length;
+                    int j = Hash2D(pos.X, pos.Y, 1971);
+                    if ((j % 100) < 10) idx = (idx + 1) % baseTiles.Length; // ~10% джиттер
+
+                    // Редкие варианты — как у пола Ice: крайне низкая плотность ~0.5%
+                    int r = Hash2D(pos.X, pos.Y, 7127) % 1000;
+                    if (r < 5)
+                    {
+                        var rare = rareTiles[_random.Next(rareTiles.Length)];
+                        return (rare.src, rare.tile);
+                    }
+                    var pick = baseTiles[idx];
+                    return (pick.src, pick.tile);
+                }
+            case 4: return (4, new Vector2I(3, 0)); // Techno wall - Atlas ID 4, координаты (3,0)
+            case 5: return (4, new Vector2I(3, 0)); // Anomal wall - Atlas ID 4, координаты (3,0)
+            case 6: return (4, new Vector2I(3, 0)); // Lava wall - Atlas ID 4, координаты (3,0)
             default: return (4, new Vector2I(2, 0));
         }
     }

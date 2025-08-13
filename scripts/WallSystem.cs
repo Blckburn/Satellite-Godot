@@ -182,16 +182,27 @@ public static class WallSystem
             }
         }
 
-        // 4) Стены: всё, что не Room — помечаем как Wall и ставим простой биомный тайл стены
-        // Ставим стены (теперь — только стены; пол не красим)
+        // 4) Стены: всё, что не Room — помечаем как Wall и ставим стены с ПРАВИЛЬНЫМИ координатами
+        // ЖЕЛЕЗНАЯ СИНХРОНИЗАЦИЯ: используем TileCoordinateManager для гарантированной синхронизации
         for (int x = 0; x < worldTilesX; x++)
         for (int y = 0; y < worldTilesY; y++)
         {
-            if (worldMask[x, y] == LevelGenerator.TileType.Room) continue;
+            bool isRoom = worldMask[x, y] == LevelGenerator.TileType.Room;
+            
+            if (isRoom) 
+            {
+                // Room область - убираем стены с гарантией синхронизации
+                TileCoordinateManager.EraseWallTile(walls, x, y);
+                continue;
+            }
+            
+            // Wall область - ставим стены с гарантией синхронизации
             worldMask[x, y] = LevelGenerator.TileType.Wall;
             int biomeAt = worldBiome[x, y];
-            var info = palette.GetWallTileForBiomeEx(biomeAt, new Vector2I(x, y));
-            walls.SetCell(new Vector2I(x, y), info.sourceId, info.tile);
+            var pos = TileCoordinateManager.GetWallTilePosition(x, y);
+            var info = palette.GetWallTileForBiomeEx(biomeAt, pos);
+            
+            TileCoordinateManager.PlaceWallTile(walls, x, y, info.sourceId, info.tile);
         }
     }
 
