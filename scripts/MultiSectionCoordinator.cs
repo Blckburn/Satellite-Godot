@@ -370,7 +370,7 @@ public sealed class MultiSectionCoordinator
             wallsTileMap,
             mapLayer,
             wallsSourceId,
-            (biomeType, pos) => biome.GetWallTileForBiome(biomeType, pos)
+            (biomeType, pos) => biome.GetWallTileForBiomeEx(biomeType, pos)
         );
 
         sectionConnector.AddWallsAroundHorizontalConnector(
@@ -384,7 +384,7 @@ public sealed class MultiSectionCoordinator
             wallsTileMap,
             mapLayer,
             wallsSourceId,
-            (biomeType, pos) => biome.GetWallTileForBiome(biomeType, pos)
+            (biomeType, pos) => biome.GetWallTileForBiomeEx(biomeType, pos)
         );
     }
 
@@ -478,7 +478,7 @@ public sealed class MultiSectionCoordinator
             wallsTileMap,
             mapLayer,
             wallsSourceId,
-            (biomeType, pos) => biome.GetWallTileForBiome(biomeType, pos)
+            (biomeType, pos) => biome.GetWallTileForBiomeEx(biomeType, pos)
         );
 
         sectionConnector.AddWallsAroundVerticalConnector(
@@ -492,7 +492,7 @@ public sealed class MultiSectionCoordinator
             wallsTileMap,
             mapLayer,
             wallsSourceId,
-            (biomeType, pos) => biome.GetWallTileForBiome(biomeType, pos)
+            (biomeType, pos) => biome.GetWallTileForBiomeEx(biomeType, pos)
         );
     }
 }

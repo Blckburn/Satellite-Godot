@@ -1001,23 +1001,26 @@ public sealed class WorldBiomesGenerator
 
         // 9b-ext) Прореживание внутренних стен для травяного, лесного и ледяного биомов,
         // чтобы убрать «шапки» и сделать визуально более органично. Сохраняем первый ряд стен.
-        ThinInteriorWallsForBiomes(rng, worldMask, worldBiome, worldTilesX, worldTilesY, new int[] { 0, 1, 3, 4 });
+        ThinInteriorWallsForBiomes(rng, worldMask, worldBiome, worldTilesX, worldTilesY, new int[] { 0, 1, 3, 4, 5 });
 
         // 9c) ДОБАВЛЯЕМ ВЕРХНИЙ СЛОЙ СТЕН: ПУСТЫНЯ (биом 2) и спец-акценты для ТЕХНО (биом 4)
         if (_wallsOverlayTileMap != null)
         {
-            bool hasDesert = false, hasTechno = false;
+            bool hasDesert = false, hasTechno = false, hasAnomal = false;
             for (int x = 0; x < worldTilesX; x++)
             for (int y = 0; y < worldTilesY; y++)
             {
                 if (worldMask[x, y] != LevelGenerator.TileType.Wall) continue;
                 if (worldBiome[x, y] == 2) hasDesert = true;
                 if (worldBiome[x, y] == 4) hasTechno = true;
+                if (worldBiome[x, y] == 5) hasAnomal = true;
             }
             if (hasDesert)
                 AddDesertWallOverlays(rng, _wallsOverlayTileMap, _wallsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY, desertRarePositions);
             if (hasTechno)
                 AddTechnoPulsingOverlays(_wallsOverlayTileMap, _wallsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY);
+            if (hasAnomal)
+                AddAnomalPulsingOverlays(_wallsOverlayTileMap, _wallsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY);
         }
 
         // Логика «шапок» удалена
@@ -1119,6 +1122,7 @@ public sealed class WorldBiomesGenerator
                 case 1: return 60; // forest
                 case 3: return 53; // ice
                 case 4: return 34; // techno — на 40% меньше от базового 57 → 34
+                case 5: return 34; // anomal — как у techno
                 default: return 57;
             }
         };
@@ -1203,6 +1207,7 @@ public sealed class WorldBiomesGenerator
                 case 1: return 68; // forest
                 case 3: return 63; // ice
                 case 4: return 41; // techno — ~40% меньше от 68 → 41
+                case 5: return 41; // anomal — как у techno
                 default: return 68;
             }
         };
@@ -1423,6 +1428,30 @@ public sealed class WorldBiomesGenerator
             if ((hsh % 1000) < 35) // ~3.5%
             {
                 overlay.SetCell(new Vector2I(x, y), wallsSourceId, pulseTile);
+            }
+        }
+    }
+
+    // Аномальные акценты: пульсируем ИМЕННО редкие тайлы аномальных стен
+    // Если под клеткой редкая аномальная стена (Atlas 5: (4,38) или Atlas 0: (68,18)),
+    // ставим на верхний слой ТОТ ЖЕ тайл (тот же sourceId и coords), чтобы его «подсветить»
+    private void AddAnomalPulsingOverlays(TileMapLayer overlay, int wallsSourceId, LevelGenerator.TileType[,] worldMask, int[,] worldBiome, int w, int h)
+    {
+        if (overlay == null) return;
+        for (int x = 2; x < w - 2; x++)
+        for (int y = 2; y < h - 2; y++)
+        {
+            if (worldBiome[x, y] != 5) continue;
+            if (worldMask[x, y] != LevelGenerator.TileType.Wall) continue;
+
+            // Пульсируем именно редкий тайл аномальных стен
+            var cellPos = new Vector2I(x, y);
+            int src = _wallsTileMap.GetCellSourceId(cellPos);
+            Vector2I coords = _wallsTileMap.GetCellAtlasCoords(cellPos);
+            if ((src == 5 && coords == new Vector2I(4, 38)) || (src == 0 && coords == new Vector2I(68, 18)))
+            {
+                // Ставим тот же тайл на верхнем слое, чтобы анимировать модулейтом
+                overlay.SetCell(cellPos, src, coords);
             }
         }
     }

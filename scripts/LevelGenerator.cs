@@ -1409,7 +1409,7 @@ public partial class LevelGenerator : Node
             WallsSourceID = WallsSourceID,
             MAP_LAYER = MAP_LAYER,
             GetBiomeFloorTile = biome => _biome.GetFloorTileForBiome(biome),
-            GetBiomeWallTile = (biome, pos) => _biome.GetWallTileForBiome(biome, pos),
+            GetBiomeWallTile = (biome, pos) => _biome.GetWallTileForBiomeEx(biome, pos),
             MultiSection = _multiSectionCoordinator,
             CorridorCarver = _corridorCarver,
             SectionConnector = _sectionConnector
@@ -1728,7 +1728,7 @@ public partial class LevelGenerator : Node
             MapWidth,
             MapHeight,
             section.WorldOffset,
-            pos => _biome.GetWallTileForBiome(section.BiomeType, pos)
+            pos => _biome.GetWallTileForBiomeEx(section.BiomeType, pos)
         );
     }
 

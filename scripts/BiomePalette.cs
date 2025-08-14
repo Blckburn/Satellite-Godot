@@ -240,7 +240,34 @@ public sealed class BiomePalette
                     var pick = baseTiles[idx];
                     return (pick.src, pick.tile);
                 }
-            case 5: return (4, new Vector2I(3, 0)); // Anomal wall - Atlas ID 4, координаты (3,0)
+            case 5: // Anomal — правила как у Techno, но из Atlas ID 5 с указанной матрицей
+                {
+                    var baseTiles = new (int src, Vector2I tile)[]
+                    {
+                        (5, new Vector2I(0, 38)),
+                        (5, new Vector2I(9, 39))
+                    };
+                    var rareTiles = new (int src, Vector2I tile)[]
+                    {
+                        (5, new Vector2I(4, 38)), // Atlas 5, (4,38)
+                        (0, new Vector2I(68, 18)) // Atlas 0, (68,18)
+                    };
+
+                    int rx = pos.X / 4; int ry = pos.Y / 4;
+                    int h = Hash2D(rx, ry, 5711);
+                    int idx = Math.Abs(h) % baseTiles.Length;
+                    int j = Hash2D(pos.X, pos.Y, 1111);
+                    if ((j % 100) < 15) idx = (idx + 1) % baseTiles.Length; // ~15% джиттер
+
+                    int r = Hash2D(pos.X, pos.Y, 9097) % 1000;
+                    if (r < 6) // ~0.6% редкая замена (x2)
+                    {
+                        var rare = rareTiles[_random.Next(rareTiles.Length)];
+                        return (rare.src, rare.tile);
+                    }
+                    var pick = baseTiles[idx];
+                    return (pick.src, pick.tile);
+                }
             case 6: return (4, new Vector2I(3, 0)); // Lava wall - Atlas ID 4, координаты (3,0)
             default: return (4, new Vector2I(2, 0));
         }

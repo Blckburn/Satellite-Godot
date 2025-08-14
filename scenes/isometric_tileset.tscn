@@ -116,6 +116,9 @@ texture_region_size = Vector2i(8, 8)
 1:18/size_in_atlas = Vector2i(4, 6)
 1:18/0 = 0
 1:18/0/texture_origin = Vector2i(0, 15)
+68:18/size_in_atlas = Vector2i(4, 5)
+68:18/0 = 0
+68:18/0/texture_origin = Vector2i(0, 12)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_pqoqp"]
 texture = ExtResource("1_qlghb")
@@ -618,6 +621,14 @@ texture_region_size = Vector2i(8, 8)
 14:22/0 = 0
 20:22/size_in_atlas = Vector2i(8, 6)
 20:22/0 = 0
+0:38/size_in_atlas = Vector2i(4, 4)
+0:38/0 = 0
+9:39/size_in_atlas = Vector2i(2, 2)
+9:39/0 = 0
+9:39/0/texture_origin = Vector2i(0, -1)
+4:38/size_in_atlas = Vector2i(4, 4)
+4:38/0 = 0
+4:38/0/texture_origin = Vector2i(0, -2)
 
 [sub_resource type="TileSet" id="TileSet_vodvx"]
 tile_shape = 1

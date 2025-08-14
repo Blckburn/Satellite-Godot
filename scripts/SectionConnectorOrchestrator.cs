@@ -18,7 +18,7 @@ public static class SectionConnectorOrchestrator
         public int WallsSourceID { get; init; }
         public int MAP_LAYER { get; init; }
         public Func<int, Vector2I> GetBiomeFloorTile { get; init; }
-        public Func<int, Vector2I, Vector2I> GetBiomeWallTile { get; init; }
+        public Func<int, Vector2I, (int sourceId, Vector2I tile)> GetBiomeWallTile { get; init; }
         public MultiSectionCoordinator MultiSection { get; init; }
         public CorridorCarver CorridorCarver { get; init; }
         public SectionConnector SectionConnector { get; init; }
