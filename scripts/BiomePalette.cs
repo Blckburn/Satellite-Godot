@@ -268,7 +268,38 @@ public sealed class BiomePalette
                     var pick = baseTiles[idx];
                     return (pick.src, pick.tile);
                 }
-            case 6: return (4, new Vector2I(3, 0)); // Lava wall - Atlas ID 4, координаты (3,0)
+            case 6: // Lava Springs — правила как у Anomal: базовый из Atlas 4 + редкие из Atlas 5
+                {
+                    var baseTiles = new (int src, Vector2I tile)[]
+                    {
+                        // Основные (по матрице): Atlas 4 (7,5) и Atlas 5 (15,38), (11,38)
+                        (4, new Vector2I(7, 5)),
+                        (5, new Vector2I(15, 38)),
+                        (5, new Vector2I(11, 38))
+                    };
+                    var rareTiles = new (int src, Vector2I tile)[]
+                    {
+                        // Редкие (пульсирующие): Atlas 5 по матрице
+                        (5, new Vector2I(19, 39)),
+                        (5, new Vector2I(21, 38))
+                    };
+
+                    int rx = pos.X / 4; int ry = pos.Y / 4;
+                    int h = Hash2D(rx, ry, 5711);
+                    int idx = Math.Abs(h) % baseTiles.Length;
+                    int j = Hash2D(pos.X, pos.Y, 1111);
+                    if ((j % 100) < 15) idx = (idx + 1) % baseTiles.Length; // ~15% джиттер
+
+                    // Частота редких — как у аномального биома (~0.6%)
+                    int r = Hash2D(pos.X, pos.Y, 9097) % 1000;
+                    if (r < 6)
+                    {
+                        var rare = rareTiles[_random.Next(rareTiles.Length)];
+                        return (rare.src, rare.tile);
+                    }
+                    var pick = baseTiles[idx];
+                    return (pick.src, pick.tile);
+                }
             default: return (4, new Vector2I(2, 0));
         }
     }
