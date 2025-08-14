@@ -999,20 +999,25 @@ public sealed class WorldBiomesGenerator
             new WallSystem.Params { MainCorridorWidth = locCarveGlobalTrailsWidth, LocalCorridorWidth = locLocalCorridorWidth, HallRadiusScale = 0.06f }
         );
 
-        // 9c) ДОБАВЛЯЕМ ВЕРХНИЙ СЛОЙ СТЕН ТОЛЬКО ДЛЯ ПУСТЫНИ (биом 2): 1–3 «полоски» вдоль краёв стен,
-        // с пропусками и без «торчания» над землёй. Если оверлей-слой недоступен — пропускаем.
+        // 9b-ext) Прореживание внутренних стен для травяного, лесного и ледяного биомов,
+        // чтобы убрать «шапки» и сделать визуально более органично. Сохраняем первый ряд стен.
+        ThinInteriorWallsForBiomes(rng, worldMask, worldBiome, worldTilesX, worldTilesY, new int[] { 0, 1, 3, 4 });
+
+        // 9c) ДОБАВЛЯЕМ ВЕРХНИЙ СЛОЙ СТЕН: ПУСТЫНЯ (биом 2) и спец-акценты для ТЕХНО (биом 4)
         if (_wallsOverlayTileMap != null)
         {
-            // Генерируем оверлей только если в мире реально есть пустынные стены
-            bool hasDesert = false;
-            for (int x = 0; x < worldTilesX && !hasDesert; x++)
-            for (int y = 0; y < worldTilesY && !hasDesert; y++)
-                if (worldBiome[x, y] == 2 && worldMask[x, y] == LevelGenerator.TileType.Wall)
-                    hasDesert = true;
+            bool hasDesert = false, hasTechno = false;
+            for (int x = 0; x < worldTilesX; x++)
+            for (int y = 0; y < worldTilesY; y++)
+            {
+                if (worldMask[x, y] != LevelGenerator.TileType.Wall) continue;
+                if (worldBiome[x, y] == 2) hasDesert = true;
+                if (worldBiome[x, y] == 4) hasTechno = true;
+            }
             if (hasDesert)
                 AddDesertWallOverlays(rng, _wallsOverlayTileMap, _wallsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY, desertRarePositions);
-            else
-                _wallsOverlayTileMap.Clear();
+            if (hasTechno)
+                AddTechnoPulsingOverlays(_wallsOverlayTileMap, _wallsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY);
         }
 
         // Логика «шапок» удалена
@@ -1028,6 +1033,194 @@ public sealed class WorldBiomesGenerator
 
         // Показ сида в HUD
         UIManager.ShowSeed(seedBase);
+    }
+
+    // Прореживание внутренних стен (глубже первого ряда) для выбранных биомов.
+    // Сохраняем крайний «первый ряд» стен, а глубже — снимаем часть тайлов по шуму,
+    // переводя их в фон (под ними уже нарисован пол). Движение по-прежнему ограничено внешним рядом.
+    private void ThinInteriorWallsForBiomes(Random rng, LevelGenerator.TileType[,] worldMask, int[,] worldBiome, int w, int h, int[] targetBiomes)
+    {
+        if (_wallsTileMap == null || worldMask == null || worldBiome == null) return;
+
+        var target = new System.Collections.Generic.HashSet<int>(targetBiomes);
+
+        // 1) Определяем пограничные клетки стен (первый ряд)
+        var isBoundary = new bool[w, h];
+        var dirs4 = new Vector2I[] { new Vector2I(1,0), new Vector2I(-1,0), new Vector2I(0,1), new Vector2I(0,-1) };
+        for (int x = 1; x < w - 1; x++)
+        for (int y = 1; y < h - 1; y++)
+        {
+            if (worldMask[x, y] != LevelGenerator.TileType.Wall) continue;
+            foreach (var d in dirs4)
+            {
+                int nx = x + d.X, ny = y + d.Y;
+                if (worldMask[nx, ny] != LevelGenerator.TileType.Wall) { isBoundary[x, y] = true; break; }
+            }
+        }
+
+        // 2.0) В первом ряду (граница с воздухом) скрываем каждый второй тайл (только визуально),
+        //      чтобы край не выглядел слишком плотным. Коллизии на этих клетках пропадут, если они
+        //      задаются тайлом. Если нужна сохранённая коллизия — стоит завести прозрачный тайл с коллизией.
+        for (int x = 2; x < w - 2; x++)
+        for (int y = 2; y < h - 2; y++)
+        {
+            if (!isBoundary[x, y]) continue;
+            if (worldMask[x, y] != LevelGenerator.TileType.Wall) continue;
+            int biome = worldBiome[x, y];
+            if (!target.Contains(biome)) continue;
+            if (((x + y + biome) & 1) == 0)
+            {
+                _wallsTileMap.EraseCell(new Vector2I(x, y));
+                // worldMask[x, y] остаётся Wall — логика карт остаётся прежней
+            }
+        }
+
+        // 2) Определяем клетки, прилегающие ко «второму ряду», чтобы не разрушать толщину 2, если нужна
+        var isNearBoundary = new bool[w, h];
+        for (int x = 1; x < w - 1; x++)
+        for (int y = 1; y < h - 1; y++)
+        {
+            if (worldMask[x, y] != LevelGenerator.TileType.Wall || isBoundary[x, y]) continue;
+            foreach (var d in dirs4)
+            {
+                int nx = x + d.X, ny = y + d.Y;
+                if (isBoundary[nx, ny]) { isNearBoundary[x, y] = true; break; }
+            }
+        }
+
+        // 2.5) «Через один» для слоя, прилегающего к воздуху (внутренний ряд рядом с первым).
+        //      Сохраняем первый ряд полностью; второй ряд делаем шахматкой для визуального разрежения.
+        for (int x = 2; x < w - 2; x++)
+        for (int y = 2; y < h - 2; y++)
+        {
+            if (worldMask[x, y] != LevelGenerator.TileType.Wall) continue;
+            if (!isNearBoundary[x, y] || isBoundary[x, y]) continue;
+            int biome = worldBiome[x, y];
+            if (!target.Contains(biome)) continue;
+
+            // Шахматный узор «через 1»; можно смещать сидом биома, чтобы не совпадало глобально
+            int parity = (x + y + (biome * 3)) & 1;
+            if (parity == 0)
+            {
+                _wallsTileMap.EraseCell(new Vector2I(x, y));
+                worldMask[x, y] = LevelGenerator.TileType.Background;
+            }
+        }
+
+        // 3) Точечное прореживание: редкие одиночные точки и короткие микрокластеры (1–3 клетки)
+        //    Разрежаем глубоко внутри массива стен. Сохраняем первый ряд и ближайший к нему слой.
+
+        // Биом-специфичная «плотность» стартов кластеров (в % на клетку внутри массива)
+        System.Func<int, int> densityForBiome = (biome) =>
+        {
+            switch (biome)
+            {
+                case 0: return 68; // grassland
+                case 1: return 60; // forest
+                case 3: return 53; // ice
+                case 4: return 34; // techno — на 40% меньше от базового 57 → 34
+                default: return 57;
+            }
+        };
+
+        var removed = new bool[w, h];
+        int win = 16; int maxPerWindow = 192; // увеличиваем плотность стартов (~×1.5)
+        int wx = (w + win - 1) / win, wy = (h + win - 1) / win;
+        var winCount = new int[wx, wy];
+
+        for (int y = 2; y < h - 2; y++)
+        for (int x = 2; x < w - 2; x++)
+        {
+            if (worldMask[x, y] != LevelGenerator.TileType.Wall) continue;
+            bool nearEdge = isNearBoundary[x, y];
+            if (isBoundary[x, y]) continue;
+
+            int biome = worldBiome[x, y];
+            if (!target.Contains(biome)) continue;
+
+            // (расслаблено) почти без ограничения на близость — допускаем высокую плотность
+
+            int wxi = x / win, wyi = y / win;
+            if (winCount[wxi, wyi] >= maxPerWindow) continue;
+
+            // вероятность старта кластера
+            if (rng.Next(100) >= densityForBiome(biome)) continue;
+
+            // размер микрокластера
+            int length;
+            if (nearEdge)
+            {
+                // возле второго ряда — чаще длиной 2, но одиночки тоже встречаются
+                length = (rng.Next(100) < 40) ? 1 : 2;
+            }
+            else
+            {
+                // глубже — чуть длиннее кластеры
+                int r = rng.Next(100);
+                length = (r < 10) ? 1 : (r < 50) ? 2 : (r < 85) ? 3 : (r < 97) ? 4 : 5;
+            }
+            var dir = new Vector2I[] { new Vector2I(1,0), new Vector2I(-1,0), new Vector2I(0,1), new Vector2I(0,-1) }[rng.Next(4)];
+
+            int removedHere = 0;
+            for (int i = 0; i < length; i++)
+            {
+                int tx = x + dir.X * i, ty = y + dir.Y * i;
+                if (tx < 2 || tx >= w - 2 || ty < 2 || ty >= h - 2) break;
+                if (worldMask[tx, ty] != LevelGenerator.TileType.Wall) break;
+                if (isBoundary[tx, ty]) break;
+                if (nearEdge && isNearBoundary[tx, ty] && i > 0) break; // возле края не растягиваемся
+
+                // Не даём кластеру «подлезть» близко к уже удалённым точкам вне своего кластера
+                bool conflict = false;
+                for (int dx = -1; dx <= 1 && !conflict; dx++)
+                for (int dy = -1; dy <= 1 && !conflict; dy++)
+                {
+                    int nx = tx + dx, ny = ty + dy;
+                    if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+                    if (removed[nx, ny] && (nx != x || ny != y)) conflict = true;
+                }
+                if (conflict) break;
+
+                _wallsTileMap.EraseCell(new Vector2I(tx, ty));
+                worldMask[tx, ty] = LevelGenerator.TileType.Background;
+                removed[tx, ty] = true;
+                removedHere++;
+            }
+
+            if (removedHere > 0)
+            {
+                winCount[wxi, wyi]++;
+            }
+        }
+
+        // 4) Дополнительное точечное прореживание одиночными тайлами по шахматному шаблону,
+        //    чтобы значительно «разрыхлить» массив без образования больших пятен.
+        System.Func<int, int> singleProb = (biome) =>
+        {
+            switch (biome)
+            {
+                case 0: return 72; // grassland
+                case 1: return 68; // forest
+                case 3: return 63; // ice
+                case 4: return 41; // techno — ~40% меньше от 68 → 41
+                default: return 68;
+            }
+        };
+
+        for (int y = 2; y < h - 2; y++)
+        for (int x = 2; x < w - 2; x++)
+        {
+            if (worldMask[x, y] != LevelGenerator.TileType.Wall) continue;
+            if (isBoundary[x, y] || isNearBoundary[x, y]) continue;
+            int biome = worldBiome[x, y];
+            if (!target.Contains(biome)) continue;
+
+            if (rng.Next(100) < singleProb(biome))
+            {
+                _wallsTileMap.EraseCell(new Vector2I(x, y));
+                worldMask[x, y] = LevelGenerator.TileType.Background;
+            }
+        }
     }
 
     private static int Hash2D(int x, int y, int seed)
@@ -1199,6 +1392,37 @@ public sealed class WorldBiomesGenerator
                 deepWindowCount[wxi, wyi]++;
 
                 p += dir;
+            }
+        }
+    }
+
+    // Техно-акценты: расставляем редкие «пульсирующие» панели (6,7) Atlas ID 4 на верхнем слое стен.
+    // Мы только ставим клетки; анимацию пульса добавит Tween в LevelGenerator при старте сцены.
+    private void AddTechnoPulsingOverlays(TileMapLayer overlay, int wallsSourceId, LevelGenerator.TileType[,] worldMask, int[,] worldBiome, int w, int h)
+    {
+        if (overlay == null) return;
+        Vector2I pulseTile = new Vector2I(6, 7);
+        int seed = 24681;
+        for (int x = 2; x < w - 2; x++)
+        for (int y = 2; y < h - 2; y++)
+        {
+            if (worldBiome[x, y] != 4) continue;
+            if (worldMask[x, y] != LevelGenerator.TileType.Wall) continue;
+
+            // Ставим очень редко, преимущественно на границах стен, чтобы было видно
+            bool boundary = false;
+            foreach (var d in new[]{ new Vector2I(1,0), new Vector2I(-1,0), new Vector2I(0,1), new Vector2I(0,-1) })
+            {
+                int nx = x + d.X, ny = y + d.Y;
+                if (nx < 0 || nx >= w || ny < 0 || ny >= h) { boundary = true; break; }
+                if (worldMask[nx, ny] != LevelGenerator.TileType.Wall) { boundary = true; break; }
+            }
+            if (!boundary) continue;
+
+            int hsh = Hash2D(x, y, seed);
+            if ((hsh % 1000) < 35) // ~3.5%
+            {
+                overlay.SetCell(new Vector2I(x, y), wallsSourceId, pulseTile);
             }
         }
     }

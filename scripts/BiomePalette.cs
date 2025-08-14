@@ -72,7 +72,7 @@ public sealed class BiomePalette
             case 1: return new Vector2I(0, 0); // Forest wall
             case 2: return new Vector2I(1, 0); // Desert wall
             case 3: return new Vector2I(3, 0); // Ice wall - Atlas ID 4
-            case 4: return new Vector2I(3, 0); // Techno wall - Atlas ID 4
+            case 4: return new Vector2I(7, 5); // Techno wall (пример по умолчанию)
             case 5: return new Vector2I(3, 0); // Anomal wall - Atlas ID 4
             case 6: return new Vector2I(3, 0); // Lava wall - Atlas ID 4
             default: return new Vector2I(2, 0); // Fallback
@@ -210,7 +210,36 @@ public sealed class BiomePalette
                     var pick = baseTiles[idx];
                     return (pick.src, pick.tile);
                 }
-            case 4: return (4, new Vector2I(3, 0)); // Techno wall - Atlas ID 4, координаты (3,0)
+            case 4: // Techno — правила как у Grassland (биом 0): когерентный выбор базовых + редкие замены
+                {
+                    var baseTiles = new (int src, Vector2I tile)[]
+                    {
+                        (4, new Vector2I(7, 5)),
+                        (4, new Vector2I(10, 5)),
+                        (4, new Vector2I(1, 6))
+                    };
+                    var rareTiles = new (int src, Vector2I tile)[]
+                    {
+                        (4, new Vector2I(10, 5)),
+                        (4, new Vector2I(7, 5)),
+                        (4, new Vector2I(1, 6))
+                    };
+
+                    int rx = pos.X / 4; int ry = pos.Y / 4;
+                    int h = Hash2D(rx, ry, 5711);
+                    int idx = Math.Abs(h) % baseTiles.Length;
+                    int j = Hash2D(pos.X, pos.Y, 1111);
+                    if ((j % 100) < 15) idx = (idx + 1) % baseTiles.Length; // ~15% джиттер
+
+                    int r = Hash2D(pos.X, pos.Y, 9097) % 1000;
+                    if (r < 3) // ~0.3% редкие перестановки (ещё реже)
+                    {
+                        var rare = rareTiles[_random.Next(rareTiles.Length)];
+                        return (rare.src, rare.tile);
+                    }
+                    var pick = baseTiles[idx];
+                    return (pick.src, pick.tile);
+                }
             case 5: return (4, new Vector2I(3, 0)); // Anomal wall - Atlas ID 4, координаты (3,0)
             case 6: return (4, new Vector2I(3, 0)); // Lava wall - Atlas ID 4, координаты (3,0)
             default: return (4, new Vector2I(2, 0));

@@ -282,6 +282,8 @@ public partial class LevelGenerator : Node
         _multiSectionCoordinator = new MultiSectionCoordinator(_random);
         // Используем исходные TileSet источники floors/walls из проекта без автогенерации
         _biome = new BiomePalette(_random, () => UseVariedWalls);
+        // Включаем лёгкую пульсацию оверлея (используется для техно-панелей)
+        TryEnableTechnoOverlayPulse();
 
     }
 
@@ -802,6 +804,20 @@ public partial class LevelGenerator : Node
         }
     }
     
+    private void TryEnableTechnoOverlayPulse()
+    {
+        if (WallsOverlayTileMap == null) return;
+        // Если модуль цвета не установлен, устанавливаем базовый белый
+        if (WallsOverlayTileMap.Modulate == default(Color))
+            WallsOverlayTileMap.Modulate = new Color(1,1,1,1);
+
+        var tween = CreateTween();
+        tween.SetLoops();
+        tween.TweenProperty(WallsOverlayTileMap, "modulate", new Color(1.16f, 1.16f, 1.16f, 1.0f), 1.2f)
+             .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+        tween.TweenProperty(WallsOverlayTileMap, "modulate", new Color(0.90f, 0.90f, 0.90f, 1.0f), 1.2f)
+             .SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+    }
     // 🔥 ЖЕЛЕЗОБЕТОННАЯ система поиска лучшей точки спавна! 
     private Vector2I? FindBestSpawnInCorner(
         TileType[,] worldMask,

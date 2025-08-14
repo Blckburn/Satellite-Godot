@@ -136,14 +136,25 @@ public static class WallSystem
 
             // Страховка: если даже после всех попыток safeR < 2, поднимаем до минимума 2
             if (safeR < 2) safeR = 2;
-            CarveHall(floors, walls, floorsSourceId, worldMask, worldTilesX, worldTilesY, hallCenter, safeR, palette.GetFloorTileForBiome(c.biome), c.biome, worldBiome, rng);
+            // Для лесного биома (1) делаем вытянутый эллиптический холл
+            if (c.biome == 1)
+            {
+                int rx = Math.Max(2, (int)MathF.Round(safeR * 1.9f));
+                int ry = Math.Max(2, (int)MathF.Round(safeR * 0.8f));
+                CarveElongatedHall(worldMask, worldBiome, c.biome, worldTilesX, worldTilesY, hallCenter, rx, ry, rng);
+            }
+            else
+            {
+                CarveHall(floors, walls, floorsSourceId, worldMask, worldTilesX, worldTilesY, hallCenter, safeR, palette.GetFloorTileForBiome(c.biome), c.biome, worldBiome, rng);
+            }
             // Соединяем холл с магистралью органичным коридором по своему биому
             var mainTarget = FindNearestMainPoint(worldBiome, c.biome, worldMask, worldTilesX, worldTilesY, hallCenter, mainCorridor);
             if (mainTarget != null)
             {
                 // Локальные связки: собираем клетки, чтобы после пройти пост-рассеиванием
                 var localRecord = new System.Collections.Generic.HashSet<Vector2I>();
-                CarveOrganicCorridor(worldBiome, c.biome, worldMask, worldTilesX, worldTilesY, hallCenter, mainTarget.Value, p.LocalCorridorWidth, rng, localRecord, 0.9f, 0.30f, scatter:false, edgeScatter:true);
+                int forestCorrW = (c.biome == 1) ? Math.Max(1, p.LocalCorridorWidth - 1) : p.LocalCorridorWidth;
+                CarveOrganicCorridor(worldBiome, c.biome, worldMask, worldTilesX, worldTilesY, hallCenter, mainTarget.Value, forestCorrW, rng, localRecord, 0.9f, 0.30f, scatter:false, edgeScatter:true);
                 FuzzCorridorEdges(worldBiome, c.biome, worldMask, worldTilesX, worldTilesY, localRecord, 1451 + c.biome * 17);
             }
             chosenHallCenters.Add((Center: hallCenter, Radius: safeR));
@@ -176,7 +187,8 @@ public static class WallSystem
             foreach (var room in rooms)
             {
                 // Соединяем комнату с холлом органичным коридором
-                CarveOrganicCorridor(worldBiome, c.biome, worldMask, worldTilesX, worldTilesY, RectCenter(room), hallData.Center, p.LocalCorridorWidth, rng);
+                int forestCorrW2 = (c.biome == 1) ? Math.Max(1, p.LocalCorridorWidth - 1) : p.LocalCorridorWidth;
+                CarveOrganicCorridor(worldBiome, c.biome, worldMask, worldTilesX, worldTilesY, RectCenter(room), hallData.Center, forestCorrW2, rng);
                 // Прорезаем саму комнату как органическую область
                 CarveOrganicRoom(worldMask, worldBiome, c.biome, worldTilesX, worldTilesY, room, rng);
             }
@@ -228,6 +240,30 @@ public static class WallSystem
             float n2 = (((Hash2D(x+17, y-13, biome * 9173 + radius * 211) & 1023) / 1023f) - 0.5f) * 2f;
             float noise = n1 * 0.6f + n2 * 0.4f; // [-1..1]
             float rj = radius * (1f + jitterFrac * noise);
+            if (d <= rj * rj)
+                worldMask[x, y] = LevelGenerator.TileType.Room;
+        }
+    }
+
+    // Эллиптический вытянутый холл для лесного биома
+    private static void CarveElongatedHall(LevelGenerator.TileType[,] worldMask, int[,] worldBiome, int biome, int w, int h, Vector2I center, int rx, int ry, Random rng)
+    {
+        float jitterFrac = 0.45f;
+        float sx = 1f + ((float)rng.NextDouble() - 0.5f) * 0.3f;
+        float sy = 1f + ((float)rng.NextDouble() - 0.5f) * 0.3f;
+        for (int dx = -rx - 2; dx <= rx + 2; dx++)
+        for (int dy = -ry - 2; dy <= ry + 2; dy++)
+        {
+            int x = center.X + dx, y = center.Y + dy;
+            if (x < 0 || x >= w || y < 0 || y >= h) continue;
+            if (worldBiome[x, y] != biome) continue;
+            float ndx = (dx / (float)rx) / sx;
+            float ndy = (dy / (float)ry) / sy;
+            float d = ndx * ndx + ndy * ndy;
+            float n1 = (((Hash2D(x, y, biome * 8819 + rx * 53) & 1023) / 1023f) - 0.5f) * 2f;
+            float n2 = (((Hash2D(x + 13, y - 7, biome * 3911 + ry * 97) & 1023) / 1023f) - 0.5f) * 2f;
+            float noise = n1 * 0.6f + n2 * 0.4f;
+            float rj = 1f + jitterFrac * noise;
             if (d <= rj * rj)
                 worldMask[x, y] = LevelGenerator.TileType.Room;
         }
