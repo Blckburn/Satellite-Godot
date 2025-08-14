@@ -1022,11 +1022,7 @@ public sealed class WorldBiomesGenerator
             if (hasAnomal)
                 AddAnomalPulsingOverlays(_wallsOverlayTileMap, _wallsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY);
             if (hasLava)
-            {
                 AddLavaPulsingOverlays(_wallsOverlayTileMap, _wallsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY);
-                // Дополнительно: пульсация пола лавы для редкого тайла Atlas 4: (9,8)
-                AddLavaFloorPulsingOverlays(_wallsOverlayTileMap, _floorsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY);
-            }
         }
 
         // Логика «шапок» удалена
@@ -1483,29 +1479,7 @@ public sealed class WorldBiomesGenerator
         }
     }
 
-    // Лава: пульс для пола — только для конкретного тайла Atlas 4: (9,8) и только в биоме 6.
-    // Ставим тот же тайл на overlay-слой, чтобы global tween анимировал модулейт (осветление/затухание).
-    private void AddLavaFloorPulsingOverlays(TileMapLayer overlay, int floorsSourceId, LevelGenerator.TileType[,] worldMask, int[,] worldBiome, int w, int h)
-    {
-        if (overlay == null || _floorsTileMap == null) return;
-        Vector2I targetFloor = new Vector2I(9, 8); // Atlas 4
-        for (int x = 1; x < w - 1; x++)
-        for (int y = 1; y < h - 1; y++)
-        {
-            if (worldBiome[x, y] != 6) continue;
-            // Пульсация делается только на проходимых клетках, чтобы было видно игроку
-            if (worldMask[x, y] != LevelGenerator.TileType.Room) continue;
-
-            var cellPos = new Vector2I(x, y);
-            int src = _floorsTileMap.GetCellSourceId(cellPos);
-            if (src != floorsSourceId) continue;
-            Vector2I coords = _floorsTileMap.GetCellAtlasCoords(cellPos);
-            if (coords == targetFloor)
-            {
-                overlay.SetCell(cellPos, floorsSourceId, targetFloor);
-            }
-        }
-    }
+    
 
     // Удалено: пульсация пола биома 6
 
