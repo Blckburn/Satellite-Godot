@@ -27,10 +27,9 @@ public static class LavaFloorPulse
 			overlay.Owner = parent.Owner;
 		}
 
-        // Y-sort and Z-index: above floors
-		overlay.YSortEnabled = true;
-        int floorsZ = floors.ZIndex;
-        overlay.ZIndex = floorsZ + 1;
+		// Match Floors sorting exactly (do not render above Floors)
+		overlay.YSortEnabled = floors.YSortEnabled;
+		overlay.ZIndex = floors.ZIndex;
 
 		// Place overlay between Floors and Walls in the child order, if possible
 		int floorsIdx = -1, wallsIdx = -1, overlayIdx = -1, idx = 0;
@@ -41,7 +40,8 @@ public static class LavaFloorPulse
 			if (ch == overlay) overlayIdx = idx;
 			idx++;
 		}
-        if (floorsIdx >= 0 && overlayIdx != floorsIdx + 1) parent.MoveChild(overlay, floorsIdx + 1);
+		if (floorsIdx >= 0 && overlayIdx != floorsIdx)
+			parent.MoveChild(overlay, floorsIdx); // draw before Floors at same ZIndex
 
 		// Clear existing overlay content and re-place targeted floor tiles
 		overlay.Clear();
