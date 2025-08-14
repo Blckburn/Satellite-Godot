@@ -999,14 +999,13 @@ public sealed class WorldBiomesGenerator
             new WallSystem.Params { MainCorridorWidth = locCarveGlobalTrailsWidth, LocalCorridorWidth = locLocalCorridorWidth, HallRadiusScale = 0.06f }
         );
 
-        // 9b-ext) Прореживание внутренних стен для травяного, лесного и ледяного биомов,
-        // чтобы убрать «шапки» и сделать визуально более органично. Сохраняем первый ряд стен.
-        ThinInteriorWallsForBiomes(rng, worldMask, worldBiome, worldTilesX, worldTilesY, new int[] { 0, 1, 3, 4, 5 });
+        // 9b-ext) Прореживание внутренних стен (включая лавовый биом 6 как у аномального)
+        ThinInteriorWallsForBiomes(rng, worldMask, worldBiome, worldTilesX, worldTilesY, new int[] { 0, 1, 3, 4, 5, 6 });
 
         // 9c) ДОБАВЛЯЕМ ВЕРХНИЙ СЛОЙ СТЕН: ПУСТЫНЯ (биом 2) и спец-акценты для ТЕХНО (биом 4)
         if (_wallsOverlayTileMap != null)
         {
-            bool hasDesert = false, hasTechno = false, hasAnomal = false;
+            bool hasDesert = false, hasTechno = false, hasAnomal = false, hasLava = false;
             for (int x = 0; x < worldTilesX; x++)
             for (int y = 0; y < worldTilesY; y++)
             {
@@ -1014,6 +1013,7 @@ public sealed class WorldBiomesGenerator
                 if (worldBiome[x, y] == 2) hasDesert = true;
                 if (worldBiome[x, y] == 4) hasTechno = true;
                 if (worldBiome[x, y] == 5) hasAnomal = true;
+                if (worldBiome[x, y] == 6) hasLava = true;
             }
             if (hasDesert)
                 AddDesertWallOverlays(rng, _wallsOverlayTileMap, _wallsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY, desertRarePositions);
@@ -1021,6 +1021,12 @@ public sealed class WorldBiomesGenerator
                 AddTechnoPulsingOverlays(_wallsOverlayTileMap, _wallsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY);
             if (hasAnomal)
                 AddAnomalPulsingOverlays(_wallsOverlayTileMap, _wallsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY);
+            if (hasLava)
+            {
+                AddLavaPulsingOverlays(_wallsOverlayTileMap, _wallsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY);
+                // Дополнительно: пульсация пола лавы для редкого тайла Atlas 4: (9,8)
+                AddLavaFloorPulsingOverlays(_wallsOverlayTileMap, _floorsSourceId, worldMask, worldBiome, worldTilesX, worldTilesY);
+            }
         }
 
         // Логика «шапок» удалена
@@ -1455,6 +1461,53 @@ public sealed class WorldBiomesGenerator
             }
         }
     }
+
+    // Лавовые акценты: пульсируем ИМЕННО редкие тайлы лавовых стен (биом 6):
+    // Atlas 5: (19,39) и (21,38). Ставим на верхний слой тот же тайл для пульсации.
+    private void AddLavaPulsingOverlays(TileMapLayer overlay, int wallsSourceId, LevelGenerator.TileType[,] worldMask, int[,] worldBiome, int w, int h)
+    {
+        if (overlay == null) return;
+        for (int x = 2; x < w - 2; x++)
+        for (int y = 2; y < h - 2; y++)
+        {
+            if (worldBiome[x, y] != 6) continue;
+            if (worldMask[x, y] != LevelGenerator.TileType.Wall) continue;
+
+            var cellPos = new Vector2I(x, y);
+            int src = _wallsTileMap.GetCellSourceId(cellPos);
+            Vector2I coords = _wallsTileMap.GetCellAtlasCoords(cellPos);
+            if (src == 5 && (coords == new Vector2I(19, 39) || coords == new Vector2I(21, 38)))
+            {
+                overlay.SetCell(cellPos, src, coords);
+            }
+        }
+    }
+
+    // Лава: пульс для пола — только для конкретного тайла Atlas 4: (9,8) и только в биоме 6.
+    // Ставим тот же тайл на overlay-слой, чтобы global tween анимировал модулейт (осветление/затухание).
+    private void AddLavaFloorPulsingOverlays(TileMapLayer overlay, int floorsSourceId, LevelGenerator.TileType[,] worldMask, int[,] worldBiome, int w, int h)
+    {
+        if (overlay == null || _floorsTileMap == null) return;
+        Vector2I targetFloor = new Vector2I(9, 8); // Atlas 4
+        for (int x = 1; x < w - 1; x++)
+        for (int y = 1; y < h - 1; y++)
+        {
+            if (worldBiome[x, y] != 6) continue;
+            // Пульсация делается только на проходимых клетках, чтобы было видно игроку
+            if (worldMask[x, y] != LevelGenerator.TileType.Room) continue;
+
+            var cellPos = new Vector2I(x, y);
+            int src = _floorsTileMap.GetCellSourceId(cellPos);
+            if (src != floorsSourceId) continue;
+            Vector2I coords = _floorsTileMap.GetCellAtlasCoords(cellPos);
+            if (coords == targetFloor)
+            {
+                overlay.SetCell(cellPos, floorsSourceId, targetFloor);
+            }
+        }
+    }
+
+    // Удалено: пульсация пола биома 6
 
     private static Vector2 LocalMapTileToIsometricWorld(Vector2I tilePos)
     {
