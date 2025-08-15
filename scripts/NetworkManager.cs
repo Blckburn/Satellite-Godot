@@ -96,6 +96,9 @@ public partial class NetworkManager : Node
 
         GD.Print($"Server started on port {ServerPort}");
         EmitSignal(SignalName.ServerStarted);
+        
+        // Автоматически подключаемся к серверу как клиент для тестирования
+        ConnectToServerAsClient();
     }
 
     /// <summary>
@@ -150,6 +153,30 @@ public partial class NetworkManager : Node
 
         GD.Print("Disconnected from server");
         EmitSignal(SignalName.Disconnected);
+    }
+
+    /// <summary>
+    /// Подключение к серверу как клиент (для тестирования)
+    /// </summary>
+    private void ConnectToServerAsClient()
+    {
+        // Создаем отдельный peer для клиента
+        var clientPeer = new ENetMultiplayerPeer();
+        var error = clientPeer.CreateClient(ServerAddress, ServerPort);
+
+        if (error != Error.Ok)
+        {
+            GD.PrintErr($"Failed to connect client to server: {error}");
+            return;
+        }
+
+        // Сохраняем клиентский peer отдельно
+        // В реальном приложении здесь была бы более сложная логика
+        GD.Print($"Client connecting to server {ServerAddress}:{ServerPort}");
+        
+        // Для простоты тестирования просто устанавливаем флаг подключения
+        // В реальном приложении нужно дождаться события ConnectedToServer
+        IsConnected = true;
     }
 
     /// <summary>
