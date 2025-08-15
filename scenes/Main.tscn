@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://dgp0p1mfdb25l"]
+[gd_scene load_steps=10 format=3 uid="uid://dgp0p1mfdb25l"]
 
 [ext_resource type="Script" uid="uid://iyb7fjxu7j21" path="res://scripts/LevelGenerator.cs" id="5_c01mt"]
 [ext_resource type="PackedScene" uid="uid://df1fsrm24trwj" path="res://scenes/ui/ui_manager.tscn" id="5_vcsgt"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://bu3h56rpjxyms" path="res://scenes/player/Player.tscn" id="7_jlsqs"]
 [ext_resource type="PackedScene" uid="uid://cycm7sv72virf" path="res://scenes/isometric_tileset.tscn" id="7_nxtc6"]
 [ext_resource type="PackedScene" uid="uid://dvkiae0slh4s3" path="res://scenes/ui/ContainerUI.tscn" id="9_q8u5g"]
+
 [node name="Node2D" type="Node2D"]
 
 [node name="UIManager" parent="." instance=ExtResource("5_vcsgt")]

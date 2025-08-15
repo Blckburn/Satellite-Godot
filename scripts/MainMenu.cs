@@ -46,6 +46,12 @@ public partial class MainMenu : Control
         // Обновить состояние кнопки "Продолжить" на основе наличия сохранения
         UpdateContinueButtonState();
 
+        // Подписываемся на события ServerSaveManager для обновления кнопки
+        if (ServerSaveManager.Instance != null)
+        {
+            ServerSaveManager.Instance.ServerConnectionChanged += OnServerConnectionChanged;
+        }
+
         // Проигрываем анимацию при запуске, если она есть
         PlayStartAnimation();
 
@@ -120,9 +126,20 @@ public partial class MainMenu : Control
     {
         if (_continueButton != null)
         {
-            // Проверяем наличие сохранения через GameManager
-            var gameManager = GetNode<GameManager>("/root/GameManager");
-            bool saveExists = gameManager != null && gameManager.SaveExists();
+            // Проверяем наличие сохранения через ServerSaveManager
+            bool saveExists = false;
+            
+            if (ServerSaveManager.Instance != null)
+            {
+                // Если подключены к серверу, считаем что сохранение есть
+                saveExists = ServerSaveManager.Instance.IsConnectedToServer;
+            }
+            else
+            {
+                // Fallback через GameManager
+                var gameManager = GetNode<GameManager>("/root/GameManager");
+                saveExists = gameManager != null && gameManager.SaveExists();
+            }
 
             // Включаем/выключаем кнопку в зависимости от наличия сохранения
             _continueButton.Disabled = !saveExists;
@@ -441,5 +458,16 @@ public partial class MainMenu : Control
         {
             generatorInfoLabel.Text = $"Generator: {generatorInfo}";
         }
+    }
+
+    /// <summary>
+    /// Обработчик изменения состояния подключения к серверу
+    /// </summary>
+    private void OnServerConnectionChanged(bool connected)
+    {
+        Logger.Debug($"Server connection changed: {connected}", true);
+        
+        // Обновляем состояние кнопки Continue
+        UpdateContinueButtonState();
     }
 }
