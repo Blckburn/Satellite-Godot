@@ -12,6 +12,7 @@ public partial class LoadingScreen : Control
     private ProgressBar _progressBar;
     private Label _progressLabel;
     private RichTextLabel _logText;
+    private RichTextLabel _dosLogText;
     private Button _continueButton;
     private Label _continueLabel;
     private Timer _timer;
@@ -41,6 +42,7 @@ public partial class LoadingScreen : Control
         _progressBar = GetNode<ProgressBar>("MainContainer/LoadingSection/ProgressBar");
         _progressLabel = GetNode<Label>("MainContainer/LoadingSection/ProgressLabel");
         _logText = GetNode<RichTextLabel>("MainContainer/LogContainer/LogText");
+        _dosLogText = GetNode<RichTextLabel>("DOSLogContainer/DOSLogText");
         _continueButton = GetNode<Button>("MainContainer/ContinueSection/ContinueButton");
         _continueLabel = GetNode<Label>("MainContainer/ContinueSection/ContinueLabel");
         _timer = GetNode<Timer>("Timer");
@@ -77,14 +79,17 @@ public partial class LoadingScreen : Control
         // Этап 1: Инициализация систем
         await UpdateLoadingStep(0, 15);
         AddLogEntry("Systems initialized successfully", "green");
+        AddDOSMessage("Systems initialized successfully", "green");
 
         // Этап 2: Запуск сервера
         await UpdateLoadingStep(1, 25);
         AddLogEntry("Save server starting...", "blue");
+        AddDOSMessage("Save server starting...", "blue");
 
         // Этап 3: Подключение к серверу
         await UpdateLoadingStep(2, 40);
         AddLogEntry("Connecting to save server...", "blue");
+        AddDOSMessage("Connecting to save server...", "blue");
 
         // Ждем подключения к серверу
         if (ServerSaveManager.Instance != null)
@@ -100,31 +105,38 @@ public partial class LoadingScreen : Control
         else
         {
             AddLogEntry("WARNING: ServerSaveManager not found!", "red");
+            AddDOSMessage("WARNING: ServerSaveManager not found!", "red");
             await Task.Delay(1000);
         }
 
         // Этап 4: Проверка статуса
         await UpdateLoadingStep(3, 55);
         AddLogEntry("Server status verified", "green");
+        AddDOSMessage("Server status verified", "green");
 
         // Этап 5: Загрузка данных
         await UpdateLoadingStep(4, 70);
         AddLogEntry("Loading save data...", "blue");
+        AddDOSMessage("Loading save data...", "blue");
 
         // Ждем загрузки данных
         await WaitForDataLoad();
+        AddDOSMessage("Save data loaded successfully", "green");
 
         // Этап 6: Проверка целостности
         await UpdateLoadingStep(5, 85);
         AddLogEntry("Data integrity verified", "green");
+        AddDOSMessage("Data integrity verified", "green");
 
         // Этап 7: Подготовка игровых систем
         await UpdateLoadingStep(6, 95);
         AddLogEntry("Game systems prepared", "green");
+        AddDOSMessage("Game systems prepared", "green");
 
         // Этап 8: Завершение
         await UpdateLoadingStep(7, 100);
         AddLogEntry("Loading complete! Ready to launch!", "green");
+        AddDOSMessage("Loading complete! Ready to launch!", "green");
 
         // Завершаем загрузку
         CompleteLoading();
@@ -154,7 +166,11 @@ public partial class LoadingScreen : Control
             _currentProgress++;
             _progressBar.Value = _currentProgress;
             _progressLabel.Text = $"{_currentProgress}%";
-            await Task.Delay(50);
+            
+            // Обновляем DOS-стиль прогресс
+            UpdateDOSProgress(_currentProgress);
+            
+            await Task.Delay(100); // Увеличили задержку для стабильности
         }
     }
 
@@ -168,17 +184,19 @@ public partial class LoadingScreen : Control
 
         while (attempts < maxAttempts)
         {
-            if (ServerSaveManager.Instance != null && ServerSaveManager.Instance.IsConnectedToServer)
-            {
-                AddLogEntry("Successfully connected to save server", "green");
-                return;
-            }
+                    if (ServerSaveManager.Instance != null && ServerSaveManager.Instance.IsConnectedToServer)
+        {
+            AddLogEntry("Successfully connected to save server", "green");
+            AddDOSMessage("Successfully connected to save server", "green");
+            return;
+        }
 
             attempts++;
             await Task.Delay(100);
         }
 
         AddLogEntry("Failed to connect to server (timeout)", "red");
+        AddDOSMessage("Failed to connect to server (timeout)", "red");
     }
 
     /// <summary>
@@ -319,18 +337,43 @@ public partial class LoadingScreen : Control
     }
 
     /// <summary>
-    /// Анимирует звезды
+    /// Обновляет DOS-стиль прогресс
+    /// </summary>
+    private void UpdateDOSProgress(int progress)
+    {
+        var dots = new string('.', progress / 10);
+        var dashes = new string('.', 10 - progress / 10);
+        var dosProgress = $"[{dots}{dashes}] {progress}%";
+        
+        _dosLogText.Text = $"[color=#00ff00]SERVER STARTING......{dosProgress}[/color]";
+    }
+
+    /// <summary>
+    /// Добавляет DOS-стиль сообщение
+    /// </summary>
+    private void AddDOSMessage(string message, string color = "green")
+    {
+        var colorCode = GetColorCode(color);
+        var timestamp = DateTime.Now.ToString("HH:mm:ss");
+        var dosMessage = $"[color={colorCode}][{timestamp}] {message}[/color]\n";
+        
+        _dosLogText.Text += dosMessage;
+        _dosLogText.ScrollToLine(_dosLogText.GetLineCount() - 1);
+    }
+
+    /// <summary>
+    /// Анимирует звезды (упрощенная версия)
     /// </summary>
     private void AnimateStars()
     {
+        // Упрощенная анимация - только 3 звезды
         var stars = GetNode<Node2D>("Stars");
-        var time = Time.GetTimeDictFromSystem();
-        var seconds = (float)time["second"];
-
+        
         for (int i = 0; i < stars.GetChildCount(); i++)
         {
             var star = stars.GetChild<ColorRect>(i);
-            var alpha = 0.3f + 0.7f * Mathf.Sin(seconds + i * 0.5f);
+            // Простая анимация без сложных вычислений
+            var alpha = 0.5f + 0.3f * Mathf.Sin(Time.GetTimeDictFromSystem()["second"] + i);
             star.Modulate = new Color(1, 1, 1, alpha);
         }
     }

@@ -50,22 +50,6 @@ offset_right = 502.0
 offset_bottom = 82.0
 color = Color(1, 1, 1, 0.7)
 
-[node name="Star4" type="ColorRect" parent="Stars"]
-anchors_preset = 0
-offset_left = 700.0
-offset_top = 200.0
-offset_right = 702.0
-offset_bottom = 202.0
-color = Color(1, 1, 1, 0.5)
-
-[node name="Star5" type="ColorRect" parent="Stars"]
-anchors_preset = 0
-offset_left = 900.0
-offset_top = 150.0
-offset_right = 902.0
-offset_bottom = 152.0
-color = Color(1, 1, 1, 0.9)
-
 [node name="MainContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -129,6 +113,28 @@ layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
 text = "[color=#00ff00]System initialized[/color]"
+fit_content = true
+
+[node name="DOSLogContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -400.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 300.0
+
+[node name="DOSLogTitle" type="Label" parent="DOSLogContainer"]
+layout_mode = 2
+text = "SERVER STATUS:"
+label_settings = SubResource("LabelSettings_7")
+
+[node name="DOSLogText" type="RichTextLabel" parent="DOSLogContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "[color=#00ff00]SERVER STARTING......[............] 0%[/color]"
 fit_content = true
 
 [node name="ContinueSection" type="VBoxContainer" parent="MainContainer"]
