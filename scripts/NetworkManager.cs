@@ -234,18 +234,18 @@ public partial class NetworkManager : Node
         EmitSignal(SignalName.Disconnected);
     }
 
-    private void OnPeerConnected(int peerId)
+    private void OnPeerConnected(long peerId)
     {
         ConnectedPeers++;
         GD.Print($"Peer connected: {peerId}");
-        EmitSignal(SignalName.PeerConnected, peerId);
+        EmitSignal(SignalName.PeerConnected, (int)peerId);
     }
 
-    private void OnPeerDisconnected(int peerId)
+    private void OnPeerDisconnected(long peerId)
     {
         ConnectedPeers--;
         GD.Print($"Peer disconnected: {peerId}");
-        EmitSignal(SignalName.PeerDisconnected, peerId);
+        EmitSignal(SignalName.PeerDisconnected, (int)peerId);
     }
 
     // RPC методы для сервера
