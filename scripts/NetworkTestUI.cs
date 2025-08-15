@@ -266,9 +266,9 @@ public partial class NetworkTestUI : Control
         }
     }
 
-    private void OnGenerationCompleted(LevelData levelData)
+    private void OnGenerationCompleted()
     {
-        GD.Print($"NetworkTestUI: Generation completed - {levelData.Width}x{levelData.Height}");
+        GD.Print("NetworkTestUI: Generation completed");
         if (TestGenerationButton != null)
         {
             TestGenerationButton.Text = "Test Generation";

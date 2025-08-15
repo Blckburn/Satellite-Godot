@@ -289,6 +289,7 @@ public partial class NetworkManager : Node
             Width = parameters.MapWidth,
             Height = parameters.MapHeight,
             BiomeType = parameters.BiomeType,
+            SpawnPosition = new Vector2I(parameters.MapWidth / 2, parameters.MapHeight / 2)
             // Другие данные уровня
         };
     }
@@ -311,17 +312,28 @@ public struct GenerationParameters
 /// <summary>
 /// Данные сгенерированного уровня
 /// </summary>
-public struct LevelData
+public class LevelData
 {
-    public int Width;
-    public int Height;
-    public int BiomeType;
-    public Vector2I SpawnPosition;
-    public byte[] FloorData;
-    public byte[] WallData;
-    public byte[] DecorationData;
-    public List<EntityData> Entities;
-    public List<ContainerData> Containers;
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public int BiomeType { get; set; }
+    public Vector2I SpawnPosition { get; set; }
+    public byte[] FloorData { get; set; }
+    public byte[] WallData { get; set; }
+    public byte[] DecorationData { get; set; }
+    public List<EntityData> Entities { get; set; } = new List<EntityData>();
+    public List<ContainerData> Containers { get; set; } = new List<ContainerData>();
+
+    public LevelData()
+    {
+        Width = 0;
+        Height = 0;
+        BiomeType = 0;
+        SpawnPosition = Vector2I.Zero;
+        FloorData = new byte[0];
+        WallData = new byte[0];
+        DecorationData = new byte[0];
+    }
 }
 
 /// <summary>

@@ -29,7 +29,7 @@ public partial class LevelGenerationManager : Node
     // События
     [Signal] public delegate void GeneratorChangedEventHandler(string generatorInfo);
     [Signal] public delegate void GenerationStartedEventHandler();
-    [Signal] public delegate void GenerationCompletedEventHandler(LevelData levelData);
+    [Signal] public delegate void GenerationCompletedEventHandler();
     [Signal] public delegate void GenerationFailedEventHandler(string error);
 
     public override void _Ready()
@@ -137,7 +137,7 @@ public partial class LevelGenerationManager : Node
             var error = "No level generator available";
             GD.PrintErr(error);
             EmitSignal(SignalName.GenerationFailed, error);
-            return null;
+            return new LevelData(); // Возвращаем пустой объект вместо null
         }
 
         EmitSignal(SignalName.GenerationStarted);
@@ -148,10 +148,10 @@ public partial class LevelGenerationManager : Node
             
             var levelData = await _currentGenerator.GenerateLevelAsync(parameters);
             
-            if (levelData.Width > 0 && levelData.Height > 0)
+            if (levelData != null && levelData.Width > 0 && levelData.Height > 0)
             {
                 GD.Print($"Level generated successfully: {levelData.Width}x{levelData.Height}");
-                EmitSignal(SignalName.GenerationCompleted, levelData);
+                EmitSignal(SignalName.GenerationCompleted);
                 return levelData;
             }
             else
@@ -175,10 +175,10 @@ public partial class LevelGenerationManager : Node
                 try
                 {
                     var fallbackData = await _currentGenerator.GenerateLevelAsync(parameters);
-                    if (fallbackData.Width > 0 && fallbackData.Height > 0)
+                    if (fallbackData != null && fallbackData.Width > 0 && fallbackData.Height > 0)
                     {
                         GD.Print("Fallback generation successful");
-                        EmitSignal(SignalName.GenerationCompleted, fallbackData);
+                        EmitSignal(SignalName.GenerationCompleted);
                         return fallbackData;
                     }
                 }
@@ -189,7 +189,7 @@ public partial class LevelGenerationManager : Node
             }
             
             EmitSignal(SignalName.GenerationFailed, error);
-            return null;
+            return new LevelData(); // Возвращаем пустой объект вместо null
         }
     }
 
@@ -203,7 +203,7 @@ public partial class LevelGenerationManager : Node
             var error = "Client generator not available";
             GD.PrintErr(error);
             EmitSignal(SignalName.GenerationFailed, error);
-            return null;
+            return new LevelData(); // Возвращаем пустой объект вместо null
         }
 
         EmitSignal(SignalName.GenerationStarted);
@@ -211,7 +211,7 @@ public partial class LevelGenerationManager : Node
         try
         {
             var levelData = await _clientGenerator.GenerateLevelAsync(parameters);
-            EmitSignal(SignalName.GenerationCompleted, levelData);
+            EmitSignal(SignalName.GenerationCompleted);
             return levelData;
         }
         catch (Exception ex)
@@ -219,7 +219,7 @@ public partial class LevelGenerationManager : Node
             var error = $"Client generation failed: {ex.Message}";
             GD.PrintErr(error);
             EmitSignal(SignalName.GenerationFailed, error);
-            return null;
+            return new LevelData(); // Возвращаем пустой объект вместо null
         }
     }
 
@@ -233,7 +233,7 @@ public partial class LevelGenerationManager : Node
             var error = "Server generator not available";
             GD.PrintErr(error);
             EmitSignal(SignalName.GenerationFailed, error);
-            return null;
+            return new LevelData(); // Возвращаем пустой объект вместо null
         }
 
         EmitSignal(SignalName.GenerationStarted);
@@ -241,7 +241,7 @@ public partial class LevelGenerationManager : Node
         try
         {
             var levelData = await _serverGenerator.GenerateLevelAsync(parameters);
-            EmitSignal(SignalName.GenerationCompleted, levelData);
+            EmitSignal(SignalName.GenerationCompleted);
             return levelData;
         }
         catch (Exception ex)
@@ -249,7 +249,7 @@ public partial class LevelGenerationManager : Node
             var error = $"Server generation failed: {ex.Message}";
             GD.PrintErr(error);
             EmitSignal(SignalName.GenerationFailed, error);
-            return null;
+            return new LevelData(); // Возвращаем пустой объект вместо null
         }
     }
 
