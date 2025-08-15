@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 /// <summary>
 /// Класс для управления главным меню игры
@@ -144,7 +145,7 @@ public partial class MainMenu : Control
     /// <summary>
     /// Обработчик нажатия на кнопку "Продолжить"
     /// </summary>
-    private void OnContinueButtonPressed()
+    private async void OnContinueButtonPressed()
     {
         Logger.Debug("Continue button pressed", true);
 
@@ -181,7 +182,7 @@ public partial class MainMenu : Control
     /// <summary>
     /// Обработчик нажатия на кнопку "Новая игра"
     /// </summary>
-    private void OnNewGameButtonPressed()
+    private async void OnNewGameButtonPressed()
     {
         Logger.Debug("New game button pressed", true);
 
@@ -195,7 +196,7 @@ public partial class MainMenu : Control
     /// <summary>
     /// Инициализирует новую игру, создавая базовое сохранение
     /// </summary>
-    private void InitializeNewGame()
+    private async void InitializeNewGame()
     {
         var gameManager = GetNode<GameManager>("/root/GameManager");
         if (gameManager == null)
