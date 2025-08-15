@@ -299,18 +299,32 @@ public partial class NetworkManager : Node
     /// </summary>
     private LevelData GenerateLevelOnServer(GenerationParameters parameters)
     {
-        // Здесь будет логика генерации уровня
-        // Пока возвращаем заглушку
-        GD.Print($"Generating level on server with parameters: {parameters}");
+        GD.Print($"Server: Generating level {parameters.MapWidth}x{parameters.MapHeight} with biome {parameters.BiomeType}");
         
-        return new LevelData
+        var levelData = new LevelData
         {
             Width = parameters.MapWidth,
             Height = parameters.MapHeight,
             BiomeType = parameters.BiomeType,
             SpawnPosition = new Vector2I(parameters.MapWidth / 2, parameters.MapHeight / 2)
-            // Другие данные уровня
         };
+
+        // Создаем простые данные уровня
+        int totalTiles = parameters.MapWidth * parameters.MapHeight;
+        levelData.FloorData = new byte[totalTiles];
+        levelData.WallData = new byte[totalTiles];
+        levelData.DecorationData = new byte[totalTiles];
+
+        // Заполняем простым паттерном (можно добавить логику биомов)
+        for (int i = 0; i < totalTiles; i++)
+        {
+            levelData.FloorData[i] = 1; // Пол
+            levelData.WallData[i] = 0;  // Нет стен
+            levelData.DecorationData[i] = 0; // Нет декораций
+        }
+
+        GD.Print($"Server: Generated level with {totalTiles} tiles");
+        return levelData;
     }
 }
 

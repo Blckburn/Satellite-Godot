@@ -42,29 +42,48 @@ public class ClientLevelGenerator : ILevelGenerator
 
     public async Task<LevelData> GenerateLevelAsync(GenerationParameters parameters)
     {
-        // Используем существующий LevelGenerator для локальной генерации
+        // Упрощенная генерация для тестирования - не используем сложную логику
         return await Task.Run(() =>
         {
-            // Здесь будет вызов существующего генератора
-            // Пока возвращаем заглушку
-            return new LevelData
+            GD.Print($"ClientLevelGenerator: Generating simple level {parameters.MapWidth}x{parameters.MapHeight}");
+            
+            // Создаем простые данные уровня без использования TileMap
+            var levelData = new LevelData
             {
                 Width = parameters.MapWidth,
                 Height = parameters.MapHeight,
                 BiomeType = parameters.BiomeType,
                 SpawnPosition = new Vector2I(parameters.MapWidth / 2, parameters.MapHeight / 2)
             };
+
+            // Создаем простые массивы данных
+            int totalTiles = parameters.MapWidth * parameters.MapHeight;
+            levelData.FloorData = new byte[totalTiles];
+            levelData.WallData = new byte[totalTiles];
+            levelData.DecorationData = new byte[totalTiles];
+
+            // Заполняем простым паттерном
+            for (int i = 0; i < totalTiles; i++)
+            {
+                levelData.FloorData[i] = 1; // Пол
+                levelData.WallData[i] = 0;  // Нет стен
+                levelData.DecorationData[i] = 0; // Нет декораций
+            }
+
+            GD.Print($"ClientLevelGenerator: Generated level with {totalTiles} tiles");
+            return levelData;
         });
     }
 
     public bool IsAvailable()
     {
-        return _levelGenerator != null;
+        // Всегда доступен, даже если LevelGenerator не настроен
+        return true;
     }
 
     public string GetGeneratorInfo()
     {
-        return "Client-side level generator (offline mode)";
+        return "Client-side level generator (simple mode)";
     }
 }
 
