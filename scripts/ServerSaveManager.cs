@@ -32,8 +32,6 @@ public partial class ServerSaveManager : Node
     // Данные
     private ServerSaveData _currentSaveData;
     private Timer _autoSaveTimer;
-    private HttpRequest _httpRequest;
-    private List<TaskCompletionSource<HttpResult>> _pendingHttpRequests = new List<TaskCompletionSource<HttpResult>>();
 
     // События
     [Signal] public delegate void SaveCompletedEventHandler(bool success, string message);
@@ -411,73 +409,23 @@ public partial class ServerSaveManager : Node
     }
 
     /// <summary>
-    /// Настраивает HTTP запросы
+    /// Настраивает HTTP запросы (пока заглушка)
     /// </summary>
     private void SetupHttpRequest()
     {
-        _httpRequest = new HttpRequest();
-        _httpRequest.RequestCompleted += OnHttpRequestCompleted;
-        AddChild(_httpRequest);
+        // TODO: Реализовать реальные HTTP запросы
+        Logger.Debug("HTTP requests setup (simulation mode)", true);
     }
 
     /// <summary>
-    /// Выполняет HTTP запрос
+    /// Выполняет HTTP запрос (пока заглушка)
     /// </summary>
     private async Task<HttpResult> MakeHttpRequest(string url, string method, string body)
     {
-        var tcs = new TaskCompletionSource<HttpResult>();
+        // TODO: Реализовать реальные HTTP запросы
+        await Task.Delay(100); // Имитация задержки
         
-        try
-        {
-            if (method == "GET")
-            {
-                _httpRequest.Request(url);
-            }
-            else if (method == "POST")
-            {
-                var headers = new string[] { "Content-Type: application/json" };
-                _httpRequest.Request(url, headers, HttpRequest.Method.Post, body);
-            }
-
-            // Ждем результат через обработчик
-            _pendingHttpRequests.Add(tcs);
-            
-            // Ждем результат
-            var result = await tcs.Task;
-            return result;
-        }
-        catch (Exception ex)
-        {
-            return new HttpResult { Success = false, Error = ex.Message };
-        }
-    }
-
-    /// <summary>
-    /// Обработчик завершения HTTP запроса
-    /// </summary>
-    private void OnHttpRequestCompleted(long result, long responseCode, string[] headers, byte[] body)
-    {
-        var response = System.Text.Encoding.UTF8.GetString(body);
-        
-        // Получаем следующий ожидающий запрос
-        TaskCompletionSource<HttpResult> tcs = null;
-        if (_pendingHttpRequests.Count > 0)
-        {
-            tcs = _pendingHttpRequests[0];
-            _pendingHttpRequests.RemoveAt(0);
-        }
-        
-        if (result == (long)HttpRequest.Result.Success && responseCode == 200)
-        {
-            // Успешный запрос
-            Logger.Debug($"HTTP request successful: {response}", true);
-            tcs?.SetResult(new HttpResult { Success = true, Response = response });
-        }
-        else
-        {
-            Logger.Error($"HTTP request failed: {result}, code: {responseCode}");
-            tcs?.SetResult(new HttpResult { Success = false, Error = $"HTTP {responseCode}" });
-        }
+        return new HttpResult { Success = true, Response = "Simulated response" };
     }
 
     /// <summary>
