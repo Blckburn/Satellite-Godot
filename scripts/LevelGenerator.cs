@@ -592,28 +592,42 @@ public partial class LevelGenerator : Node
             Logger.Debug($"Parameters: World={WorldWidth}x{WorldHeight}, MaxBiomes={MaxBiomeTypes}", true);
             
             var generator = new WorldBiomesGenerator(_random, _biome, FloorsTileMap, WallsTileMap, WallsOverlayTileMap, FloorsSourceID, WallsSourceID);
+            Logger.Debug("WorldBiomesGenerator created successfully", true);
+            
             LevelGenerator.TileType[,] wm;
             int[,] wb;
-            generator.GenerateWorld(
-                MapWidth, MapHeight, WorldWidth, WorldHeight, MaxBiomeTypes,
-                CaveInitialFill, CaveSmoothSteps, CaveBirthLimit, CaveDeathLimit, WorldOpenTarget,
-                CarveGlobalTrailsWidth, BiomeHallRadius, RiverCount, RiverWidth, RiverNoiseFreq, RiverNoiseAmp,
-                LocalCorridorWidth, RandomizeWorldParams, WorldBlendBorders,
-                out wm, out wb,
-                (tl, tlW, trW, blW, brW) =>
-                {
-                    int wx = System.Math.Max(1, WorldWidth) * MapWidth;
-                    int wy = System.Math.Max(1, WorldHeight) * MapHeight;
-                    Logger.Info($"🗺️ КАРТА: {wx}x{wy}");
-                    UIManager.SetMapCorners(
-                        tl,
-                        new Vector2I(wx - 1, 0),
-                        new Vector2I(0, wy - 1),
-                        new Vector2I(wx - 1, wy - 1),
-                        tlW, trW, blW, brW
-                    );
-                }
-            );
+            
+            Logger.Debug("Calling GenerateWorld...", true);
+            try
+            {
+                generator.GenerateWorld(
+                    MapWidth, MapHeight, WorldWidth, WorldHeight, MaxBiomeTypes,
+                    CaveInitialFill, CaveSmoothSteps, CaveBirthLimit, CaveDeathLimit, WorldOpenTarget,
+                    CarveGlobalTrailsWidth, BiomeHallRadius, RiverCount, RiverWidth, RiverNoiseFreq, RiverNoiseAmp,
+                    LocalCorridorWidth, RandomizeWorldParams, WorldBlendBorders,
+                    out wm, out wb,
+                    (tl, tlW, trW, blW, brW) =>
+                    {
+                        int wx = System.Math.Max(1, WorldWidth) * MapWidth;
+                        int wy = System.Math.Max(1, WorldHeight) * MapHeight;
+                        Logger.Info($"🗺️ КАРТА: {wx}x{wy}");
+                        UIManager.SetMapCorners(
+                            tl,
+                            new Vector2I(wx - 1, 0),
+                            new Vector2I(0, wy - 1),
+                            new Vector2I(wx - 1, wy - 1),
+                            tlW, trW, blW, brW
+                        );
+                    }
+                );
+                Logger.Debug("GenerateWorld completed successfully", true);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"GenerateWorld failed: {ex.Message}");
+                Logger.Error($"Stack trace: {ex.StackTrace}");
+                throw; // Перебрасываем ошибку дальше
+            }
 
             int worldTilesX = System.Math.Max(1, WorldWidth) * MapWidth;
             int worldTilesY = System.Math.Max(1, WorldHeight) * MapHeight;
