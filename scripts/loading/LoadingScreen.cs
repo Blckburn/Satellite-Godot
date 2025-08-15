@@ -61,6 +61,37 @@ public partial class LoadingScreen : Control
         StartLoadingProcess();
     }
 
+    /// <summary>
+    /// Очистка ресурсов при уничтожении
+    /// </summary>
+    public override void _ExitTree()
+    {
+        // Отписываемся от событий для предотвращения утечек памяти
+        if (ServerSaveManager.Instance != null)
+        {
+            ServerSaveManager.Instance.ServerConnectionChanged -= OnServerConnectionChanged;
+            ServerSaveManager.Instance.SaveCompleted -= OnSaveCompleted;
+            ServerSaveManager.Instance.LoadCompleted -= OnLoadCompleted;
+        }
+
+        // Останавливаем таймер
+        if (_timer != null)
+        {
+            _timer.Stop();
+        }
+
+        // Очищаем ссылки
+        _statusLabel = null;
+        _progressBar = null;
+        _progressLabel = null;
+        _logText = null;
+        _dosLogText = null;
+        _continueButton = null;
+        _continueLabel = null;
+        _timer = null;
+        _animationPlayer = null;
+    }
+
     public override void _Input(InputEvent @event)
     {
         if (_canContinue && @event is InputEventKey keyEvent && keyEvent.Pressed)
@@ -170,7 +201,7 @@ public partial class LoadingScreen : Control
             // Обновляем DOS-стиль прогресс
             UpdateDOSProgress(_currentProgress);
             
-            await Task.Delay(100); // Увеличили задержку для стабильности
+            await Task.Delay(200); // ULTIMATE задержка для максимальной стабильности
         }
     }
 
@@ -362,18 +393,19 @@ public partial class LoadingScreen : Control
     }
 
     /// <summary>
-    /// Анимирует звезды (упрощенная версия)
+    /// Анимирует звезды (ULTIMATE упрощенная версия)
     /// </summary>
     private void AnimateStars()
     {
-        // Упрощенная анимация - только 3 звезды
+        // ULTIMATE упрощенная анимация - статичные звезды для стабильности
         var stars = GetNode<Node2D>("Stars");
         
+        // Просто устанавливаем статичную прозрачность - никаких вычислений!
         for (int i = 0; i < stars.GetChildCount(); i++)
         {
             var star = stars.GetChild<ColorRect>(i);
-            // Простая анимация без сложных вычислений
-            var alpha = 0.5f + 0.3f * Mathf.Sin(Time.GetTimeDictFromSystem()["second"] + i);
+            // Статичная анимация - никаких синусов!
+            var alpha = 0.6f + (i * 0.1f); // Простая формула
             star.Modulate = new Color(1, 1, 1, alpha);
         }
     }

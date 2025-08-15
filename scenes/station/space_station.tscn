@@ -12,7 +12,7 @@
 [ext_resource type="PackedScene" uid="uid://cdpklt0cb7nbq" path="res://scenes/ui/inventory_ui.tscn" id="9_vebmi"]
 [ext_resource type="PackedScene" uid="uid://dvyg2vbhucri0" path="res://scenes/ui/SlotTemplate.tscn" id="11_b1308"]
 [ext_resource type="PackedScene" uid="uid://dvkiae0slh4s3" path="res://scenes/ui/ContainerUI.tscn" id="11_vebmi"]
-[ext_resource type="PackedScene" path="res://scenes/ui/level_generation_ui.tscn" id="15_level_ui"]
+[ext_resource type="PackedScene" uid="uid://bqx8v2n4k5m6p" path="res://scenes/ui/level_generation_ui.tscn" id="15_level_ui"]
 
 [node name="SpaceStation" type="Node2D"]
 script = ExtResource("1_f3sb1")
