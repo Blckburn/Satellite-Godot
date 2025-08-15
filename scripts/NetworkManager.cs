@@ -96,9 +96,6 @@ public partial class NetworkManager : Node
 
         GD.Print($"Server started on port {ServerPort}");
         EmitSignal(SignalName.ServerStarted);
-        
-        // Автоматически подключаемся к серверу как клиент для тестирования
-        ConnectToServerAsClient();
     }
 
     /// <summary>
@@ -170,8 +167,8 @@ public partial class NetworkManager : Node
             return;
         }
 
-        // Сохраняем клиентский peer отдельно
-        // В реальном приложении здесь была бы более сложная логика
+        // Заменяем серверный peer на клиентский для RPC вызовов
+        Multiplayer.MultiplayerPeer = clientPeer;
         GD.Print($"Client connecting to server {ServerAddress}:{ServerPort}");
         
         // Для простоты тестирования просто устанавливаем флаг подключения

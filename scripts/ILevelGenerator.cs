@@ -102,13 +102,48 @@ public class ServerLevelGenerator : ILevelGenerator
 
     public async Task<LevelData> GenerateLevelAsync(GenerationParameters parameters)
     {
-        // Запрашиваем генерацию с сервера
-        return await _networkManager.RequestLevelGenerationAsync(parameters);
+        // Если сервер запущен, генерируем локально (для тестирования)
+        if (_networkManager.IsServerRunning)
+        {
+            GD.Print($"ServerLevelGenerator: Generating level locally (server is running)");
+            return await Task.Run(() =>
+            {
+                var levelData = new LevelData
+                {
+                    Width = parameters.MapWidth,
+                    Height = parameters.MapHeight,
+                    BiomeType = parameters.BiomeType,
+                    SpawnPosition = new Vector2I(parameters.MapWidth / 2, parameters.MapHeight / 2)
+                };
+
+                // Создаем простые данные уровня
+                int totalTiles = parameters.MapWidth * parameters.MapHeight;
+                levelData.FloorData = new byte[totalTiles];
+                levelData.WallData = new byte[totalTiles];
+                levelData.DecorationData = new byte[totalTiles];
+
+                // Заполняем простым паттерном
+                for (int i = 0; i < totalTiles; i++)
+                {
+                    levelData.FloorData[i] = 1; // Пол
+                    levelData.WallData[i] = 0;  // Нет стен
+                    levelData.DecorationData[i] = 0; // Нет декораций
+                }
+
+                GD.Print($"ServerLevelGenerator: Generated level with {totalTiles} tiles");
+                return levelData;
+            });
+        }
+        else
+        {
+            // Запрашиваем генерацию с сервера (для реального клиент-серверного режима)
+            return await _networkManager.RequestLevelGenerationAsync(parameters);
+        }
     }
 
     public bool IsAvailable()
     {
-        return _networkManager != null && _networkManager.IsConnected;
+        return _networkManager != null && _networkManager.IsServerRunning;
     }
 
     public string GetGeneratorInfo()
