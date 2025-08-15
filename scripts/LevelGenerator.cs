@@ -247,11 +247,21 @@ public partial class LevelGenerator : Node
             FloorsTileMap.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
         }
 
-        // Генерируем мульти-секционную карту сразу с задержкой 0.5 секунды
-        GetTree().CreateTimer(0.5).Timeout += () => {
-            // Logger.Debug("Automatically generating multi-section map on startup", true); // СПАМ ОТКЛЮЧЕН
-            GenerateMultiSectionMap();
-        };
+        // Проверяем, нужно ли загрузить сгенерированный уровень
+        bool loadGeneratedLevel = (bool)ProjectSettings.GetSetting("LoadGeneratedLevel", false);
+        if (loadGeneratedLevel)
+        {
+            Logger.Debug("Loading generated level data from ProjectSettings", true);
+            LoadGeneratedLevelData();
+        }
+        else
+        {
+            // Генерируем мульти-секционную карту сразу с задержкой 0.5 секунды
+            GetTree().CreateTimer(0.5).Timeout += () => {
+                // Logger.Debug("Automatically generating multi-section map on startup", true); // СПАМ ОТКЛЮЧЕН
+                GenerateMultiSectionMap();
+            };
+        }
 
         // Инициализируем генератор ресурсов
         if (ResourceNodeScene != null)
@@ -2267,6 +2277,95 @@ public partial class LevelGenerator : Node
         {
             Logger.Error($"Error loading isometric_tileset scene: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Загружает сгенерированные данные уровня из ProjectSettings
+    /// </summary>
+    private void LoadGeneratedLevelData()
+    {
+        try
+        {
+            Logger.Debug("Loading generated level data...", true);
+            
+            var levelDataDict = ProjectSettings.GetSetting("GeneratedLevelData", new Dictionary<string, object>()) as Dictionary<string, object>;
+            if (levelDataDict == null || levelDataDict.Count == 0)
+            {
+                Logger.Error("No generated level data found in ProjectSettings");
+                return;
+            }
+            
+            // Извлекаем данные
+            int width = (int)levelDataDict["Width"];
+            int height = (int)levelDataDict["Height"];
+            int biomeType = (int)levelDataDict["BiomeType"];
+            var spawnPosition = (Vector2I)levelDataDict["SpawnPosition"];
+            var floorData = (byte[])levelDataDict["FloorData"];
+            var wallData = (byte[])levelDataDict["WallData"];
+            var decorationData = (byte[])levelDataDict["DecorationData"];
+            
+            Logger.Debug($"Loaded level data: {width}x{height}, Biome: {biomeType}", true);
+            
+            // Применяем данные к тайлмапам
+            ApplyLevelDataToTileMaps(width, height, floorData, wallData, decorationData);
+            
+            // Устанавливаем позицию спавна
+            _currentSpawnPosition = MapTileToIsometricWorld(spawnPosition);
+            
+            // Очищаем флаги
+            ProjectSettings.SetSetting("LoadGeneratedLevel", Variant.From(false));
+            ProjectSettings.SetSetting("GeneratedLevelData", Variant.From(new Dictionary<string, object>()));
+            
+            Logger.Debug("Generated level data applied successfully", true);
+            
+            // Эмитим сигнал о завершении загрузки
+            EmitSignal(SignalName.LevelGenerated, _currentSpawnPosition);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Failed to load generated level data: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Применяет данные уровня к тайлмапам
+    /// </summary>
+    private void ApplyLevelDataToTileMaps(int width, int height, byte[] floorData, byte[] wallData, byte[] decorationData)
+    {
+        if (FloorsTileMap == null || WallsTileMap == null)
+        {
+            Logger.Error("TileMaps not available for applying level data");
+            return;
+        }
+        
+        Logger.Debug($"Applying level data to TileMaps: {width}x{height}", true);
+        
+        // Очищаем тайлмапы
+        FloorsTileMap.Clear();
+        WallsTileMap.Clear();
+        
+        // Применяем данные (упрощенная версия)
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                int index = y * width + x;
+                
+                if (floorData[index] > 0)
+                {
+                    // Устанавливаем простой тайл пола
+                    FloorsTileMap.SetCell(Vector2I.Zero, new Vector2I(x, y), FloorsSourceID, 0);
+                }
+                
+                if (wallData[index] > 0)
+                {
+                    // Устанавливаем простой тайл стены
+                    WallsTileMap.SetCell(Vector2I.Zero, new Vector2I(x, y), WallsSourceID, 0);
+                }
+            }
+        }
+        
+        Logger.Debug("Level data applied to TileMaps successfully", true);
     }
 
     /// <summary>

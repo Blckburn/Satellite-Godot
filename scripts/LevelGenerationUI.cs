@@ -204,12 +204,47 @@ public partial class LevelGenerationUI : Control
             var levelData = GameLevelManager.Instance.LastGeneratedLevel;
             Logger.Debug($"Loading generated level: {levelData.Width}x{levelData.Height}", true);
             
-            // Здесь можно добавить логику загрузки уровня
-            // Пока просто показываем сообщение
             _statusLabel.Text = $"Loading level {levelData.Width}x{levelData.Height}...";
             
-            // В будущем здесь будет переход на сцену с сгенерированным уровнем
-            // GetTree().ChangeSceneToFile("res://scenes/generated_level.tscn");
+            // Переходим на сцену Main.tscn с сгенерированными данными
+            LoadGeneratedLevel(levelData);
+        }
+    }
+
+    /// <summary>
+    /// Загружает сгенерированный уровень на сцену Main.tscn
+    /// </summary>
+    private void LoadGeneratedLevel(LevelData levelData)
+    {
+        try
+        {
+            Logger.Debug($"Starting transition to Main scene with generated level data", true);
+            
+            // Сохраняем данные уровня в ProjectSettings для передачи в Main сцену
+            var levelDataDict = new Dictionary<string, object>
+            {
+                { "Width", levelData.Width },
+                { "Height", levelData.Height },
+                { "BiomeType", levelData.BiomeType },
+                { "SpawnPosition", levelData.SpawnPosition },
+                { "FloorData", levelData.FloorData },
+                { "WallData", levelData.WallData },
+                { "DecorationData", levelData.DecorationData }
+            };
+            
+            // Сохраняем в ProjectSettings
+            ProjectSettings.SetSetting("GeneratedLevelData", levelDataDict);
+            ProjectSettings.SetSetting("LoadGeneratedLevel", true);
+            
+            Logger.Debug($"Level data saved to ProjectSettings, transitioning to Main scene", true);
+            
+            // Переходим на сцену Main.tscn
+            GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Failed to load generated level: {ex.Message}");
+            _statusLabel.Text = $"Error loading level: {ex.Message}";
         }
     }
 
