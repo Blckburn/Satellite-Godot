@@ -56,6 +56,10 @@ public partial class MainMenu : Control
         PlayStartAnimation();
 
         Logger.Debug("Main menu initialized", true);
+        
+        // ЗАПУСКАЕМ LoadingScreen КАК ОТДЕЛЬНУЮ СЦЕНУ!
+        Logger.Debug("Starting loading screen...", true);
+        GetTree().ChangeSceneToFile("res://scenes/loading/loading_screen.tscn");
     }
 
     /// <summary>

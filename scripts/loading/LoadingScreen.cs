@@ -296,7 +296,7 @@ public partial class LoadingScreen : Control
     /// <summary>
     /// Переходит в главное меню
     /// </summary>
-    private void ContinueToMainMenu()
+    private async void ContinueToMainMenu()
     {
         try
         {
@@ -333,8 +333,14 @@ public partial class LoadingScreen : Control
                 file.Close();
                 Logger.Debug("Main menu file exists, transitioning...", true);
                 
-                // ПЕРЕХОДИМ В ГЛАВНОЕ МЕНЮ БЕЗ QueueFree!
-                // Godot сам очистит старую сцену при переходе
+                // ПРИНУДИТЕЛЬНО УНИЧТОЖАЕМ LoadingScreen!
+                Logger.Debug("Force destroying LoadingScreen...", true);
+                QueueFree();
+                
+                // Ждем немного для уничтожения
+                await Task.Delay(100);
+                
+                // ПЕРЕХОДИМ В ГЛАВНОЕ МЕНЮ!
                 GetTree().ChangeSceneToFile("res://scenes/main_menu.tscn");
             }
             else
