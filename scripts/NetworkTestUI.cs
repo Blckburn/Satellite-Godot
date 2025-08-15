@@ -103,7 +103,7 @@ public partial class NetworkTestUI : Control
             DisconnectButton.Disabled = !isConnected;
         
         if (TestGenerationButton != null)
-            TestGenerationButton.Disabled = !isConnected && !LevelGenerationManager.Instance?.IsClientAvailable;
+            TestGenerationButton.Disabled = !isConnected && !(LevelGenerationManager.Instance?.IsClientAvailable ?? false);
     }
 
     /// <summary>

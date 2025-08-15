@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://b2gpea8oe0f21"]
 
-[ext_resource type="Script" path="res://scripts/NetworkTestUI.cs" id="1_0k8m2"]
+[ext_resource type="Script" uid="uid://chx3xlkkst36c" path="res://scripts/NetworkTestUI.cs" id="1_0k8m2"]
 
 [node name="NetworkTest" type="Control"]
 layout_mode = 3

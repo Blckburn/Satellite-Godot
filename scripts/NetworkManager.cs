@@ -19,7 +19,7 @@ public partial class NetworkManager : Node
     [Export] public bool AutoStartServer { get; set; } = true;
 
     // Состояние сети
-    public bool IsConnected { get; private set; } = false;
+    public new bool IsConnected { get; private set; } = false;
     public bool IsServerRunning { get; private set; } = false;
     public int ConnectedPeers { get; private set; } = 0;
 
@@ -33,7 +33,7 @@ public partial class NetworkManager : Node
 
     // Кэш для сгенерированных карт
     private Dictionary<string, LevelData> _levelCache = new Dictionary<string, LevelData>();
-    private Dictionary<int, Task<LevelData>> _pendingRequests = new Dictionary<int, Task<LevelData>>();
+    private Dictionary<int, TaskCompletionSource<LevelData>> _pendingRequests = new Dictionary<int, TaskCompletionSource<LevelData>>();
 
     // Счетчик запросов
     private int _requestCounter = 0;
@@ -160,7 +160,7 @@ public partial class NetworkManager : Node
         if (!IsConnected)
         {
             GD.PrintErr("Not connected to server");
-            return null;
+            return new LevelData();
         }
 
         var requestId = ++_requestCounter;
@@ -175,10 +175,10 @@ public partial class NetworkManager : Node
 
         // Создаем задачу для ожидания ответа
         var tcs = new TaskCompletionSource<LevelData>();
-        _pendingRequests[requestId] = tcs.Task;
+        _pendingRequests[requestId] = tcs;
 
         // Отправляем запрос на сервер
-        RpcId(1, nameof(GenerateLevelRequest), requestId, parameters);
+        RpcId(1, nameof(GenerateLevelRequest), requestId, parameters.BiomeType, parameters.MapWidth, parameters.MapHeight, parameters.Seed, parameters.MaxRooms, parameters.MinRoomSize, parameters.MaxRoomSize);
 
         try
         {
@@ -195,7 +195,7 @@ public partial class NetworkManager : Node
         catch (Exception ex)
         {
             GD.PrintErr($"Failed to generate level: {ex.Message}");
-            return null;
+            return new LevelData();
         }
         finally
         {
@@ -250,7 +250,7 @@ public partial class NetworkManager : Node
 
     // RPC методы для сервера
     [Rpc(MultiplayerApi.RpcMode.AnyPeer)]
-    private void GenerateLevelRequest(int requestId, GenerationParameters parameters)
+    private void GenerateLevelRequest(int requestId, int biomeType, int mapWidth, int mapHeight, int seed, int maxRooms, int minRoomSize, int maxRoomSize)
     {
         if (!IsServerRunning)
             return;
@@ -258,20 +258,39 @@ public partial class NetworkManager : Node
         var peerId = Multiplayer.GetRemoteSenderId();
         GD.Print($"Received level generation request {requestId} from peer {peerId}");
 
+        // Создаем параметры из отдельных значений
+        var parameters = new GenerationParameters
+        {
+            BiomeType = biomeType,
+            MapWidth = mapWidth,
+            MapHeight = mapHeight,
+            Seed = seed,
+            MaxRooms = maxRooms,
+            MinRoomSize = minRoomSize,
+            MaxRoomSize = maxRoomSize
+        };
+
         // Генерируем уровень на сервере
         var levelData = GenerateLevelOnServer(parameters);
         
         // Отправляем результат обратно клиенту
-        RpcId(peerId, nameof(GenerateLevelResponse), requestId, levelData);
+        RpcId(peerId, nameof(GenerateLevelResponse), requestId, levelData.Width, levelData.Height, levelData.BiomeType);
     }
 
     [Rpc(MultiplayerApi.RpcMode.Authority)]
-    private void GenerateLevelResponse(int requestId, LevelData levelData)
+    private void GenerateLevelResponse(int requestId, int width, int height, int biomeType)
     {
-        if (_pendingRequests.TryGetValue(requestId, out var task))
+        if (_pendingRequests.TryGetValue(requestId, out var tcs))
         {
-            var tcs = task as TaskCompletionSource<LevelData>;
-            tcs?.SetResult(levelData);
+            var levelData = new LevelData
+            {
+                Width = width,
+                Height = height,
+                BiomeType = biomeType,
+                SpawnPosition = new Vector2I(width / 2, height / 2)
+            };
+            
+            tcs.SetResult(levelData);
         }
     }
 
