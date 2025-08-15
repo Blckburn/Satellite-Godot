@@ -16,6 +16,7 @@ public partial class LevelGenerationUI : Control
     private SpinBox _biomeTypeInput;
     private OptionButton _difficultySelect;
     private Button _generateButton;
+    private Button _loadLevelButton;
     private Label _statusLabel;
     private Button _closeButton;
 
@@ -33,6 +34,7 @@ public partial class LevelGenerationUI : Control
         _biomeTypeInput = GetNode<SpinBox>("Panel/VBoxContainer/GenerationSection/BiomeTypeInput");
         _difficultySelect = GetNode<OptionButton>("Panel/VBoxContainer/GenerationSection/DifficultySelect");
         _generateButton = GetNode<Button>("Panel/VBoxContainer/GenerationSection/GenerateButton");
+        _loadLevelButton = GetNode<Button>("Panel/VBoxContainer/GenerationSection/LoadLevelButton");
         _statusLabel = GetNode<Label>("Panel/VBoxContainer/StatusSection/StatusLabel");
         _closeButton = GetNode<Button>("Panel/VBoxContainer/CloseButton");
 
@@ -40,6 +42,7 @@ public partial class LevelGenerationUI : Control
         _startServerButton.Pressed += OnStartServerPressed;
         _stopServerButton.Pressed += OnStopServerPressed;
         _generateButton.Pressed += OnGeneratePressed;
+        _loadLevelButton.Pressed += OnLoadLevelPressed;
         _closeButton.Pressed += OnClosePressed;
 
         // Подписываемся на события GameLevelManager
@@ -94,8 +97,9 @@ public partial class LevelGenerationUI : Control
         _startServerButton.Disabled = isServerRunning;
         _stopServerButton.Disabled = !isServerRunning;
 
-        // Обновляем кнопку генерации
-        _generateButton.Disabled = isGenerating || string.IsNullOrEmpty(_planetNameInput.Text);
+        // Обновляем кнопки
+        _generateButton.Disabled = isGenerating;
+        _loadLevelButton.Disabled = GameLevelManager.Instance.LastGeneratedLevel == null;
 
         // Обновляем статус сервера
         _serverStatusLabel.Text = GameLevelManager.Instance.GetServerStatus();
@@ -183,6 +187,22 @@ public partial class LevelGenerationUI : Control
         }
 
         UpdateUI();
+    }
+
+    private void OnLoadLevelPressed()
+    {
+        if (GameLevelManager.Instance?.LastGeneratedLevel != null)
+        {
+            var levelData = GameLevelManager.Instance.LastGeneratedLevel;
+            Logger.Debug($"Loading generated level: {levelData.Width}x{levelData.Height}", true);
+            
+            // Здесь можно добавить логику загрузки уровня
+            // Пока просто показываем сообщение
+            _statusLabel.Text = $"Loading level {levelData.Width}x{levelData.Height}...";
+            
+            // В будущем здесь будет переход на сцену с сгенерированным уровнем
+            // GetTree().ChangeSceneToFile("res://scenes/generated_level.tscn");
+        }
     }
 
     private void OnClosePressed()
