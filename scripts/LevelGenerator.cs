@@ -231,6 +231,13 @@ public partial class LevelGenerator : Node
         YSortContainer = _nodeLocator.YSortContainer;
         
         Logger.Debug($"NodeLocator results: FloorsTileMap={FloorsTileMap != null}, WallsTileMap={WallsTileMap != null}", true);
+        
+        // Если тайлмапы не найдены, попробуем загрузить сцену isometric_tileset
+        if (FloorsTileMap == null || WallsTileMap == null)
+        {
+            Logger.Debug("TileMaps not found, trying to load isometric_tileset scene...", true);
+            LoadIsometricTilesetScene();
+        }
 
         // Logger.Debug($"TileMapLayer найдены: Floors: {FloorsTileMap?.Name}, Walls: {WallsTileMap?.Name}, YSort: {YSortContainer?.Name}", true); // СПАМ ОТКЛЮЧЕН
 
@@ -2207,6 +2214,58 @@ public partial class LevelGenerator : Node
         {
             Logger.Error($"Error during level generation: {ex.Message}");
             return CreateFallbackLevelData(parameters);
+        }
+    }
+
+    /// <summary>
+    /// Загружает сцену isometric_tileset для получения тайлмапов
+    /// </summary>
+    private void LoadIsometricTilesetScene()
+    {
+        try
+        {
+            Logger.Debug("Loading isometric_tileset scene...", true);
+            var scene = GD.Load<PackedScene>("res://scenes/isometric_tileset.tscn");
+            if (scene != null)
+            {
+                var instance = scene.Instantiate<Node2D>();
+                if (instance != null)
+                {
+                    // Добавляем временно в дерево для поиска узлов
+                    GetTree().Root.AddChild(instance);
+                    
+                    // Ищем тайлмапы в загруженной сцене
+                    var floors = instance.GetNodeOrNull<Godot.TileMapLayer>("Floors");
+                    var walls = instance.GetNodeOrNull<Godot.TileMapLayer>("Walls");
+                    var ysort = instance.GetNodeOrNull<Node2D>("YSortContainer");
+                    
+                    if (floors != null && walls != null)
+                    {
+                        Logger.Debug("Found TileMaps in isometric_tileset scene!", true);
+                        FloorsTileMap = floors;
+                        WallsTileMap = walls;
+                        YSortContainer = ysort;
+                        IsometricTileset = instance;
+                        
+                        // Убираем из дерева, но оставляем в памяти
+                        GetTree().Root.RemoveChild(instance);
+                    }
+                    else
+                    {
+                        Logger.Error("TileMaps not found in isometric_tileset scene");
+                        GetTree().Root.RemoveChild(instance);
+                        instance.QueueFree();
+                    }
+                }
+            }
+            else
+            {
+                Logger.Error("Failed to load isometric_tileset.tscn");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error loading isometric_tileset scene: {ex.Message}");
         }
     }
 
