@@ -638,9 +638,6 @@ public partial class LevelGenerator : Node
             SpawnPlanner.BuildConnectivityComponents(wm, worldTilesX, worldTilesY, out compId, out compSizes, out centerCompId);
             CreateCornerSpawnPointsAndPlayer(wm, worldTilesX, worldTilesY, compId, compSizes, centerCompId);
 
-            // Включаем пульсацию пола Lava Springs для тайла floors atlas 4 (9,8) без использования слоя стен
-            LavaFloorPulse.Apply(this, FloorsTileMap, WallsTileMap, FloorsSourceID, worldTilesX, worldTilesY);
-
             // Завершаем метод, не исполняя старый монолитный код ниже
             return;
         }

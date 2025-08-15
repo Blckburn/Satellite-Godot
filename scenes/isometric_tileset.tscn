@@ -629,6 +629,14 @@ texture_region_size = Vector2i(8, 8)
 4:38/size_in_atlas = Vector2i(4, 4)
 4:38/0 = 0
 4:38/0/texture_origin = Vector2i(0, -2)
+11:38/size_in_atlas = Vector2i(4, 4)
+11:38/0 = 0
+15:38/size_in_atlas = Vector2i(4, 4)
+15:38/0 = 0
+19:39/size_in_atlas = Vector2i(2, 2)
+19:39/0 = 0
+21:38/size_in_atlas = Vector2i(4, 4)
+21:38/0 = 0
 
 [sub_resource type="TileSet" id="TileSet_vodvx"]
 tile_shape = 1

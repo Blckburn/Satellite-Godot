@@ -150,6 +150,7 @@ public sealed class NodeLocator
                 WallsOverlayTileMap = overlay;
             }
         }
+        
 
         // Дополнительная сортировка, связанная со слоем «WallsTop», удалена
     }
