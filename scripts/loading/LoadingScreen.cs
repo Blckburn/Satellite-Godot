@@ -219,7 +219,6 @@ public partial class LoadingScreen : Control
         {
             _currentProgress++;
             _progressBar.Value = _currentProgress;
-            _progressLabel.Text = $"{_currentProgress}%";
             
             // Обновляем DOS-стиль прогресс
             UpdateDOSProgress(_currentProgress);
@@ -333,14 +332,8 @@ public partial class LoadingScreen : Control
                 file.Close();
                 Logger.Debug("Main menu file exists, transitioning...", true);
                 
-                // ПРИНУДИТЕЛЬНО УНИЧТОЖАЕМ LoadingScreen!
-                Logger.Debug("Force destroying LoadingScreen...", true);
-                QueueFree();
-                
-                // Ждем немного для уничтожения
-                await Task.Delay(100);
-                
-                // ПЕРЕХОДИМ В ГЛАВНОЕ МЕНЮ!
+                // ПЕРЕХОДИМ В ГЛАВНОЕ МЕНЮ БЕЗ УНИЧТОЖЕНИЯ!
+                Logger.Debug("Transitioning to main menu...", true);
                 GetTree().ChangeSceneToFile("res://scenes/main_menu.tscn");
             }
             else
