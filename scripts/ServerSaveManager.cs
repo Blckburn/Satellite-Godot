@@ -20,6 +20,7 @@ public partial class ServerSaveManager : Node
     [Export] public bool EnableDataProtection { get; set; } = true;
     [Export] public int SaveIntervalSeconds { get; set; } = 30;
     [Export] public bool EnableAutoSave { get; set; } = true;
+    [Export] public string ServerUrl { get; set; } = "http://127.0.0.1:8080";
 
     // Состояние
     public bool IsConnectedToServer { get; private set; } = false;
@@ -31,6 +32,7 @@ public partial class ServerSaveManager : Node
     // Данные
     private ServerSaveData _currentSaveData;
     private Timer _autoSaveTimer;
+    private HttpRequest _httpRequest;
 
     // События
     [Signal] public delegate void SaveCompletedEventHandler(bool success, string message);
@@ -55,6 +57,7 @@ public partial class ServerSaveManager : Node
         // Инициализация
         InitializeSaveData();
         SetupAutoSave();
+        SetupHttpRequest();
 
         // Автоподключение к серверу
         if (AutoConnectToServer)
@@ -78,18 +81,26 @@ public partial class ServerSaveManager : Node
     {
         try
         {
-            Logger.Debug("Connecting to save server...", true);
+            Logger.Debug("Connecting to BADASS save server...", true);
             
-            // Имитация подключения к серверу
-            await Task.Delay(1000); // В реальности здесь будет HTTP запрос
+            // Проверяем доступность сервера через health check
+            var healthUrl = $"{ServerUrl}/health";
+            var result = await MakeHttpRequest(healthUrl, "GET", "");
             
-            IsConnectedToServer = true;
-            EmitSignal(SignalName.ServerConnectionChanged, true);
-            
-            Logger.Debug("Connected to save server successfully", true);
-            
-            // Загружаем последнее сохранение с сервера
-            await LoadFromServerAsync();
+            if (result.Success)
+            {
+                IsConnectedToServer = true;
+                EmitSignal(SignalName.ServerConnectionChanged, true);
+                
+                Logger.Debug("Connected to BADASS save server successfully", true);
+                
+                // Загружаем последнее сохранение с сервера
+                await LoadFromServerAsync();
+            }
+            else
+            {
+                throw new Exception("Server health check failed");
+            }
         }
         catch (Exception ex)
         {
@@ -399,8 +410,76 @@ public partial class ServerSaveManager : Node
             { "IsSaving", IsSaving },
             { "IsLoading", IsLoading },
             { "PlayerId", CurrentPlayerId },
-            { "DataProtected", EnableDataProtection }
+            { "DataProtected", EnableDataProtection },
+            { "ServerUrl", ServerUrl }
         };
+    }
+
+    /// <summary>
+    /// Настраивает HTTP запросы
+    /// </summary>
+    private void SetupHttpRequest()
+    {
+        _httpRequest = new HttpRequest();
+        _httpRequest.RequestCompleted += OnHttpRequestCompleted;
+        AddChild(_httpRequest);
+    }
+
+    /// <summary>
+    /// Выполняет HTTP запрос
+    /// </summary>
+    private async Task<HttpResult> MakeHttpRequest(string url, string method, string body)
+    {
+        var tcs = new TaskCompletionSource<HttpResult>();
+        
+        try
+        {
+            if (method == "GET")
+            {
+                _httpRequest.Request(url);
+            }
+            else if (method == "POST")
+            {
+                var headers = new string[] { "Content-Type: application/json" };
+                _httpRequest.Request(url, headers, HttpClient.Method.Post, body);
+            }
+
+            // Ждем результат
+            var result = await tcs.Task;
+            return result;
+        }
+        catch (Exception ex)
+        {
+            return new HttpResult { Success = false, Error = ex.Message };
+        }
+    }
+
+    /// <summary>
+    /// Обработчик завершения HTTP запроса
+    /// </summary>
+    private void OnHttpRequestCompleted(long result, long responseCode, string[] headers, byte[] body)
+    {
+        var response = System.Text.Encoding.UTF8.GetString(body);
+        
+        if (result == (long)HttpRequest.Result.Success && responseCode == 200)
+        {
+            // Успешный запрос
+            Logger.Debug($"HTTP request successful: {response}", true);
+        }
+        else
+        {
+            Logger.Error($"HTTP request failed: {result}, code: {responseCode}");
+        }
+    }
+
+    /// <summary>
+    /// Результат HTTP запроса
+    /// </summary>
+    private class HttpResult
+    {
+        public bool Success { get; set; }
+        public string Response { get; set; } = "";
+        public string Error { get; set; } = "";
     }
 }
 
