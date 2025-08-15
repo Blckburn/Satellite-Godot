@@ -221,6 +221,7 @@ public partial class LevelGenerator : Node
 
         // Поиск необходимых сцен компонентов, если они не указаны
         _nodeLocator = new NodeLocator();
+        Logger.Debug("Finding required nodes...", true);
         _nodeLocator.FindRequiredNodes(this, IsometricTileset, FloorsTileMap, WallsTileMap, YSortContainer);
         // Обновляем ссылки с найденными узлами
         IsometricTileset = _nodeLocator.IsometricTileset;
@@ -228,6 +229,8 @@ public partial class LevelGenerator : Node
         WallsTileMap = _nodeLocator.WallsTileMap;
         WallsOverlayTileMap = _nodeLocator.WallsOverlayTileMap;
         YSortContainer = _nodeLocator.YSortContainer;
+        
+        Logger.Debug($"NodeLocator results: FloorsTileMap={FloorsTileMap != null}, WallsTileMap={WallsTileMap != null}", true);
 
         // Logger.Debug($"TileMapLayer найдены: Floors: {FloorsTileMap?.Name}, Walls: {WallsTileMap?.Name}, YSort: {YSortContainer?.Name}", true); // СПАМ ОТКЛЮЧЕН
 
@@ -2138,13 +2141,13 @@ public partial class LevelGenerator : Node
             // Проверяем инициализацию тайлмапов
             if (FloorsTileMap == null)
             {
-                Logger.Error("FloorsTileMap is null!");
+                Logger.Error("FloorsTileMap is null! Cannot generate real level, using fallback.");
                 return CreateFallbackLevelData(parameters);
             }
             
             if (WallsTileMap == null)
             {
-                Logger.Error("WallsTileMap is null!");
+                Logger.Error("WallsTileMap is null! Cannot generate real level, using fallback.");
                 return CreateFallbackLevelData(parameters);
             }
 
