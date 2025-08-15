@@ -2071,16 +2071,35 @@ public partial class LevelGenerator : Node
     {
         Logger.Debug($"Generating level data: {parameters.MapWidth}x{parameters.MapHeight}, Biome: {parameters.BiomeType}", true);
 
-        // Устанавливаем параметры генерации
-        MapWidth = parameters.MapWidth;
-        MapHeight = parameters.MapHeight;
-        BiomeType = parameters.BiomeType;
-        MaxRooms = parameters.MaxRooms;
-        MinRoomSize = parameters.MinRoomSize;
-        MaxRoomSize = parameters.MaxRoomSize;
+        try
+        {
+            // Устанавливаем параметры генерации
+            MapWidth = parameters.MapWidth;
+            MapHeight = parameters.MapHeight;
+            BiomeType = parameters.BiomeType;
+            MaxRooms = parameters.MaxRooms;
+            MinRoomSize = parameters.MinRoomSize;
+            MaxRoomSize = parameters.MaxRoomSize;
 
-        // Генерируем уровень (используем мульти-секционную карту)
-        GenerateMultiSectionMap();
+            Logger.Debug($"Parameters set: Map={MapWidth}x{MapHeight}, Biome={BiomeType}, Rooms={MaxRooms}", true);
+
+            // Проверяем инициализацию тайлмапов
+            if (FloorsTileMap == null)
+            {
+                Logger.Error("FloorsTileMap is null!");
+                return CreateFallbackLevelData(parameters);
+            }
+            
+            if (WallsTileMap == null)
+            {
+                Logger.Error("WallsTileMap is null!");
+                return CreateFallbackLevelData(parameters);
+            }
+
+            Logger.Debug("TileMaps are initialized, proceeding with generation", true);
+
+            // Генерируем уровень (используем мульти-секционную карту)
+            GenerateMultiSectionMap();
 
         // Создаем LevelData
         var levelData = new LevelData
@@ -2097,24 +2116,74 @@ public partial class LevelGenerator : Node
         levelData.WallData = new byte[totalTiles];
         levelData.DecorationData = new byte[totalTiles];
 
-        // Заполняем данные из тайлмапов
+        // Заполняем данные из тайлмапов (с проверками на null)
         for (int x = 0; x < MapWidth; x++)
         {
             for (int y = 0; y < MapHeight; y++)
             {
                 int index = y * MapWidth + x;
                 
-                // Получаем данные из тайлмапов
-                var floorTile = FloorsTileMap.GetCellTileData(new Vector2I(x, y));
-                var wallTile = WallsTileMap.GetCellTileData(new Vector2I(x, y));
+                // Получаем данные из тайлмапов с проверками
+                byte floorValue = 0;
+                byte wallValue = 0;
                 
-                levelData.FloorData[index] = (byte)(floorTile != null ? 1 : 0);
-                levelData.WallData[index] = (byte)(wallTile != null ? 1 : 0);
+                if (FloorsTileMap != null)
+                {
+                    var floorTile = FloorsTileMap.GetCellTileData(new Vector2I(x, y));
+                    floorValue = (byte)(floorTile != null ? 1 : 0);
+                }
+                
+                if (WallsTileMap != null)
+                {
+                    var wallTile = WallsTileMap.GetCellTileData(new Vector2I(x, y));
+                    wallValue = (byte)(wallTile != null ? 1 : 0);
+                }
+                
+                levelData.FloorData[index] = floorValue;
+                levelData.WallData[index] = wallValue;
                 levelData.DecorationData[index] = 0; // Пока без декораций
             }
         }
 
         Logger.Debug($"Generated level data: {levelData.Width}x{levelData.Height}, Total tiles: {totalTiles}", true);
+        return levelData;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error during level generation: {ex.Message}");
+            return CreateFallbackLevelData(parameters);
+        }
+    }
+
+    /// <summary>
+    /// Создает fallback данные уровня при ошибке генерации
+    /// </summary>
+    private LevelData CreateFallbackLevelData(GenerationParameters parameters)
+    {
+        Logger.Debug("Creating fallback level data", true);
+        
+        var levelData = new LevelData
+        {
+            Width = parameters.MapWidth,
+            Height = parameters.MapHeight,
+            BiomeType = parameters.BiomeType,
+            SpawnPosition = new Vector2I(parameters.MapWidth / 2, parameters.MapHeight / 2)
+        };
+
+        int totalTiles = parameters.MapWidth * parameters.MapHeight;
+        levelData.FloorData = new byte[totalTiles];
+        levelData.WallData = new byte[totalTiles];
+        levelData.DecorationData = new byte[totalTiles];
+
+        // Заполняем простым паттерном
+        for (int i = 0; i < totalTiles; i++)
+        {
+            levelData.FloorData[i] = 1; // Пол
+            levelData.WallData[i] = 0;  // Нет стен
+            levelData.DecorationData[i] = 0; // Нет декораций
+        }
+
+        Logger.Debug($"Created fallback level data: {levelData.Width}x{levelData.Height}", true);
         return levelData;
     }
 }
