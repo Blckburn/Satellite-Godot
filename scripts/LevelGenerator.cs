@@ -397,7 +397,8 @@ public partial class LevelGenerator : Node
     {
         try
         {
-            // Logger.Debug("Starting generation of multi-section map", true); // СПАМ ОТКЛЮЧЕН
+            Logger.Debug("Starting generation of multi-section map", true);
+            Logger.Debug($"Grid: {GridWidth}x{GridHeight}, Map: {MapWidth}x{MapHeight}, MaxBiomes: {MaxBiomeTypes}", true);
 
             // Включаем мульти-секционный режим
             UseMultiSectionMap = true;
@@ -409,6 +410,7 @@ public partial class LevelGenerator : Node
             ClearAllLayers();
 
             // Создаем секции в сетке через координатор
+            Logger.Debug("Creating map sections...", true);
             _multiSectionCoordinator.CreateMapSections(
                 GridWidth,
                 GridHeight,
@@ -419,6 +421,7 @@ public partial class LevelGenerator : Node
                 _mapSections,
                 (biome) => GetBiomeName(biome)
             );
+            Logger.Debug($"Created {_mapSections.Count} map sections", true);
 
             // Генерируем все секции карты
             GenerateAllSections();
@@ -458,7 +461,7 @@ public partial class LevelGenerator : Node
     // НОВОЕ: Метод для генерации всех секций
     private void GenerateAllSections()
     {
-        // Logger.Debug("Generating all map sections", true); // СПАМ ОТКЛЮЧЕН
+        Logger.Debug("Generating all map sections", true);
 
         // Проходим по всем секциям и генерируем для каждой уровень
         foreach (var section in _mapSections)
@@ -470,9 +473,9 @@ public partial class LevelGenerator : Node
             BiomeType = section.BiomeType;
 
             // WorldBiomes: каждая секция становится частью одного общего мира
+            Logger.Debug($"Generating section at ({section.GridX},{section.GridY}) with biome {GetBiomeName(section.BiomeType)}", true);
             GenerateSectionLevelWorldBiomes(section);
-
-            // Logger.Debug($"Generated section at ({section.GridX},{section.GridY}) with biome {GetBiomeName(section.BiomeType)}", false); // СПАМ ОТКЛЮЧЕН
+            Logger.Debug($"Generated section at ({section.GridX},{section.GridY}) with biome {GetBiomeName(section.BiomeType)}", true);
         }
     }
 
@@ -569,17 +572,25 @@ public partial class LevelGenerator : Node
     // Черновой каркас WorldBiomes: одна большая карта на сетке секций; размещаем центры биомов и для каждого региона вызываем Cave+Trails с его параметрами
     private void GenerateSectionLevelWorldBiomes(MapSection section)
     {
+        Logger.Debug($"GenerateSectionLevelWorldBiomes: section({section.GridX},{section.GridY})", true);
+        
         // В этом режиме реальная генерация идёт из (0,0) секции, остальные секции пропускают отрисовку
         if (!(section.GridX == 0 && section.GridY == 0))
         {
+            Logger.Debug($"Skipping section ({section.GridX},{section.GridY}) - not main section", true);
             // только очистим маску/слои на всякий случай
             ResetSectionMask(section);
             return;
         }
+        
+        Logger.Debug("Generating main section (0,0) with WorldBiomes", true);
 
         // Новый делегат генерации «большого мира»: перенос тяжёлой логики во внешний класс
         try
         {
+            Logger.Debug("Creating WorldBiomesGenerator...", true);
+            Logger.Debug($"Parameters: World={WorldWidth}x{WorldHeight}, MaxBiomes={MaxBiomeTypes}", true);
+            
             var generator = new WorldBiomesGenerator(_random, _biome, FloorsTileMap, WallsTileMap, WallsOverlayTileMap, FloorsSourceID, WallsSourceID);
             LevelGenerator.TileType[,] wm;
             int[,] wb;
