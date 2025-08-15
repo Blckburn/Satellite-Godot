@@ -15,12 +15,12 @@ font_size = 20
 [sub_resource type="LabelSettings" id="LabelSettings_4"]
 font_color = Color(0.8, 0.8, 1, 1)
 
-[sub_resource type="LabelSettings" id="LabelSettings_5"]
-font_size = 18
-font_color = Color(1, 1, 0, 1)
-
 [sub_resource type="LabelSettings" id="LabelSettings_6"]
 font_size = 20
+font_color = Color(1, 1, 0, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_5"]
+font_size = 18
 font_color = Color(1, 1, 0, 1)
 
 [sub_resource type="LabelSettings" id="LabelSettings_7"]
@@ -117,22 +117,6 @@ text = "0%"
 label_settings = SubResource("LabelSettings_4")
 horizontal_alignment = 1
 
-[node name="LogContainer" type="VBoxContainer" parent="MainContainer"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="LogTitle" type="Label" parent="MainContainer/LogContainer"]
-layout_mode = 2
-text = "System Log:"
-label_settings = SubResource("LabelSettings_5")
-
-[node name="LogText" type="RichTextLabel" parent="MainContainer/LogContainer"]
-layout_mode = 2
-size_flags_vertical = 3
-bbcode_enabled = true
-text = "[color=#00ff00]System initialized[/color]"
-fit_content = true
-
 [node name="ContinueSection" type="VBoxContainer" parent="MainContainer"]
 layout_mode = 2
 size_flags_vertical = 4
@@ -149,12 +133,31 @@ size_flags_horizontal = 4
 disabled = true
 text = "CONTINUE"
 
+[node name="LogContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+offset_left = 20.0
+offset_top = 160.0
+offset_right = 420.0
+offset_bottom = 400.0
+
+[node name="LogTitle" type="Label" parent="LogContainer"]
+layout_mode = 2
+text = "System Log:"
+label_settings = SubResource("LabelSettings_5")
+
+[node name="LogText" type="RichTextLabel" parent="LogContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "[color=#00ff00]System initialized[/color]"
+fit_content = true
+
 [node name="DOSLogContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
 offset_left = 20.0
 offset_top = 20.0
 offset_right = 420.0
-offset_bottom = 50.0
+offset_bottom = 150.0
 
 [node name="DOSLogTitle" type="Label" parent="DOSLogContainer"]
 layout_mode = 2

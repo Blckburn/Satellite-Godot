@@ -45,7 +45,7 @@ public partial class LoadingScreen : Control
             _statusLabel = GetNode<Label>("MainContainer/LoadingSection/StatusLabel");
             _progressBar = GetNode<ProgressBar>("MainContainer/LoadingSection/ProgressBar");
             _progressLabel = GetNode<Label>("MainContainer/LoadingSection/ProgressLabel");
-            _logText = GetNode<RichTextLabel>("MainContainer/LogContainer/LogText");
+            _logText = GetNode<RichTextLabel>("LogContainer/LogText");
             _dosLogText = GetNode<RichTextLabel>("DOSLogContainer/DOSLogText");
             _continueButton = GetNode<Button>("MainContainer/ContinueSection/ContinueButton");
             _continueLabel = GetNode<Label>("MainContainer/ContinueSection/ContinueLabel");
