@@ -424,7 +424,18 @@ public partial class LevelGenerator : Node
             Logger.Debug($"Created {_mapSections.Count} map sections", true);
 
             // Генерируем все секции карты
-            GenerateAllSections();
+            Logger.Debug("About to call GenerateAllSections()", true);
+            try
+            {
+                GenerateAllSections();
+                Logger.Debug("GenerateAllSections() completed successfully", true);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"GenerateAllSections() failed: {ex.Message}");
+                Logger.Error($"Stack trace: {ex.StackTrace}");
+                throw;
+            }
 
             // Соединяем секции (WorldBiomes используют собственные глобальные тропы/мосты)
 
@@ -462,6 +473,7 @@ public partial class LevelGenerator : Node
     private void GenerateAllSections()
     {
         Logger.Debug("Generating all map sections", true);
+        Logger.Debug($"Number of sections to process: {_mapSections.Count}", true);
 
         // Проходим по всем секциям и генерируем для каждой уровень
         foreach (var section in _mapSections)
