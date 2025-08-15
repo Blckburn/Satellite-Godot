@@ -27,11 +27,11 @@ public partial class InteractionSystem : Node
         if (Instance == null)
             Instance = this;
         else
-            Logger.Debug("Multiple InteractionSystem instances found!", true);
+            // Logger.Debug("Multiple InteractionSystem instances found!", true);
 
         // Добавляем в группу для быстрого поиска
         AddToGroup("InteractionSystem");
-        Logger.Debug("InteractionSystem added to group", true);
+        // Logger.Debug("InteractionSystem added to group", true);
 
         // Получаем ссылку на игрока
         if (!string.IsNullOrEmpty(PlayerPath))
@@ -67,7 +67,7 @@ public partial class InteractionSystem : Node
         // ВАЖНО: Если клавиша была нажата, а теперь отпущена - отправляем событие
         if (_isInteractionKeyPressed && !eKeyCurrentlyPressed)
         {
-            Logger.Debug("InteractionSystem: Detected E key released", true);
+            // Logger.Debug("InteractionSystem: Detected E key released", true);
             OnInteractionKeyReleased();
         }
 
@@ -82,7 +82,7 @@ public partial class InteractionSystem : Node
                 && interaction.IsInteracting())
             {
                 interaction.CancelInteraction();
-                Logger.Debug("InteractionSystem: Interaction canceled - player moved away", true);
+                // Logger.Debug("InteractionSystem: Interaction canceled - player moved away", true);
             }
 
             _lastInteractable = _nearestInteractable;
@@ -108,7 +108,7 @@ public partial class InteractionSystem : Node
             {
                 _currentInteractingResource = resourceNode;
                 _isInteractionKeyPressed = true; // ВАЖНО: устанавливаем флаг нажатия клавиши
-                Logger.Debug($"InteractionSystem: Started interaction with resource: {resourceNode.Name}", true);
+                // Logger.Debug($"InteractionSystem: Started interaction with resource: {resourceNode.Name}", true);
             }
 
             return _nearestInteractable.Interact(_player);
@@ -122,26 +122,26 @@ public partial class InteractionSystem : Node
     private void OnInteractionKeyReleased()
     {
         // Логируем для отладки
-        Logger.Debug("InteractionSystem: Interaction key E released", true);
+        // Logger.Debug("InteractionSystem: Interaction key E released", true);
 
         // Уведомляем текущий ресурс об отпускании клавиши, если это ResourceNode
         if (_currentInteractingResource != null && _currentInteractingResource.IsInteracting())
         {
             // Явный вызов метода на ресурсе
             _currentInteractingResource.OnInteractionKeyReleased();
-            Logger.Debug("InteractionSystem: Notified resource of key release", true);
+            // Logger.Debug("InteractionSystem: Notified resource of key release", true);
         }
         // Для дверей
         else if (_nearestInteractable is Door door && door.IsInteracting())
         {
             door.OnInteractionKeyReleased();
-            Logger.Debug("InteractionSystem: Notified door of key release", true);
+            // Logger.Debug("InteractionSystem: Notified door of key release", true);
         }
         else if (_nearestInteractable is IInteraction interaction && interaction.IsInteracting())
         {
             // Для других объектов с интерфейсом IInteraction
             interaction.CancelInteraction();
-            Logger.Debug("InteractionSystem: Called CancelInteraction on interactive object", true);
+            // Logger.Debug("InteractionSystem: Called CancelInteraction on interactive object", true);
         }
     }
 
@@ -182,7 +182,7 @@ public partial class InteractionSystem : Node
         if (_currentInteractingResource != null && _currentInteractingResource.IsInteracting())
         {
             _currentInteractingResource.CancelInteraction();
-            Logger.Debug("Resource interaction canceled", false);
+            // Logger.Debug("Resource interaction canceled", false);
         }
         _currentInteractingResource = null;
     }
@@ -211,7 +211,7 @@ public partial class InteractionSystem : Node
         // Логируем только при изменении количества объектов
         if (interactables.Count != _lastInteractableCount)
         {
-            Logger.Debug($"Found {interactables.Count} interactable objects", false);
+            // Logger.Debug($"Found {interactables.Count} interactable objects", false);
             _lastInteractableCount = interactables.Count;
         }
 
@@ -233,9 +233,13 @@ public partial class InteractionSystem : Node
         if (nearest != _nearestInteractable)
         {
             if (nearest != null)
-                Logger.Debug($"New nearest interactable: {nearest}", false);
+            {
+                // Logger.Debug($"New nearest interactable: {nearest}", false);
+            }
             else if (_nearestInteractable != null)
-                Logger.Debug("No interactable in range now", false);
+            {
+                // Logger.Debug("No interactable in range now", false);
+            }
         }
 
         return nearest;

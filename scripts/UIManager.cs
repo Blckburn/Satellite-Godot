@@ -12,6 +12,11 @@ public partial class UIManager : CanvasLayer
     // Ссылки на UI элементы
     private Label _interactionHintLabel;
     private ProgressBar _interactionProgressBar;
+    
+    // DEBUG HUD для координат углов карты
+    private Label _debugCornersLabel;
+    private Label _seedLabel;
+    private int _currentSeed = -1;
 
     // Ссылка на InteractionSystem
     private InteractionSystem _interactionSystem;
@@ -98,12 +103,40 @@ public partial class UIManager : CanvasLayer
             _interactionProgressBar.MinValue = 0;
             _interactionProgressBar.MaxValue = 100;
         }
+        
+        // Инициализация DEBUG HUD для координат углов
+        CreateDebugCornersHUD();
+        CreateSeedHUD();
     }
 
     public override void _Process(double delta)
     {
         if (_interactionSystem != null)
             UpdateInteractionUI();
+    }
+
+    public override void _Input(InputEvent @event)
+    {
+        if (@event is InputEventKey key && key.Pressed && !key.Echo)
+        {
+            if (key.CtrlPressed && key.AltPressed && key.Keycode == Key.C)
+            {
+                if (_currentSeed >= 0)
+                {
+                    DisplayServer.ClipboardSet(_currentSeed.ToString());
+                    // временно изменим текст на подтверждение
+                    if (_seedLabel != null)
+                    {
+                        string prev = _seedLabel.Text;
+                        _seedLabel.Text = $"Seed: {_currentSeed}  (copied)";
+                        GetTree().CreateTimer(1.2).Timeout += () =>
+                        {
+                            UpdateSeedLabelText();
+                        };
+                    }
+                }
+            }
+        }
     }
 
     private void UpdateInteractionUI()
@@ -168,8 +201,85 @@ public partial class UIManager : CanvasLayer
     {
         if (_interactionProgressBar != null)
         {
-            _interactionProgressBar.Value = Mathf.Clamp(progress * 100, 0, 100);
-            _interactionProgressBar.Visible = true;
+            _interactionProgressBar.Value = progress * 100;
+        }
+    }
+    
+    // ===== 🎯 DEBUG HUD ДЛЯ КООРДИНАТ УГЛОВ КАРТЫ =====
+    
+    private void CreateDebugCornersHUD()
+    {
+        // Создаем Label для отображения координат углов карты
+        _debugCornersLabel = new Label();
+        _debugCornersLabel.Name = "DebugCornersLabel";
+        
+        // Позиционируем в левом верхнем углу экрана
+        _debugCornersLabel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.TopLeft);
+        _debugCornersLabel.Position = new Vector2(10, 10);
+        _debugCornersLabel.Size = new Vector2(400, 150);
+        
+        // Стилизация
+        _debugCornersLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _debugCornersLabel.VerticalAlignment = VerticalAlignment.Top;
+        
+        // Изначально скрыто - мешает анализу
+        _debugCornersLabel.Visible = false;
+        
+        // Добавляем к UI
+        AddChild(_debugCornersLabel);
+        
+        Logger.Debug("DEBUG HUD for corner coordinates created", true);
+    }
+    
+    public void UpdateDebugCorners(string cornersInfo)
+    {
+        if (_debugCornersLabel != null)
+        {
+            _debugCornersLabel.Text = cornersInfo;
+            Logger.Debug($"Updated DEBUG HUD with corners info: {cornersInfo}", false);
+        }
+    }
+
+    private void CreateSeedHUD()
+    {
+        _seedLabel = new Label();
+        _seedLabel.Name = "SeedLabel";
+        _seedLabel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.TopRight);
+        _seedLabel.Position = new Vector2(-300, 10);
+        _seedLabel.Size = new Vector2(290, 38);
+        _seedLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _seedLabel.Visible = true;
+        AddChild(_seedLabel);
+    }
+
+    public static void ShowSeed(int seed)
+    {
+        if (Instance?. _seedLabel != null)
+        {
+            Instance._currentSeed = seed;
+            Instance.UpdateSeedLabelText();
+            Instance._seedLabel.Visible = true;
+        }
+    }
+
+    private void UpdateSeedLabelText()
+    {
+        if (_seedLabel == null) return;
+        _seedLabel.Text = $"Seed: {_currentSeed}\nPress Ctrl+Alt+C to copy";
+    }
+    
+    public static void SetMapCorners(Vector2I topLeft, Vector2I topRight, Vector2I bottomLeft, Vector2I bottomRight, 
+                                    Vector2 topLeftWorld, Vector2 topRightWorld, Vector2 bottomLeftWorld, Vector2 bottomRightWorld)
+    {
+        if (Instance != null)
+        {
+            string cornersInfo = $"🎯 УГЛЫ КАРТЫ:\n" +
+                               $"TopLeft: {topLeft} -> ({topLeftWorld.X:F0}, {topLeftWorld.Y:F0})\n" +
+                               $"TopRight: {topRight} -> ({topRightWorld.X:F0}, {topRightWorld.Y:F0})\n" +
+                               $"BottomLeft: {bottomLeft} -> ({bottomLeftWorld.X:F0}, {bottomLeftWorld.Y:F0})\n" +
+                               $"BottomRight: {bottomRight} -> ({bottomRightWorld.X:F0}, {bottomRightWorld.Y:F0})";
+            
+            Instance.UpdateDebugCorners(cornersInfo);
         }
     }
 

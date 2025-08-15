@@ -41,7 +41,7 @@ public partial class ResourceNode : InteractiveObject, IInteraction
             _resourceItem = value;
             if (_resourceItem != null)
             {
-                Logger.Debug($"ResourceItem set: {_resourceItem.DisplayName}", false);
+                // Logger.Debug($"ResourceItem set: {_resourceItem.DisplayName}", false); // СПАМ ОТКЛЮЧЕН
                 // Обновляем визуал при установке нового предмета
                 UpdateVisuals();
             }
@@ -54,6 +54,9 @@ public partial class ResourceNode : InteractiveObject, IInteraction
     [Export] public float PulsatingSpeed { get; set; } = 1.0f;
     [Export] public float PulsatingStrength { get; set; } = 0.15f;
     [Export] public float RotationSpeed { get; set; } = 30.0f;
+    // Сдвиг опоры спрайта (нижняя точка контакта с землей).
+    // Спрайт рисуется так, чтобы его нижняя точка совпадала с позицией узла.
+    [Export] public int FootGroundOffsetPx { get; set; } = 0;
 
     // Визуальные компоненты
     private Sprite2D _sprite;
@@ -91,10 +94,13 @@ public partial class ResourceNode : InteractiveObject, IInteraction
             CreateProgressLabel();
         }
 
-        // Сохраняем начальный масштаб для эффектов
+        // Сохраняем начальный масштаб и выставляем опору спрайта по нижней середине
         if (_sprite != null)
         {
             _initialScale = _sprite.Scale;
+            _sprite.Centered = true; // оставляем центр, корректируем смещением
+            // Центрированный спрайт: небольшой сдвиг вниз регулируется FootGroundOffsetPx
+            _sprite.Offset = new Godot.Vector2(0, FootGroundOffsetPx);
         }
 
         // Загружаем предмет, если он не был установлен напрямую
@@ -110,7 +116,18 @@ public partial class ResourceNode : InteractiveObject, IInteraction
         // Обновляем визуальное представление ресурса
         UpdateVisuals();
 
-        Logger.Debug($"ResourceNode '{Name}' initialized with type: {Type}", true);
+        // Гарантируем корректную сортировку по Y для изометрии
+        YSortEnabled = true; // Для Node2D достаточно включить YSort
+
+        // Отключаем твёрдую коллизию у статического тела, чтобы ресурс не блокировал проходы
+        var staticBody = GetNodeOrNull<StaticBody2D>("StaticBody2D");
+        if (staticBody != null)
+        {
+            staticBody.CollisionLayer = 0;
+            staticBody.CollisionMask = 0;
+        }
+
+        // Logger.Debug($"ResourceNode '{Name}' initialized with type: {Type}", true); // СПАМ ОТКЛЮЧЕН
     }
 
     // Создание элементов прогресса
@@ -161,7 +178,7 @@ public partial class ResourceNode : InteractiveObject, IInteraction
         // Скрываем контейнер изначально
         progressContainer.Visible = false;
 
-        Logger.Debug("Progress UI elements created for resource node", false);
+        // Logger.Debug("Progress UI elements created for resource node", false); // СПАМ ОТКЛЮЧЕН
     }
 
     public override void _Process(double delta)
@@ -340,7 +357,7 @@ public partial class ResourceNode : InteractiveObject, IInteraction
             {
                 // Используем текстуру непосредственно из Item
                 _sprite.Texture = ResourceItem.Icon;
-                Logger.Debug($"Updated sprite texture from ResourceItem.Icon for {Type} resource", false);
+                // Logger.Debug($"Updated sprite texture from ResourceItem.Icon for {Type} resource", false); // СПАМ ОТКЛЮЧЕН
             }
             else
             {
@@ -351,7 +368,7 @@ public partial class ResourceNode : InteractiveObject, IInteraction
                 if (texture != null)
                 {
                     _sprite.Texture = texture;
-                    Logger.Debug($"Updated sprite texture from path for {Type} resource: {texturePath}", false);
+                    // Logger.Debug($"Updated sprite texture from path for {Type} resource: {texturePath}", false); // СПАМ ОТКЛЮЧЕН
                 }
                 else
                 {

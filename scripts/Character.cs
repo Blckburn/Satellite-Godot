@@ -14,7 +14,7 @@ public partial class Character : CharacterBody2D, IDamageable
 
     [Export] public bool ShowDebugInfo { get; set; } = false;
     [Export] public NodePath TileMapPath { get; set; }
-    [Export] public Vector2 TileSize { get; set; } = new Vector2(64, 32);
+    [Export] public Vector2 TileSize { get; set; } = new Vector2(32, 16);
     [Export] public NodePath SpritePath { get; set; } = "Sprite2D"; // Путь к спрайту по умолчанию
 
     protected float _currentHealth;
@@ -38,7 +38,8 @@ public partial class Character : CharacterBody2D, IDamageable
         // Добавляем персонажа в группу "Player" для легкого поиска
         AddToGroup("Player");
 
-
+        // Включаем отладочный лейбл, если требуется
+        SetupDebugLabel();
     }
 
     public override void _PhysicsProcess(double delta)
@@ -57,8 +58,17 @@ public partial class Character : CharacterBody2D, IDamageable
     // Новый метод для обновления Z-индекса
    
 
+    protected virtual Vector2 QueryMovementInput()
+    {
+        // По умолчанию используем установленное внешне направление
+        return _movementDirection;
+    }
+
     protected virtual void ProcessMovement(double delta)
     {
+        // Запрашиваем желаемое направление (игрок переопределит этот метод)
+        _movementDirection = QueryMovementInput();
+
         if (_movementDirection != Vector2.Zero)
         {
             // Используем физический движок Godot для перемещения

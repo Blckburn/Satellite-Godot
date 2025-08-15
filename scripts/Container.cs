@@ -66,7 +66,7 @@ public partial class Container : InteractiveObject
         // Добавляем в группу контейнеров
         AddToGroup("Containers");
 
-        Logger.Debug($"Container '{Name}' initialized with inventory size {InventorySize}", true);
+        // Logger.Debug($"Container '{Name}' initialized with inventory size {InventorySize}", true); // СПАМ ОТКЛЮЧЕН
     }
 
     // В каждом кадре

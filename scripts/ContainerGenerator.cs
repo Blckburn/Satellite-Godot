@@ -105,7 +105,7 @@ public class ContainerGenerator
         // Проверяем, есть ли комнаты для размещения контейнеров
         if (rooms == null || rooms.Count == 0)
         {
-            Logger.Debug("No rooms available for container placement", false);
+            // Logger.Debug("No rooms available for container placement", false);
             return 0;
         }
 
@@ -172,7 +172,7 @@ public class ContainerGenerator
             }
         }
 
-        Logger.Debug($"Placed {containersPlaced} containers for biome {biomeType}", true);
+        // Logger.Debug($"Placed {containersPlaced} containers for biome {biomeType}", true);
         return containersPlaced;
     }
 
@@ -298,7 +298,7 @@ public class ContainerGenerator
                 // Заполняем контейнер предметами
                 PopulateContainerWithItems(container, biomeType);
 
-                Logger.Debug($"Placed {containerName} at world position {isoPos}", false);
+                // Logger.Debug($"Placed {containerName} at world position {isoPos}", false);
             }
         }
         catch (Exception e)
@@ -314,7 +314,7 @@ public class ContainerGenerator
     private Vector2 MapTileToIsometricWorld(Vector2I tilePos)
     {
         // Размер тайла для изометрии (стандартные значения из проекта)
-        Vector2I tileSize = new Vector2I(64, 32);
+        Vector2I tileSize = new Vector2I(32, 16);
 
         // Формула преобразования для изометрии 2:1 
         float x = (tilePos.X - tilePos.Y) * tileSize.X / 2.0f;
@@ -420,7 +420,7 @@ public class ContainerGenerator
         {
             // Папка, содержащая ресурсы
             string resourcesDirectory = "res://scenes/resources/items/";
-            Logger.Debug($"ContainerGenerator: Scanning for resource files in: {resourcesDirectory}", true);
+            // Logger.Debug($"ContainerGenerator: Scanning for resource files in: {resourcesDirectory}", true);
 
             // Получаем список файлов .tres
             var dir = DirAccess.Open(resourcesDirectory);
@@ -439,13 +439,13 @@ public class ContainerGenerator
                 if (!dir.CurrentIsDir() && fileName.EndsWith(".tres"))
                 {
                     resourceFiles.Add(resourcesDirectory + fileName);
-                    Logger.Debug($"ContainerGenerator: Found resource file: {fileName}", false);
+                    // Logger.Debug($"ContainerGenerator: Found resource file: {fileName}", false);
                 }
                 fileName = dir.GetNext();
             }
             dir.ListDirEnd();
 
-            Logger.Debug($"ContainerGenerator: Found {resourceFiles.Count} resource files", true);
+            // Logger.Debug($"ContainerGenerator: Found {resourceFiles.Count} resource files", true);
 
             // Загружаем каждый найденный ресурс
             foreach (string filePath in resourceFiles)
@@ -460,7 +460,7 @@ public class ContainerGenerator
 
                         // Добавляем в список соответствующего типа
                         _resourceItems[resourceType].Add(item);
-                        Logger.Debug($"ContainerGenerator: Loaded resource from {filePath}: {item.DisplayName} as {resourceType}", false);
+                        // Logger.Debug($"ContainerGenerator: Loaded resource from {filePath}: {item.DisplayName} as {resourceType}", false);
                     }
                     else
                     {
@@ -476,7 +476,7 @@ public class ContainerGenerator
             // Выводим информацию о загруженных ресурсах по типам
             foreach (var kvp in _resourceItems)
             {
-                Logger.Debug($"ContainerGenerator: ResourceType {kvp.Key}: loaded {kvp.Value.Count} resource variants", true);
+                // Logger.Debug($"ContainerGenerator: ResourceType {kvp.Key}: loaded {kvp.Value.Count} resource variants", true);
             }
         }
         catch (Exception e)
@@ -596,12 +596,12 @@ public class ContainerGenerator
 
                     if (added)
                     {
-                        Logger.Debug($"ContainerGenerator: Added {itemCopy.DisplayName} x{itemCopy.Quantity} to container", false);
+                        // Logger.Debug($"ContainerGenerator: Added {itemCopy.DisplayName} x{itemCopy.Quantity} to container", false);
                     }
                 }
             }
 
-            Logger.Debug($"ContainerGenerator: Container was populated with {itemCount} items for biome {biomeType}", true);
+            // Logger.Debug($"ContainerGenerator: Container was populated with {itemCount} items for biome {biomeType}", true);
         }
         catch (Exception e)
         {

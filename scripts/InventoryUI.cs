@@ -78,7 +78,7 @@ public partial class InventoryUI : Control
         // Создаем контекстное меню 
         CreateContextMenu();
 
-        Logger.Debug("InventoryUI initialized and added to InventoryUI group", true);
+        // Logger.Debug("InventoryUI initialized and added to InventoryUI group", true); // СПАМ ОТКЛЮЧЕН
     }
 
     public override void _Process(double delta)
@@ -232,7 +232,7 @@ public partial class InventoryUI : Control
 
         }
 
-        Logger.Debug($"Created {_slots.Count} inventory slots", true);
+        // Logger.Debug($"Created {_slots.Count} inventory slots", true); // СПАМ ОТКЛЮЧЕН
     }
 
     // Обработчик события GUI ввода для слота
@@ -519,7 +519,7 @@ public partial class InventoryUI : Control
             // Добавляем тултип в дерево сцены
             AddChild(_itemTooltip);
 
-            Logger.Debug("ItemTooltip created successfully", true);
+            // Logger.Debug("ItemTooltip created successfully", true); // СПАМ ОТКЛЮЧЕН
         }
         catch (Exception ex)
         {

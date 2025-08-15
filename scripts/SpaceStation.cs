@@ -41,7 +41,7 @@ public partial class SpaceStation : Node2D
         if (Instance == null)
             Instance = this;
         else
-            Logger.Debug("Multiple SpaceStation instances found!", true);
+            // Logger.Debug("Multiple SpaceStation instances found!", true);
 
         // Добавляем в группу
         AddToGroup("SpaceStation");
@@ -72,7 +72,7 @@ public partial class SpaceStation : Node2D
         // Инициализируем существующие модули
         InitializeExistingModules();
 
-        Logger.Debug("SpaceStation initialized", true);
+        // Logger.Debug("SpaceStation initialized", true);
     }
 
 
@@ -80,7 +80,7 @@ public partial class SpaceStation : Node2D
     {
         base._EnterTree();
 
-        Logger.Debug("SpaceStation._EnterTree() called", true);
+        // // Logger.Debug("SpaceStation._EnterTree() called", true); // СПАМ ОТКЛЮЧЕН
 
         // В любом случае, вызываем создание игрока с небольшой задержкой
         var timer = new Timer();
@@ -90,7 +90,7 @@ public partial class SpaceStation : Node2D
 
         // Используем лямбда-функцию для callback таймера
         timer.Timeout += () => {
-            Logger.Debug("PlayerSpawnTimer timeout triggered", true);
+            // Logger.Debug("PlayerSpawnTimer timeout triggered", true);
 
             // Проверяем, нужно ли создать игрока
             bool createPlayer = false;
@@ -99,7 +99,7 @@ public partial class SpaceStation : Node2D
             if (ProjectSettings.HasSetting("CreatePlayerOnLoad"))
             {
                 bool flagValue = (bool)ProjectSettings.GetSetting("CreatePlayerOnLoad");
-                Logger.Debug($"CreatePlayerOnLoad flag is: {flagValue}", true);
+                // Logger.Debug($"CreatePlayerOnLoad flag is: {flagValue}", true);
 
                 if (flagValue)
                 {
@@ -110,45 +110,45 @@ public partial class SpaceStation : Node2D
             }
             else
             {
-                Logger.Debug("CreatePlayerOnLoad flag not found", true);
+                // Logger.Debug("CreatePlayerOnLoad flag not found", true);
             }
 
             // Проверка наличия игрока
             var players = GetTree().GetNodesInGroup("Player");
-            Logger.Debug($"Players in 'Player' group: {players.Count}", true);
+            // Logger.Debug($"Players in 'Player' group: {players.Count}", true);
 
             if (players.Count == 0)
             {
                 // Если игрока нет вообще, создаем его в любом случае
                 createPlayer = true;
-                Logger.Debug("No player found in scene, will create one", true);
+                // Logger.Debug("No player found in scene, will create one", true);
             }
 
             if (createPlayer)
             {
-                Logger.Debug("Calling SpawnPlayer()", true);
+                // Logger.Debug("Calling SpawnPlayer()", true);
                 SpawnPlayer();
             }
             else
             {
-                Logger.Debug("Not creating player", true);
+                // Logger.Debug("Not creating player", true);
             }
 
             // Удаляем таймер
             timer.QueueFree();
-            Logger.Debug("PlayerSpawnTimer removed", true);
+            // Logger.Debug("PlayerSpawnTimer removed", true);
         };
 
         AddChild(timer);
         timer.Start();
 
-        Logger.Debug("PlayerSpawnTimer started with timeout: " + timer.WaitTime + "s", true);
+        // Logger.Debug("PlayerSpawnTimer started with timeout: " + timer.WaitTime + "s", true);
     }
 
     // Добавьте этот метод в класс SpaceStation
     private void SpawnPlayer()
     {
-        Logger.Debug("SpawnPlayer() method started", true);
+        // Logger.Debug("SpawnPlayer() method started", true);
 
         // Объявляем переменные в начале метода
         StartingModule startingModule = null;
@@ -163,7 +163,7 @@ public partial class SpaceStation : Node2D
             spawnAtTeleporter = true;
             // Сбрасываем флаг, чтобы не использовать его снова
             ProjectSettings.SetSetting("SpawnAtTeleporter", false);
-            Logger.Debug("Player should spawn at teleporter", true);
+            // Logger.Debug("Player should spawn at teleporter", true);
         }
 
         // Если игрок должен появиться у телепортера
@@ -176,11 +176,11 @@ public partial class SpaceStation : Node2D
                 // Используем метод GetSpawnPosition для получения точки возрождения
                 spawnPosition = teleporter.GetSpawnPosition();
                 foundSpawnPoint = true;
-                Logger.Debug($"Using teleporter spawn position: {spawnPosition}", true);
+                // Logger.Debug($"Using teleporter spawn position: {spawnPosition}", true);
             }
             else
             {
-                Logger.Debug("StationTeleporter not found, searching for generic teleporter", true);
+                // Logger.Debug("StationTeleporter not found, searching for generic teleporter", true);
 
                 // Резервный вариант - ищем любой узел с именем StationTeleporter
                 var genericTeleporter = FindChild("StationTeleporter", true, false) as Node2D;
@@ -188,11 +188,11 @@ public partial class SpaceStation : Node2D
                 {
                     spawnPosition = genericTeleporter.GlobalPosition;
                     foundSpawnPoint = true;
-                    Logger.Debug($"Using generic teleporter position: {spawnPosition}", true);
+                    // Logger.Debug($"Using generic teleporter position: {spawnPosition}", true);
                 }
                 else
                 {
-                    Logger.Debug("Generic teleporter not found, searching teleportation module", true);
+                    // Logger.Debug("Generic teleporter not found, searching teleportation module", true);
 
                     // Запасной вариант - ищем телепортационный модуль
                     foreach (var module in _modules)
@@ -201,7 +201,7 @@ public partial class SpaceStation : Node2D
                         {
                             spawnPosition = module.GlobalPosition;
                             foundSpawnPoint = true;
-                            Logger.Debug($"Using teleportation module position for spawn: {spawnPosition}", true);
+                            // Logger.Debug($"Using teleportation module position for spawn: {spawnPosition}", true);
                             break;
                         }
                     }
@@ -214,14 +214,14 @@ public partial class SpaceStation : Node2D
         if (!foundSpawnPoint)
         {
             // Ищем StartingModule в модулях станции
-            Logger.Debug($"Modules count: {_modules.Count}", true);
+            // Logger.Debug($"Modules count: {_modules.Count}", true);
             foreach (var module in _modules)
             {
-                Logger.Debug($"Checking module: {module.Name} (Type: {module.GetType()})", true);
+                // Logger.Debug($"Checking module: {module.Name} (Type: {module.GetType()})", true);
                 if (module is StartingModule sm)
                 {
                     startingModule = sm;
-                    Logger.Debug("Found StartingModule for player spawn", true);
+                    // Logger.Debug("Found StartingModule for player spawn", true);
                     break;
                 }
             }
@@ -232,11 +232,11 @@ public partial class SpaceStation : Node2D
                 // Получаем позицию для спавна от модуля
                 spawnPosition = startingModule.GetRespawnPosition();
                 foundSpawnPoint = true;
-                Logger.Debug($"Using StartingModule respawn position: {spawnPosition}", true);
+                // Logger.Debug($"Using StartingModule respawn position: {spawnPosition}", true);
             }
             else
             {
-                Logger.Debug("StartingModule was not found, trying to use PlayerSpawnPoint", true);
+                // Logger.Debug("StartingModule was not found, trying to use PlayerSpawnPoint", true);
 
                 // Резервный вариант - ищем точку спавна
                 if (_playerSpawnPoint == null && !string.IsNullOrEmpty(PlayerSpawnPointPath))
@@ -244,7 +244,7 @@ public partial class SpaceStation : Node2D
                     _playerSpawnPoint = GetNodeOrNull<Node2D>(PlayerSpawnPointPath);
                     if (_playerSpawnPoint != null)
                     {
-                        Logger.Debug($"Found PlayerSpawnPoint via path: {PlayerSpawnPointPath}", true);
+                        // Logger.Debug($"Found PlayerSpawnPoint via path: {PlayerSpawnPointPath}", true);
                         foundSpawnPoint = true;
                     }
                 }
@@ -256,7 +256,7 @@ public partial class SpaceStation : Node2D
 
                     if (_playerSpawnPoint != null)
                     {
-                        Logger.Debug("Found PlayerSpawnPoint via FindChild", true);
+                        // Logger.Debug("Found PlayerSpawnPoint via FindChild", true);
                         foundSpawnPoint = true;
                     }
                     else
@@ -270,7 +270,7 @@ public partial class SpaceStation : Node2D
                 if (foundSpawnPoint && _playerSpawnPoint != null)
                 {
                     spawnPosition = _playerSpawnPoint.Position;
-                    Logger.Debug($"Using PlayerSpawnPoint position: {spawnPosition}", true);
+                    // Logger.Debug($"Using PlayerSpawnPoint position: {spawnPosition}", true);
                 }
             }
         }
@@ -279,16 +279,16 @@ public partial class SpaceStation : Node2D
         if (!foundSpawnPoint)
         {
             spawnPosition = Vector2.Zero;
-            Logger.Debug("No spawn point found, using (0,0)", true);
+            // Logger.Debug("No spawn point found, using (0,0)", true);
         }
 
         // Загружаем префаб игрока, если не задан
         if (PlayerScene == null)
         {
-            Logger.Debug("PlayerScene is null, trying to load from resource", true);
+            // Logger.Debug("PlayerScene is null, trying to load from resource", true);
 
             string playerScenePath = "res://scenes/player/Player.tscn";
-            Logger.Debug($"Loading PlayerScene from: {playerScenePath}", true);
+            // Logger.Debug($"Loading PlayerScene from: {playerScenePath}", true);
 
             try
             {
@@ -298,7 +298,7 @@ public partial class SpaceStation : Node2D
                     Logger.Error($"Failed to load player scene from path: {playerScenePath}");
                     return;
                 }
-                Logger.Debug("Successfully loaded PlayerScene resource", true);
+                // Logger.Debug("Successfully loaded PlayerScene resource", true);
             }
             catch (Exception ex)
             {
@@ -308,7 +308,7 @@ public partial class SpaceStation : Node2D
         }
 
         // Создаем экземпляр игрока
-        Logger.Debug("Instantiating player", true);
+        // Logger.Debug("Instantiating player", true);
         Node2D playerNode = null;
         try
         {
@@ -329,7 +329,7 @@ public partial class SpaceStation : Node2D
         playerNode.Position = spawnPosition;
 
         // Добавляем игрока в сцену
-        Logger.Debug("Adding player to scene", true);
+        // Logger.Debug("Adding player to scene", true);
         try
         {
             AddChild(playerNode);
@@ -338,10 +338,10 @@ public partial class SpaceStation : Node2D
             if (!playerNode.IsInGroup("Player"))
             {
                 playerNode.AddToGroup("Player");
-                Logger.Debug("Added player to 'Player' group", true);
+                // Logger.Debug("Added player to 'Player' group", true);
             }
 
-            Logger.Debug($"Player spawned at position {playerNode.Position}", true);
+            // Logger.Debug($"Player spawned at position {playerNode.Position}", true);
 
             // Если игрок создан успешно и реализует класс Player,
             // принудительно загружаем инвентарь без задержки,
@@ -349,7 +349,7 @@ public partial class SpaceStation : Node2D
             if (playerNode is Player player)
             {
                 // ВАЖНО: Немедленная загрузка инвентаря дает больше шансов на успех
-                Logger.Debug("Immediately initializing and loading player inventory", true);
+                // Logger.Debug("Immediately initializing and loading player inventory", true);
 
                 // Инициализируем инвентарь
                 player.InitializeInventory();
@@ -371,18 +371,18 @@ public partial class SpaceStation : Node2D
                                 itemCount = items.Count;
                             }
 
-                            Logger.Debug($"SpaceStation: Found saved inventory with {itemCount} items", true);
+                            // Logger.Debug($"SpaceStation: Found saved inventory with {itemCount} items", true);
 
                             // Если есть предметы, принудительно загружаем
                             if (itemCount > 0)
                             {
                                 bool loaded = player.LoadInventory();
-                                Logger.Debug($"SpaceStation: Immediate inventory load result: {loaded}", true);
+                                // Logger.Debug($"SpaceStation: Immediate inventory load result: {loaded}", true);
 
                                 if (!loaded)
                                 {
                                     // План Б: вручную добавляем предметы
-                                    Logger.Debug("SpaceStation: Using manual item addition as backup", true);
+                                    // Logger.Debug("SpaceStation: Using manual item addition as backup", true);
                                     if (inventoryData.ContainsKey("items") &&
                                         inventoryData["items"] is List<Dictionary<string, object>> itemsList)
                                     {
@@ -416,7 +416,7 @@ public partial class SpaceStation : Node2D
 
                                             // Добавляем предмет
                                             player.PlayerInventory.AddItem(newItem);
-                                            Logger.Debug($"SpaceStation: Manually added item: {newItem.DisplayName} x{newItem.Quantity}", true);
+                                            // Logger.Debug($"SpaceStation: Manually added item: {newItem.DisplayName} x{newItem.Quantity}", true);
                                         }
 
                                         // Вызываем сигнал изменения
@@ -428,7 +428,7 @@ public partial class SpaceStation : Node2D
                     }
                     else
                     {
-                        Logger.Debug("SpaceStation: No PlayerInventorySaved data found in GameManager", true);
+                        // Logger.Debug("SpaceStation: No PlayerInventorySaved data found in GameManager", true);
                     }
                 }
 
@@ -437,17 +437,17 @@ public partial class SpaceStation : Node2D
                 timer.WaitTime = 0.5f;
                 timer.OneShot = true;
                 timer.Timeout += () => {
-                    Logger.Debug("SpaceStation: Delayed inventory check started", true);
+                    // Logger.Debug("SpaceStation: Delayed inventory check started", true);
 
                     // Проверка инвентаря после небольшой задержки
                     if (player.PlayerInventory == null || player.PlayerInventory.Items.Count == 0)
                     {
-                        Logger.Debug("SpaceStation: Player inventory still empty, forcing reload", true);
+                        // Logger.Debug("SpaceStation: Player inventory still empty, forcing reload", true);
                         player.LoadInventory();
                     }
                     else
                     {
-                        Logger.Debug($"SpaceStation: Player inventory already loaded with {player.PlayerInventory.Items.Count} items", true);
+                        // Logger.Debug($"SpaceStation: Player inventory already loaded with {player.PlayerInventory.Items.Count} items", true);
                     }
 
                     // Обновляем UI
@@ -474,11 +474,11 @@ public partial class SpaceStation : Node2D
             {
                 // Имитация возрождения - можно добавить анимацию или эффекты
                 startingModule.RespawnPlayer();
-                Logger.Debug("Called startingModule.RespawnPlayer()", true);
+                // Logger.Debug("Called startingModule.RespawnPlayer()", true);
             }
             catch (Exception ex)
             {
-                Logger.Debug($"Exception in RespawnPlayer: {ex.Message}", true);
+                // Logger.Debug($"Exception in RespawnPlayer: {ex.Message}", true);
             }
         }
     }
@@ -493,7 +493,7 @@ public partial class SpaceStation : Node2D
             if (ui is InventoryUI inventoryUI)
             {
                 inventoryUI.UpdateInventoryUI();
-                Logger.Debug("Forced inventory UI update", true);
+                // Logger.Debug("Forced inventory UI update", true);
             }
         }
     }
@@ -518,7 +518,7 @@ public partial class SpaceStation : Node2D
             if (child is BaseStationModule module)
             {
                 RegisterModule(module);
-                Logger.Debug($"Found existing module: {module.Name}", false);
+                // Logger.Debug($"Found existing module: {module.Name}", false);
             }
         }
     }
@@ -540,7 +540,7 @@ public partial class SpaceStation : Node2D
         // Регистрируем модуль
         RegisterModule(module);
 
-        Logger.Debug($"Added new module: {module.Name} at position {position}", false);
+        // Logger.Debug($"Added new module: {module.Name} at position {position}", false);
     }
 
     /// <summary>
@@ -591,7 +591,7 @@ public partial class SpaceStation : Node2D
         // Удаляем модуль из дерева сцены
         module.QueueFree();
 
-        Logger.Debug($"Removed module: {module.Name}", false);
+        // Logger.Debug($"Removed module: {module.Name}", false);
 
         return true;
     }
@@ -614,7 +614,7 @@ public partial class SpaceStation : Node2D
         // Отправляем сигнал об активации модуля
         EmitSignal(SignalName.StationModuleActivated, module);
 
-        Logger.Debug($"Module activated: {module.Name}", false);
+        // Logger.Debug($"Module activated: {module.Name}", false);
     }
 
     /// <summary>

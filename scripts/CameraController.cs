@@ -8,8 +8,8 @@ public partial class CameraController : Camera2D
 
     // Настройки зума
     [Export] public float ZoomMin { get; set; } = 0.2f;
-    [Export] public float ZoomMax { get; set; } = 1.5f;
-    [Export] public float ZoomDefault { get; set; } = 0.4f;
+    [Export] public float ZoomMax { get; set; } = 2.0f;
+    [Export] public float ZoomDefault { get; set; } = 1.8f;
     [Export] public float ZoomSpeed { get; set; } = 0.1f;
 
     // Скорость движения камеры при использовании стрелок
@@ -20,6 +20,7 @@ public partial class CameraController : Camera2D
 
     // Режим камеры
     [Export] public bool FollowPlayer { get; set; } = true;
+    [Export] public bool ForceCenterOnStart { get; set; } = true;
 
     // Ссылки на игрока
     private Node2D _player;
@@ -40,6 +41,24 @@ public partial class CameraController : Camera2D
         _currentZoom = Vector2.One * ZoomDefault;
         Zoom = _currentZoom;
 
+        // Автоподключение к событию спавна игрока, если нет явной связи в сцене
+        try
+        {
+            Node? levelGenerator = GetTree().Root.FindChild("LevelGenerator", true, false);
+            if (levelGenerator != null)
+            {
+                Callable handler = new Callable(this, nameof(OnPlayerSpawned));
+                if (!levelGenerator.IsConnected("PlayerSpawned", handler))
+                {
+                    levelGenerator.Connect("PlayerSpawned", handler);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Debug($"CameraController: auto-connect to PlayerSpawned failed: {e.Message}", false);
+        }
+
         // Получаем ссылку на игрока если путь указан
         if (!string.IsNullOrEmpty(PlayerPath))
         {
@@ -59,6 +78,10 @@ public partial class CameraController : Camera2D
         {
             // Перемещаем камеру на позицию игрока
             GlobalPosition = _player.GlobalPosition;
+            if (ForceCenterOnStart)
+            {
+                Zoom = Vector2.One * ZoomDefault;
+            }
             Logger.Debug($"Camera following player at {_player.GlobalPosition}", true);
         }
         else
@@ -77,6 +100,18 @@ public partial class CameraController : Camera2D
 
         // Обработка движения камеры стрелками (но не WASD)
         HandleKeyboardControl((float)delta);
+    }
+
+    // Подписка на спавн игрока (должна вызываться из LevelGenerator)
+    public void OnPlayerSpawned(Node2D player)
+    {
+        _player = player;
+        FollowPlayer = true;
+        _keyboardControl = false;
+        GlobalPosition = _player.GlobalPosition;
+        Zoom = Vector2.One * ZoomDefault;
+        Enabled = true;
+        Logger.Debug("CameraController: PlayerSpawned received, centered and zoomed", false);
     }
 
     public override void _Input(InputEvent @event)
