@@ -84,18 +84,7 @@ theme_override_constants/separation = 10
 
 [node name="GenerationTitle" type="Label" parent="Panel/VBoxContainer/GenerationSection"]
 layout_mode = 2
-text = "Generate Level"
-
-[node name="PlanetNameInput" type="LineEdit" parent="Panel/VBoxContainer/GenerationSection"]
-layout_mode = 2
-placeholder_text = "Enter planet name (e.g., Mars, Venus)"
-
-[node name="BiomeTypeInput" type="SpinBox" parent="Panel/VBoxContainer/GenerationSection"]
-layout_mode = 2
-min_value = 0.0
-max_value = 10.0
-value = 0.0
-tooltip_text = "0=Normal, 1=Ice, 2=Desert, 3=Tropical, 4=Volcanic, 5=Gas Giant"
+text = "Generate Random Level"
 
 [node name="DifficultySelect" type="OptionButton" parent="Panel/VBoxContainer/GenerationSection"]
 layout_mode = 2

@@ -31,7 +31,6 @@ public partial class SpaceStation : Node2D
     // Ссылки на узлы
     private Player _player;
     private Node2D _modulesContainer;
-    private Button _levelGenerationButton;
     private LevelGenerationUI _levelGenerationUI;
 
     // Текущий активный модуль
@@ -74,7 +73,7 @@ public partial class SpaceStation : Node2D
         // Инициализируем существующие модули
         InitializeExistingModules();
 
-        // Инициализируем UI генерации уровней
+        // Инициализируем UI генерации уровней (теперь только для поиска)
         InitializeLevelGenerationUI();
 
         // Logger.Debug("SpaceStation initialized", true);
@@ -85,29 +84,12 @@ public partial class SpaceStation : Node2D
     /// </summary>
     private void InitializeLevelGenerationUI()
     {
-        // Находим кнопку и UI
-        _levelGenerationButton = GetNodeOrNull<Button>("%LevelGenerationButton");
+        // Находим UI (кнопка больше не нужна)
         _levelGenerationUI = GetNodeOrNull<LevelGenerationUI>("%LevelGenerationUI");
-
-        if (_levelGenerationButton != null)
-        {
-            _levelGenerationButton.Pressed += OnLevelGenerationButtonPressed;
-        }
 
         if (_levelGenerationUI != null)
         {
             // UI уже скрыт по умолчанию в своем скрипте
-        }
-    }
-
-    /// <summary>
-    /// Обработчик нажатия кнопки генерации уровней
-    /// </summary>
-    private void OnLevelGenerationButtonPressed()
-    {
-        if (_levelGenerationUI != null)
-        {
-            _levelGenerationUI.ShowUI();
         }
     }
 

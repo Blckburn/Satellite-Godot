@@ -12,8 +12,6 @@ public partial class LevelGenerationUI : Control
     private Label _generatorInfoLabel;
     private Button _startServerButton;
     private Button _stopServerButton;
-    private LineEdit _planetNameInput;
-    private SpinBox _biomeTypeInput;
     private OptionButton _difficultySelect;
     private Button _generateButton;
     private Button _loadLevelButton;
@@ -30,8 +28,6 @@ public partial class LevelGenerationUI : Control
         _generatorInfoLabel = GetNode<Label>("Panel/VBoxContainer/ServerSection/GeneratorInfoLabel");
         _startServerButton = GetNode<Button>("Panel/VBoxContainer/ServerSection/ServerButtons/StartServerButton");
         _stopServerButton = GetNode<Button>("Panel/VBoxContainer/ServerSection/ServerButtons/StopServerButton");
-        _planetNameInput = GetNode<LineEdit>("Panel/VBoxContainer/GenerationSection/PlanetNameInput");
-        _biomeTypeInput = GetNode<SpinBox>("Panel/VBoxContainer/GenerationSection/BiomeTypeInput");
         _difficultySelect = GetNode<OptionButton>("Panel/VBoxContainer/GenerationSection/DifficultySelect");
         _generateButton = GetNode<Button>("Panel/VBoxContainer/GenerationSection/GenerateButton");
         _loadLevelButton = GetNode<Button>("Panel/VBoxContainer/GenerationSection/LoadLevelButton");
@@ -151,18 +147,16 @@ public partial class LevelGenerationUI : Control
     {
         if (GameLevelManager.Instance == null) return;
 
-        var planetName = _planetNameInput.Text.Trim();
-        if (string.IsNullOrEmpty(planetName))
-        {
-            _statusLabel.Text = "Please enter planet name";
-            return;
-        }
-
-        var biomeType = (int)_biomeTypeInput.Value;
+        // Генерируем случайное название планеты
+        var planetName = GenerateRandomPlanetName();
+        
+        // Генерируем случайный тип биома
+        var biomeType = GD.RandRange(0, 5);
+        
         var difficultyIndex = _difficultySelect.Selected;
         var difficulty = _difficulties[difficultyIndex];
 
-        _statusLabel.Text = $"Generating level for {planetName}...";
+        _statusLabel.Text = $"Generating random level...";
         UpdateUI();
 
         try
@@ -187,6 +181,20 @@ public partial class LevelGenerationUI : Control
         }
 
         UpdateUI();
+    }
+
+    /// <summary>
+    /// Генерирует случайное название планеты
+    /// </summary>
+    private string GenerateRandomPlanetName()
+    {
+        var prefixes = new[] { "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa" };
+        var suffixes = new[] { "Prime", "Minor", "Major", "Nova", "Centauri", "Orion", "Vega", "Sirius", "Polaris", "Andromeda" };
+        
+        var prefix = prefixes[GD.RandRange(0, prefixes.Length - 1)];
+        var suffix = suffixes[GD.RandRange(0, suffixes.Length - 1)];
+        
+        return $"{prefix} {suffix}";
     }
 
     private void OnLoadLevelPressed()

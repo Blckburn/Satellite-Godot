@@ -32,7 +32,7 @@ public partial class StationTeleporter : InteractiveObject
     {
         AddToGroup("Interactables");
         // Настройка взаимодействия
-        InteractionHint = "Press E to return to the world";
+        InteractionHint = "Press E to generate new level";
 
         base._Ready();
 
@@ -100,10 +100,29 @@ public partial class StationTeleporter : InteractiveObject
         if (!base.Interact(source))
             return false;
 
-        // Телепортируем игрока обратно в мир
-        TeleportToWorld(source as Player);
+        // Открываем меню генерации уровней вместо телепортации в мир
+        OpenLevelGenerationMenu();
 
         return true;
+    }
+
+    /// <summary>
+    /// Открывает меню генерации уровней
+    /// </summary>
+    private void OpenLevelGenerationMenu()
+    {
+        Logger.Debug("Opening level generation menu", true);
+
+        // Находим UI генерации уровней в сцене
+        var levelGenerationUI = GetNodeOrNull<LevelGenerationUI>("%LevelGenerationUI");
+        if (levelGenerationUI != null)
+        {
+            levelGenerationUI.ShowUI();
+        }
+        else
+        {
+            Logger.Error("LevelGenerationUI not found in scene");
+        }
     }
 
     /// <summary>

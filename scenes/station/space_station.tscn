@@ -99,20 +99,7 @@ MaxWaitTimeBeforeForceSave = 0.5
 [node name="ForceSave" type="Node" parent="."]
 script = ExtResource("14_07biw")
 
-[node name="LevelGenerationButton" type="Button" parent="."]
-unique_name_in_owner = true
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -120.0
-offset_top = -50.0
-offset_right = -20.0
-offset_bottom = -20.0
-grow_horizontal = 0
-grow_vertical = 0
-text = "Level Gen"
+
 
 [node name="LevelGenerationUI" parent="." instance=ExtResource("15_level_ui")]
 unique_name_in_owner = true
