@@ -437,15 +437,15 @@ public partial class LoadingScreen : Control
     /// </summary>
     private void UpdateDOSProgress(int progress)
     {
-        // ПРАВИЛЬНАЯ ЛОГИКА - РАЗНЫЕ СИМВОЛЫ!
+        // ИДЕАЛЬНАЯ ЛОГИКА - ТОЧКИ И ПРОБЕЛЫ!
         var filledDots = progress / 10; // Сколько точек заполнено
-        var emptyDots = 10 - filledDots; // Сколько точек пустых
+        var emptySpaces = 10 - filledDots; // Сколько пробелов пустых
         
         var filled = new string('.', filledDots); // Заполненные точки
-        var empty = new string('-', emptyDots);   // Пустые дефисы
+        var empty = new string(' ', emptySpaces); // Пустые пробелы
         var dosProgress = $"[{filled}{empty}] {progress}%";
         
-        _dosLogText.Text = $"[color=#00ff00]SERVER STARTING......{dosProgress}[/color]";
+        _dosLogText.Text = $"[color=#00ff00]SERVER STARTING{dosProgress}[/color]";
     }
 
     /// <summary>
