@@ -13,7 +13,7 @@ public partial class GameLevelManager : Node
 
     // Настройки генерации
     [Export] public bool UseServerGeneration { get; set; } = true;
-    [Export] public bool AutoStartServer { get; set; } = false;
+    [Export] public bool AutoStartServer { get; set; } = true; // Автозапуск сервера при старте
     [Export] public int DefaultMapWidth { get; set; } = 100;
     [Export] public int DefaultMapHeight { get; set; } = 100;
     [Export] public int DefaultMaxRooms { get; set; } = 15;

@@ -10,6 +10,7 @@ public partial class LevelGenerationUI : Control
     // UI элементы
     private Label _serverStatusLabel;
     private Label _generatorInfoLabel;
+    private Label _saveServerStatusLabel;
     private Button _startServerButton;
     private Button _stopServerButton;
     private OptionButton _difficultySelect;
@@ -26,6 +27,7 @@ public partial class LevelGenerationUI : Control
         // Находим UI элементы
         _serverStatusLabel = GetNode<Label>("Panel/VBoxContainer/ServerSection/ServerStatusLabel");
         _generatorInfoLabel = GetNode<Label>("Panel/VBoxContainer/ServerSection/GeneratorInfoLabel");
+        _saveServerStatusLabel = GetNode<Label>("Panel/VBoxContainer/ServerSection/SaveServerStatusLabel");
         _startServerButton = GetNode<Button>("Panel/VBoxContainer/ServerSection/ServerButtons/StartServerButton");
         _stopServerButton = GetNode<Button>("Panel/VBoxContainer/ServerSection/ServerButtons/StopServerButton");
         _difficultySelect = GetNode<OptionButton>("Panel/VBoxContainer/GenerationSection/DifficultySelect");
@@ -48,6 +50,15 @@ public partial class LevelGenerationUI : Control
             GameLevelManager.Instance.LevelGenerationCompleted += OnGenerationCompleted;
             GameLevelManager.Instance.LevelGenerationFailed += OnGenerationFailed;
             GameLevelManager.Instance.ServerStatusChanged += OnServerStatusChanged;
+        }
+
+        // Подписываемся на события ServerSaveManager
+        if (ServerSaveManager.Instance != null)
+        {
+            ServerSaveManager.Instance.ServerConnectionChanged += OnSaveServerConnectionChanged;
+            ServerSaveManager.Instance.SaveCompleted += OnSaveCompleted;
+            ServerSaveManager.Instance.LoadCompleted += OnLoadCompleted;
+            ServerSaveManager.Instance.DataIntegrityViolation += OnDataIntegrityViolation;
         }
 
         // Инициализируем UI
@@ -100,6 +111,19 @@ public partial class LevelGenerationUI : Control
         // Обновляем статус сервера
         _serverStatusLabel.Text = GameLevelManager.Instance.GetServerStatus();
         _generatorInfoLabel.Text = $"Generator: {GameLevelManager.Instance.GetGeneratorInfo()}";
+        
+        // Обновляем статус сервера сохранений
+        if (ServerSaveManager.Instance != null)
+        {
+            var saveStats = ServerSaveManager.Instance.GetSaveStats();
+            var isConnected = (bool)saveStats["IsConnected"];
+            var lastSave = (DateTime)saveStats["LastSaveTime"];
+            var isProtected = (bool)saveStats["DataProtected"];
+            
+            _saveServerStatusLabel.Text = $"Save Server: {(isConnected ? "Connected" : "Disconnected")} | " +
+                                         $"Protected: {(isProtected ? "Yes" : "No")} | " +
+                                         $"Last Save: {lastSave:HH:mm:ss}";
+        }
     }
 
     /// <summary>
@@ -297,6 +321,32 @@ public partial class LevelGenerationUI : Control
 
     private void OnServerStatusChanged(bool isRunning)
     {
+        UpdateUI();
+    }
+
+    // Обработчики событий ServerSaveManager
+    private void OnSaveServerConnectionChanged(bool connected)
+    {
+        Logger.Debug($"Save server connection changed: {connected}", true);
+        UpdateUI();
+    }
+
+    private void OnSaveCompleted(bool success, string message)
+    {
+        Logger.Debug($"Save completed: {success} - {message}", true);
+        UpdateUI();
+    }
+
+    private void OnLoadCompleted(bool success, string message)
+    {
+        Logger.Debug($"Load completed: {success} - {message}", true);
+        UpdateUI();
+    }
+
+    private void OnDataIntegrityViolation(string details)
+    {
+        Logger.Error($"Data integrity violation detected: {details}");
+        _statusLabel.Text = $"SECURITY ALERT: {details}";
         UpdateUI();
     }
 }

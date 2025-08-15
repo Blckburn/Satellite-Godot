@@ -11,10 +11,14 @@
             "id": "beb099b2dab19ad3",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "07_Идеи (сводка).md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "07_Идеи (сводка)"
             }
           }
         ]
@@ -162,7 +166,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 867.5
+    "width": 290.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -174,7 +178,7 @@
       "graph:Open graph view": false
     }
   },
-  "active": "beb099b2dab19ad3",
+  "active": "bac2420fc8faa88a",
   "lastOpenFiles": [
     "сделать систему модулей.md",
     "Идеи.md",
