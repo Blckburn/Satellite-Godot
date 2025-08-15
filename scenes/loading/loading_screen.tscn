@@ -101,7 +101,7 @@ size_flags_vertical = 3
 
 [node name="StatusLabel" type="Label" parent="MainContainer/LoadingSection"]
 layout_mode = 2
-text = "Initializing BADASS systems..."
+text = "Initializing systems..."
 label_settings = SubResource("LabelSettings_3")
 horizontal_alignment = 1
 
@@ -111,11 +111,11 @@ size_flags_horizontal = 3
 size_flags_vertical = 4
 
 [node name="ProgressLabel" type="Label" parent="MainContainer/LoadingSection"]
+visible = false
 layout_mode = 2
 text = "0%"
 label_settings = SubResource("LabelSettings_4")
 horizontal_alignment = 1
-visible = false
 
 [node name="LogContainer" type="VBoxContainer" parent="MainContainer"]
 layout_mode = 2
@@ -154,7 +154,7 @@ layout_mode = 1
 offset_left = 20.0
 offset_top = 20.0
 offset_right = 420.0
-offset_bottom = 200.0
+offset_bottom = 50.0
 
 [node name="DOSLogTitle" type="Label" parent="DOSLogContainer"]
 layout_mode = 2
@@ -165,7 +165,7 @@ label_settings = SubResource("LabelSettings_7")
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
-text = "[color=#00ff00]SERVER STARTING......[............] 0%[/color]"
+text = "[color=#00ff00]SERVER STARTING[............] 0%[/color]"
 fit_content = true
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]

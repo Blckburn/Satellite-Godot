@@ -3,7 +3,7 @@ using System;
 using System.Threading.Tasks;
 
 /// <summary>
-/// BADASS сцена загрузки с анимациями и интеграцией сервера!
+/// Сцена загрузки с анимациями и интеграцией сервера
 /// </summary>
 public partial class LoadingScreen : Control
 {
@@ -25,7 +25,7 @@ public partial class LoadingScreen : Control
 
     // Этапы загрузки
     private readonly string[] _loadingSteps = {
-        "Initializing BADASS systems...",
+        "Initializing systems...",
         "Starting save server...",
         "Connecting to server...",
         "Checking server status...",
@@ -124,14 +124,14 @@ public partial class LoadingScreen : Control
     }
 
         /// <summary>
-    /// Запускает процесс загрузки (BADASS ВЕРСИЯ С АНИМАЦИЯМИ!)
+    /// Запускает процесс загрузки
     /// </summary>
     private async void StartLoadingProcess()
     {
         try
         {
-            Logger.Debug("StartLoadingProcess() started (BADASS version)", true);
-            AddLogEntry("Starting BADASS loading sequence...", "yellow");
+            Logger.Debug("StartLoadingProcess() started", true);
+            AddLogEntry("Starting loading sequence...", "yellow");
 
             // Этап 1: Инициализация систем (0-15%)
             await UpdateLoadingStep(0, 15);
@@ -332,8 +332,14 @@ public partial class LoadingScreen : Control
                 file.Close();
                 Logger.Debug("Main menu file exists, transitioning...", true);
                 
-                // ПЕРЕХОДИМ В ГЛАВНОЕ МЕНЮ БЕЗ УНИЧТОЖЕНИЯ!
-                Logger.Debug("Transitioning to main menu...", true);
+                // ПРИНУДИТЕЛЬНО УНИЧТОЖАЕМ LoadingScreen!
+                Logger.Debug("Force destroying LoadingScreen...", true);
+                QueueFree();
+                
+                // Ждем немного для уничтожения
+                await Task.Delay(200);
+                
+                // ПЕРЕХОДИМ В ГЛАВНОЕ МЕНЮ!
                 GetTree().ChangeSceneToFile("res://scenes/main_menu.tscn");
             }
             else
@@ -455,7 +461,7 @@ public partial class LoadingScreen : Control
     }
 
     /// <summary>
-    /// Анимирует звезды (BADASS ВЕРСИЯ С КРУТЫМИ ЭФФЕКТАМИ!)
+    /// Анимирует звезды
     /// </summary>
     private void AnimateStars()
     {
@@ -465,7 +471,7 @@ public partial class LoadingScreen : Control
             var time = Time.GetTimeDictFromSystem();
             var seconds = (float)time["second"];
             
-            // КРУТАЯ АНИМАЦИЯ ЗВЕЗД!
+            // Анимация звезд
             for (int i = 0; i < stars.GetChildCount(); i++)
             {
                 var star = stars.GetChild<ColorRect>(i);
