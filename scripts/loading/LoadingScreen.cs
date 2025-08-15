@@ -325,7 +325,7 @@ public partial class LoadingScreen : Control
     {
         var stars = GetNode<Node2D>("Stars");
         var time = Time.GetTimeDictFromSystem();
-        var seconds = time["second"];
+        var seconds = (float)time["second"];
 
         for (int i = 0; i < stars.GetChildCount(); i++)
         {
