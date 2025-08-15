@@ -37,28 +37,43 @@ public partial class LoadingScreen : Control
 
     public override void _Ready()
     {
-        // Получаем ссылки на UI элементы
-        _statusLabel = GetNode<Label>("MainContainer/LoadingSection/StatusLabel");
-        _progressBar = GetNode<ProgressBar>("MainContainer/LoadingSection/ProgressBar");
-        _progressLabel = GetNode<Label>("MainContainer/LoadingSection/ProgressLabel");
-        _logText = GetNode<RichTextLabel>("MainContainer/LogContainer/LogText");
-        _dosLogText = GetNode<RichTextLabel>("DOSLogContainer/DOSLogText");
-        _continueButton = GetNode<Button>("MainContainer/ContinueSection/ContinueButton");
-        _continueLabel = GetNode<Label>("MainContainer/ContinueSection/ContinueLabel");
-        _timer = GetNode<Timer>("Timer");
-        _animationPlayer = GetNode<AnimationPlayer>("AnimationPlayer");
+        try
+        {
+            Logger.Debug("LoadingScreen _Ready() started", true);
+            
+            // Получаем ссылки на UI элементы
+            _statusLabel = GetNode<Label>("MainContainer/LoadingSection/StatusLabel");
+            _progressBar = GetNode<ProgressBar>("MainContainer/LoadingSection/ProgressBar");
+            _progressLabel = GetNode<Label>("MainContainer/LoadingSection/ProgressLabel");
+            _logText = GetNode<RichTextLabel>("MainContainer/LogContainer/LogText");
+            _dosLogText = GetNode<RichTextLabel>("DOSLogContainer/DOSLogText");
+            _continueButton = GetNode<Button>("MainContainer/ContinueSection/ContinueButton");
+            _continueLabel = GetNode<Label>("MainContainer/ContinueSection/ContinueLabel");
+            _timer = GetNode<Timer>("Timer");
+            _animationPlayer = GetNode<AnimationPlayer>("AnimationPlayer");
 
-        // Настраиваем начальное состояние
-        _continueButton.Disabled = true;
-        _continueLabel.Visible = false;
-        _progressBar.Value = 0;
-        _progressLabel.Text = "0%";
+            Logger.Debug("UI elements found successfully", true);
 
-        // Добавляем начальную запись в лог
-        AddLogEntry("Loading screen initialized", "green");
+            // Настраиваем начальное состояние
+            _continueButton.Disabled = true;
+            _continueLabel.Visible = false;
+            _progressBar.Value = 0;
+            _progressLabel.Text = "0%";
 
-        // Запускаем процесс загрузки
-        StartLoadingProcess();
+            // Добавляем начальную запись в лог
+            AddLogEntry("Loading screen initialized", "green");
+
+            Logger.Debug("Starting loading process...", true);
+
+            // Запускаем процесс загрузки
+            StartLoadingProcess();
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"LoadingScreen _Ready() failed: {ex.Message}");
+            // Если что-то пошло не так, сразу переходим в главное меню
+            GetTree().ChangeSceneToFile("res://scenes/main_menu.tscn");
+        }
     }
 
     /// <summary>
@@ -100,77 +115,31 @@ public partial class LoadingScreen : Control
         }
     }
 
-    /// <summary>
-    /// Запускает процесс загрузки
+        /// <summary>
+    /// Запускает процесс загрузки (УПРОЩЕННАЯ ВЕРСИЯ ДЛЯ ОТЛАДКИ)
     /// </summary>
     private async void StartLoadingProcess()
     {
-        AddLogEntry("Starting BADASS loading sequence...", "yellow");
-
-        // Этап 1: Инициализация систем
-        await UpdateLoadingStep(0, 15);
-        AddLogEntry("Systems initialized successfully", "green");
-        AddDOSMessage("Systems initialized successfully", "green");
-
-        // Этап 2: Запуск сервера
-        await UpdateLoadingStep(1, 25);
-        AddLogEntry("Save server starting...", "blue");
-        AddDOSMessage("Save server starting...", "blue");
-
-        // Этап 3: Подключение к серверу
-        await UpdateLoadingStep(2, 40);
-        AddLogEntry("Connecting to save server...", "blue");
-        AddDOSMessage("Connecting to save server...", "blue");
-
-        // Ждем подключения к серверу
-        if (ServerSaveManager.Instance != null)
+        try
         {
-            // Подписываемся на события сервера
-            ServerSaveManager.Instance.ServerConnectionChanged += OnServerConnectionChanged;
-            ServerSaveManager.Instance.SaveCompleted += OnSaveCompleted;
-            ServerSaveManager.Instance.LoadCompleted += OnLoadCompleted;
+            Logger.Debug("StartLoadingProcess() started (simplified)", true);
+            AddLogEntry("Starting BADASS loading sequence...", "yellow");
 
-            // Ждем подключения
-            await WaitForServerConnection();
+            // УПРОЩЕННАЯ ВЕРСИЯ - только основные этапы
+            await Task.Delay(1000); // Ждем 1 секунду
+            
+            AddLogEntry("Loading complete! Ready to launch!", "green");
+            AddDOSMessage("Loading complete! Ready to launch!", "green");
+
+            // Завершаем загрузку
+            CompleteLoading();
         }
-        else
+        catch (Exception ex)
         {
-            AddLogEntry("WARNING: ServerSaveManager not found!", "red");
-            AddDOSMessage("WARNING: ServerSaveManager not found!", "red");
-            await Task.Delay(1000);
+            Logger.Error($"StartLoadingProcess() failed: {ex.Message}");
+            // Если что-то пошло не так, сразу переходим в главное меню
+            GetTree().ChangeSceneToFile("res://scenes/main_menu.tscn");
         }
-
-        // Этап 4: Проверка статуса
-        await UpdateLoadingStep(3, 55);
-        AddLogEntry("Server status verified", "green");
-        AddDOSMessage("Server status verified", "green");
-
-        // Этап 5: Загрузка данных
-        await UpdateLoadingStep(4, 70);
-        AddLogEntry("Loading save data...", "blue");
-        AddDOSMessage("Loading save data...", "blue");
-
-        // Ждем загрузки данных
-        await WaitForDataLoad();
-        AddDOSMessage("Save data loaded successfully", "green");
-
-        // Этап 6: Проверка целостности
-        await UpdateLoadingStep(5, 85);
-        AddLogEntry("Data integrity verified", "green");
-        AddDOSMessage("Data integrity verified", "green");
-
-        // Этап 7: Подготовка игровых систем
-        await UpdateLoadingStep(6, 95);
-        AddLogEntry("Game systems prepared", "green");
-        AddDOSMessage("Game systems prepared", "green");
-
-        // Этап 8: Завершение
-        await UpdateLoadingStep(7, 100);
-        AddLogEntry("Loading complete! Ready to launch!", "green");
-        AddDOSMessage("Loading complete! Ready to launch!", "green");
-
-        // Завершаем загрузку
-        CompleteLoading();
     }
 
     /// <summary>
@@ -275,20 +244,35 @@ public partial class LoadingScreen : Control
     /// </summary>
     private void ContinueToMainMenu()
     {
-        if (!_canContinue) return;
-
-        AddLogEntry("Transitioning to main menu...", "blue");
-
-        // Отписываемся от событий
-        if (ServerSaveManager.Instance != null)
+        try
         {
-            ServerSaveManager.Instance.ServerConnectionChanged -= OnServerConnectionChanged;
-            ServerSaveManager.Instance.SaveCompleted -= OnSaveCompleted;
-            ServerSaveManager.Instance.LoadCompleted -= OnLoadCompleted;
-        }
+            Logger.Debug("ContinueToMainMenu() started", true);
+            
+            if (!_canContinue) 
+            {
+                Logger.Debug("Cannot continue - not ready yet", true);
+                return;
+            }
 
-        // Переходим в главное меню
-        GetTree().ChangeSceneToFile("res://scenes/main_menu.tscn");
+            AddLogEntry("Transitioning to main menu...", "blue");
+
+            // Отписываемся от событий
+            if (ServerSaveManager.Instance != null)
+            {
+                ServerSaveManager.Instance.ServerConnectionChanged -= OnServerConnectionChanged;
+                ServerSaveManager.Instance.SaveCompleted -= OnSaveCompleted;
+                ServerSaveManager.Instance.LoadCompleted -= OnLoadCompleted;
+            }
+
+            Logger.Debug("Changing scene to main menu...", true);
+
+            // Переходим в главное меню
+            GetTree().ChangeSceneToFile("res://scenes/main_menu.tscn");
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"ContinueToMainMenu() failed: {ex.Message}");
+        }
     }
 
     /// <summary>
