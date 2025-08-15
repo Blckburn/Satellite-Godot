@@ -71,9 +71,9 @@ public partial class LevelGenerationManager : Node
 
         // Инициализируем серверный генератор
         var networkManager = GetNode<NetworkManager>("/root/NetworkManager");
-        if (networkManager != null)
+        if (networkManager != null && levelGenerator != null)
         {
-            _serverGenerator = new ServerLevelGenerator(networkManager);
+            _serverGenerator = new ServerLevelGenerator(networkManager, levelGenerator);
             
             // Подписываемся на события сети
             networkManager.Connected += OnServerConnected;

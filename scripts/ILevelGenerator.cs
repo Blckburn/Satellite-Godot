@@ -46,11 +46,10 @@ public class ClientLevelGenerator : ILevelGenerator
         {
             GD.Print($"ClientLevelGenerator: Generating real level {parameters.MapWidth}x{parameters.MapHeight}");
             
-            // Используем реальный LevelGenerator
-            var levelGenerator = GetNode<LevelGenerator>("/root/LevelGenerator");
-            if (levelGenerator != null)
+            // Используем переданный LevelGenerator
+            if (_levelGenerator != null)
             {
-                var levelData = levelGenerator.GenerateLevelData(parameters);
+                var levelData = _levelGenerator.GenerateLevelData(parameters);
                 GD.Print($"ClientLevelGenerator: Generated real level with {levelData.Width}x{levelData.Height}");
                 return levelData;
             }
@@ -99,10 +98,12 @@ public class ClientLevelGenerator : ILevelGenerator
 public class ServerLevelGenerator : ILevelGenerator
 {
     private readonly NetworkManager _networkManager;
+    private readonly LevelGenerator _levelGenerator;
 
-    public ServerLevelGenerator(NetworkManager networkManager)
+    public ServerLevelGenerator(NetworkManager networkManager, LevelGenerator levelGenerator)
     {
         _networkManager = networkManager;
+        _levelGenerator = levelGenerator;
     }
 
     public async Task<LevelData> GenerateLevelAsync(GenerationParameters parameters)
@@ -113,11 +114,10 @@ public class ServerLevelGenerator : ILevelGenerator
             GD.Print($"ServerLevelGenerator: Generating real level locally (server is running)");
             return await Task.Run(() =>
             {
-                // Используем реальный LevelGenerator
-                var levelGenerator = GetNode<LevelGenerator>("/root/LevelGenerator");
-                if (levelGenerator != null)
+                // Используем переданный LevelGenerator
+                if (_levelGenerator != null)
                 {
-                    var levelData = levelGenerator.GenerateLevelData(parameters);
+                    var levelData = _levelGenerator.GenerateLevelData(parameters);
                     GD.Print($"ServerLevelGenerator: Generated real level with {levelData.Width}x{levelData.Height}");
                     return levelData;
                 }
