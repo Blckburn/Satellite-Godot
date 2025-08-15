@@ -233,8 +233,12 @@ public partial class TeleportationModule : BaseStationModule
     /// </summary>
     private void StartTeleportation(string destination)
     {
-        // Блокируем автосохранение на время телепортации
-        AutoSave.BlockDuringTeleportation(true);
+        // Блокируем автосохранение на время телепортации (через ServerSaveManager)
+        if (ServerSaveManager.Instance != null)
+        {
+            // Временно отключаем автосохранение
+            ServerSaveManager.Instance.EnableAutoSave = false;
+        }
 
         Logger.Debug("Starting teleportation to station, autosave blocked", true);
         Logger.Debug($"Starting teleportation to {destination}", false);
@@ -323,5 +327,19 @@ public partial class TeleportationModule : BaseStationModule
         }
 
         Logger.Debug($"New destination added: {destination}", false);
+    }
+
+    /// <summary>
+    /// Отложенное разблокирование автосохранения
+    /// </summary>
+    private void UnblockAutosaveDeferred()
+    {
+        // Разблокируем автосохранение через ServerSaveManager
+        if (ServerSaveManager.Instance != null)
+        {
+            ServerSaveManager.Instance.EnableAutoSave = true;
+        }
+        
+        Logger.Debug("Autosave unblocked after teleportation", true);
     }
 }

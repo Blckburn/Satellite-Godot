@@ -240,9 +240,9 @@ public void ClearData()
     /// <summary>
     /// Обработчик завершения сохранения
     /// </summary>
-    private void OnSaveCompleted()
+    private void OnSaveCompleted(bool success, string message)
     {
-        // Logger.Debug("Save completed successfully", true);
+        Logger.Debug($"Save completed: {success} - {message}", true);
 
         // Здесь можно добавить любую логику, которая должна выполняться после сохранения
         // Например, показать уведомление пользователю
@@ -525,20 +525,23 @@ public void ClearData()
     /// <summary>
     /// Обработчик завершения загрузки
     /// </summary>
-    private void OnLoadCompleted()
+    private void OnLoadCompleted(bool success, string message)
     {
-        // Logger.Debug("Load completed successfully", true);
+        Logger.Debug($"Load completed: {success} - {message}", true);
 
-        // Принудительно восстанавливаем инвентарь игрока
-        EnsurePlayerInventoryLoaded();
-
-        // НОВАЯ СТРОКА: Принудительно восстанавливаем данные хранилищ
-        // Получаем GameManager и вызываем его метод напрямую
-        var gameManager = GetNode<GameManager>("/root/GameManager");
-        if (gameManager != null)
+        if (success)
         {
-            // Вызываем метод GameManager для загрузки хранилищ
-            gameManager.EnsureStorageModulesLoaded();
+            // Принудительно восстанавливаем инвентарь игрока
+            EnsurePlayerInventoryLoaded();
+
+            // НОВАЯ СТРОКА: Принудительно восстанавливаем данные хранилищ
+            // Получаем GameManager и вызываем его метод напрямую
+            var gameManager = GetNode<GameManager>("/root/GameManager");
+            if (gameManager != null)
+            {
+                // Вызываем метод GameManager для загрузки хранилищ
+                gameManager.EnsureStorageModulesLoaded();
+            }
         }
         /*
         // Здесь логика, которая должна выполняться после загрузки

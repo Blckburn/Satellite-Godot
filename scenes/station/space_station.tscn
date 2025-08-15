@@ -12,8 +12,7 @@
 [ext_resource type="PackedScene" uid="uid://cdpklt0cb7nbq" path="res://scenes/ui/inventory_ui.tscn" id="9_vebmi"]
 [ext_resource type="PackedScene" uid="uid://dvyg2vbhucri0" path="res://scenes/ui/SlotTemplate.tscn" id="11_b1308"]
 [ext_resource type="PackedScene" uid="uid://dvkiae0slh4s3" path="res://scenes/ui/ContainerUI.tscn" id="11_vebmi"]
-[ext_resource type="Script" uid="uid://84p0u17egmo6" path="res://scripts/AutoSave.cs" id="13_yjdnh"]
-[ext_resource type="Script" uid="uid://cb6hul3pwncya" path="res://scripts/ForceSaveSystem.cs" id="14_07biw"]
+
 [ext_resource type="PackedScene" path="res://scenes/ui/level_generation_ui.tscn" id="15_level_ui"]
 
 [node name="SpaceStation" type="Node2D"]
@@ -89,15 +88,7 @@ metadata/_edit_use_anchors_ = true
 
 [node name="ContainerUI" parent="ContainerUI" instance=ExtResource("11_vebmi")]
 
-[node name="AutoSave" type="Node" parent="."]
-script = ExtResource("13_yjdnh")
-MinChangeInterval = 5.0
-SaveDelay = 0.5
-ActiveMonitoringInterval = 0.3
-MaxWaitTimeBeforeForceSave = 0.5
 
-[node name="ForceSave" type="Node" parent="."]
-script = ExtResource("14_07biw")
 
 [node name="LevelGenerationUI" parent="." instance=ExtResource("15_level_ui")]
 unique_name_in_owner = true
