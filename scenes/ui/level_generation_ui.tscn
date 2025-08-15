@@ -110,6 +110,7 @@ text = "Generate Level"
 [node name="LoadLevelButton" type="Button" parent="Panel/VBoxContainer/GenerationSection"]
 layout_mode = 2
 text = "Load Generated Level"
+visible = false
 
 [node name="HSeparator3" type="HSeparator" parent="Panel/VBoxContainer"]
 layout_mode = 2

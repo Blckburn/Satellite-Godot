@@ -156,7 +156,14 @@ public partial class LevelGenerationUI : Control
         var difficultyIndex = _difficultySelect.Selected;
         var difficulty = _difficulties[difficultyIndex];
 
-        _statusLabel.Text = $"Generating random level...";
+        _statusLabel.Text = $"Generating random level... Please wait...";
+        
+        // Отключаем все кнопки во время генерации
+        _generateButton.Disabled = true;
+        _loadLevelButton.Disabled = true;
+        _closeButton.Disabled = true;
+        _startServerButton.Disabled = true;
+        _stopServerButton.Disabled = true;
         UpdateUI();
 
         try
@@ -167,20 +174,36 @@ public partial class LevelGenerationUI : Control
             {
                 _statusLabel.Text = $"Generated: {levelData.Width}x{levelData.Height} for {planetName}";
                 Logger.Debug($"Level generated successfully for {planetName}: {levelData.Width}x{levelData.Height}", true);
+                
+                // АВТОМАТИЧЕСКИЙ ПЕРЕХОД НА КАРТУ!
+                Logger.Debug($"Auto-transitioning to generated level...", true);
+                LoadGeneratedLevel(levelData);
             }
             else
             {
                 _statusLabel.Text = "Generation failed";
                 Logger.Error($"Failed to generate level for {planetName}");
+                
+                // Включаем кнопки обратно при ошибке
+                _generateButton.Disabled = false;
+                _closeButton.Disabled = false;
+                _startServerButton.Disabled = false;
+                _stopServerButton.Disabled = false;
+                UpdateUI();
             }
         }
         catch (Exception ex)
         {
             _statusLabel.Text = $"Error: {ex.Message}";
             Logger.Error($"Exception during level generation: {ex.Message}");
+            
+            // Включаем кнопки обратно при ошибке
+            _generateButton.Disabled = false;
+            _closeButton.Disabled = false;
+            _startServerButton.Disabled = false;
+            _stopServerButton.Disabled = false;
+            UpdateUI();
         }
-
-        UpdateUI();
     }
 
     /// <summary>
@@ -219,6 +242,8 @@ public partial class LevelGenerationUI : Control
         try
         {
             Logger.Debug($"Starting transition to Main scene with generated level data", true);
+            
+            _statusLabel.Text = $"Transitioning to generated level...";
             
             // Сохраняем параметры генерации для Main сцены
             ProjectSettings.SetSetting("GeneratedLevelWidth", Variant.From(levelData.Width));
