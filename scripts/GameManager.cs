@@ -211,29 +211,28 @@ public void ClearData()
     }
 
     /// <summary>
-    /// Инициализирует интеграцию с SaveManager
+    /// Инициализирует интеграцию с ServerSaveManager
     /// </summary>
     public void InitializeSaveSystem()
     {
-        // Проверяем, подключен ли уже SaveManager
-        if (HasData("SaveManagerConnected"))
+        // Проверяем, подключен ли уже ServerSaveManager
+        if (HasData("ServerSaveManagerConnected"))
             return;
 
-        // Подключаемся к сигналам SaveManager
-        var saveManager = GetNode<SaveManager>("/root/SaveManager");
-        if (saveManager != null)
+        // Подключаемся к сигналам ServerSaveManager
+        if (ServerSaveManager.Instance != null)
         {
-            saveManager.Connect("SaveCompleted", Callable.From(OnSaveCompleted));
-            saveManager.Connect("LoadCompleted", Callable.From(OnLoadCompleted));
+            ServerSaveManager.Instance.SaveCompleted += OnSaveCompleted;
+            ServerSaveManager.Instance.LoadCompleted += OnLoadCompleted;
 
             // Устанавливаем флаг подключения
-            SetData("SaveManagerConnected", true);
+            SetData("ServerSaveManagerConnected", true);
 
-            // // Logger.Debug("GameManager connected to SaveManager", true); // СПАМ ОТКЛЮЧЕН
+            Logger.Debug("GameManager connected to ServerSaveManager", true);
         }
         else
         {
-            Logger.Error("SaveManager not found");
+            Logger.Error("ServerSaveManager not found");
         }
     }
 
@@ -560,37 +559,35 @@ public void ClearData()
     }
 
     /// <summary>
-    /// Сохраняет игру
+    /// Сохраняет игру через ServerSaveManager
     /// </summary>
     /// <returns>Успешность операции</returns>
-    public bool SaveGame()
+    public async Task<bool> SaveGame()
     {
-        var saveManager = GetNode<SaveManager>("/root/SaveManager");
-        if (saveManager != null)
+        if (ServerSaveManager.Instance != null)
         {
-            return saveManager.SaveGame();
+            return await ServerSaveManager.Instance.SaveToServerAsync();
         }
         else
         {
-            Logger.Error("SaveManager not found for saving game");
+            Logger.Error("ServerSaveManager not found for saving game");
             return false;
         }
     }
 
     /// <summary>
-    /// Загружает игру
+    /// Загружает игру через ServerSaveManager
     /// </summary>
     /// <returns>Успешность операции</returns>
-    public bool LoadGame()
+    public async Task<bool> LoadGame()
     {
-        var saveManager = GetNode<SaveManager>("/root/SaveManager");
-        if (saveManager != null)
+        if (ServerSaveManager.Instance != null)
         {
-            return saveManager.LoadGame();
+            return await ServerSaveManager.Instance.LoadFromServerAsync();
         }
         else
         {
-            Logger.Error("SaveManager not found for loading game");
+            Logger.Error("ServerSaveManager not found for loading game");
             return false;
         }
     }
@@ -601,14 +598,13 @@ public void ClearData()
     /// <returns>True, если сохранение существует</returns>
     public bool SaveExists()
     {
-        var saveManager = GetNode<SaveManager>("/root/SaveManager");
-        if (saveManager != null)
+        if (ServerSaveManager.Instance != null)
         {
-            return saveManager.SaveExists();
+            return ServerSaveManager.Instance.IsConnectedToServer;
         }
         else
         {
-            Logger.Error("SaveManager not found for checking save existence");
+            Logger.Error("ServerSaveManager not found for checking save existence");
             return false;
         }
     }

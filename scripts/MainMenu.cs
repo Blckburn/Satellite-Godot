@@ -148,19 +148,18 @@ public partial class MainMenu : Control
     {
         Logger.Debug("Continue button pressed", true);
 
-        // Загружаем сохраненную игру
+        // Загружаем сохраненную игру через ServerSaveManager
         var gameManager = GetNode<GameManager>("/root/GameManager");
-        var saveManager = GetNode<SaveManager>("/root/SaveManager");
 
-        if (gameManager != null && saveManager != null)
+        if (gameManager != null && ServerSaveManager.Instance != null)
         {
-            // Используем прямую загрузку вместо стандартной
-            bool loadSuccess = saveManager.LoadGameDirectly();
+            // Используем новую серверную систему сохранений
+            bool loadSuccess = await gameManager.LoadGame();
 
             if (loadSuccess)
             {
                 // Успешная загрузка игры
-                Logger.Debug("Game loaded successfully", true);
+                Logger.Debug("Game loaded successfully from server", true);
 
                 // Переходим к сцене после успешной загрузки
                 GetTree().ChangeSceneToFile(FirstScenePath);
@@ -168,13 +167,13 @@ public partial class MainMenu : Control
             else
             {
                 // Ошибка загрузки - переходим к первой сцене по умолчанию
-                Logger.Error("Failed to load game, starting new game instead");
+                Logger.Error("Failed to load game from server, starting new game instead");
                 GetTree().ChangeSceneToFile(FirstScenePath);
             }
         }
         else
         {
-            Logger.Error("GameManager or SaveManager not found");
+            Logger.Error("GameManager or ServerSaveManager not found");
             GetTree().ChangeSceneToFile(FirstScenePath);
         }
     }
@@ -226,9 +225,9 @@ public partial class MainMenu : Control
         gameManager.SetData("DiscoveredPlanets", new List<string>());
         gameManager.SetData("VisitedLocations", new List<string>());
 
-        // Создаем чистое сохранение с начальными значениями
-        bool saved = gameManager.SaveGame();
-        Logger.Debug($"New game initialized and {(saved ? "saved successfully" : "save failed")}", true);
+        // Создаем чистое сохранение с начальными значениями через ServerSaveManager
+        bool saved = await gameManager.SaveGame();
+        Logger.Debug($"New game initialized and {(saved ? "saved successfully to server" : "save failed")}", true);
     }
 
     /// <summary>
