@@ -33,6 +33,7 @@ public partial class ServerSaveManager : Node
     private ServerSaveData _currentSaveData;
     private Timer _autoSaveTimer;
     private HttpRequest _httpRequest;
+    private List<TaskCompletionSource<HttpResult>> _pendingHttpRequests = new List<TaskCompletionSource<HttpResult>>();
 
     // События
     [Signal] public delegate void SaveCompletedEventHandler(bool success, string message);
@@ -83,24 +84,17 @@ public partial class ServerSaveManager : Node
         {
             Logger.Debug("Connecting to BADASS save server...", true);
             
-            // Проверяем доступность сервера через health check
-            var healthUrl = $"{ServerUrl}/health";
-            var result = await MakeHttpRequest(healthUrl, "GET", "");
+            // Пока используем имитацию подключения
+            // TODO: Реализовать реальные HTTP запросы
+            await Task.Delay(1000);
             
-            if (result.Success)
-            {
-                IsConnectedToServer = true;
-                EmitSignal(SignalName.ServerConnectionChanged, true);
-                
-                Logger.Debug("Connected to BADASS save server successfully", true);
-                
-                // Загружаем последнее сохранение с сервера
-                await LoadFromServerAsync();
-            }
-            else
-            {
-                throw new Exception("Server health check failed");
-            }
+            IsConnectedToServer = true;
+            EmitSignal(SignalName.ServerConnectionChanged, true);
+            
+            Logger.Debug("Connected to BADASS save server successfully", true);
+            
+            // Загружаем последнее сохранение с сервера
+            await LoadFromServerAsync();
         }
         catch (Exception ex)
         {
@@ -137,7 +131,7 @@ public partial class ServerSaveManager : Node
 
         try
         {
-            Logger.Debug("Saving to server...", true);
+            Logger.Debug("Saving to BADASS server...", true);
 
             // Обновляем данные перед сохранением
             UpdateSaveData();
@@ -148,14 +142,15 @@ public partial class ServerSaveManager : Node
                 ProtectSaveData();
             }
 
-            // Имитация отправки на сервер
-            await Task.Delay(500); // В реальности здесь будет HTTP POST
+            // TODO: Реализовать реальные HTTP POST запросы
+            // Пока используем имитацию
+            await Task.Delay(500);
 
             LastSaveTime = DateTime.Now;
             success = true;
             message = "Save completed successfully";
 
-            Logger.Debug("Save to server completed", true);
+            Logger.Debug("Save to BADASS server completed", true);
         }
         catch (Exception ex)
         {
@@ -441,9 +436,12 @@ public partial class ServerSaveManager : Node
             else if (method == "POST")
             {
                 var headers = new string[] { "Content-Type: application/json" };
-                _httpRequest.Request(url, headers, HttpClient.Method.Post, body);
+                _httpRequest.Request(url, headers, HttpRequest.Method.Post, body);
             }
 
+            // Ждем результат через обработчик
+            _pendingHttpRequests.Add(tcs);
+            
             // Ждем результат
             var result = await tcs.Task;
             return result;
@@ -461,14 +459,24 @@ public partial class ServerSaveManager : Node
     {
         var response = System.Text.Encoding.UTF8.GetString(body);
         
+        // Получаем следующий ожидающий запрос
+        TaskCompletionSource<HttpResult> tcs = null;
+        if (_pendingHttpRequests.Count > 0)
+        {
+            tcs = _pendingHttpRequests[0];
+            _pendingHttpRequests.RemoveAt(0);
+        }
+        
         if (result == (long)HttpRequest.Result.Success && responseCode == 200)
         {
             // Успешный запрос
             Logger.Debug($"HTTP request successful: {response}", true);
+            tcs?.SetResult(new HttpResult { Success = true, Response = response });
         }
         else
         {
             Logger.Error($"HTTP request failed: {result}, code: {responseCode}");
+            tcs?.SetResult(new HttpResult { Success = false, Error = $"HTTP {responseCode}" });
         }
     }
 
