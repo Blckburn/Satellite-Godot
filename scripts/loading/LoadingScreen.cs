@@ -109,9 +109,17 @@ public partial class LoadingScreen : Control
 
     public override void _Input(InputEvent @event)
     {
-        if (_canContinue && @event is InputEventKey keyEvent && keyEvent.Pressed)
+        try
         {
-            ContinueToMainMenu();
+            if (_canContinue && @event is InputEventKey keyEvent && keyEvent.Pressed)
+            {
+                Logger.Debug("Key pressed, continuing to main menu...", true);
+                ContinueToMainMenu();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"_Input failed: {ex.Message}");
         }
     }
 
@@ -318,11 +326,23 @@ public partial class LoadingScreen : Control
 
             Logger.Debug("Changing scene to main menu...", true);
 
-            // УБИВАЕМ LoadingScreen полностью!
-            QueueFree();
-
-            // Переходим в главное меню
-            GetTree().ChangeSceneToFile("res://scenes/main_menu.tscn");
+            // Проверяем существование файла
+            var file = FileAccess.Open("res://scenes/main_menu.tscn", FileAccess.ModeFlags.Read);
+            if (file != null)
+            {
+                file.Close();
+                Logger.Debug("Main menu file exists, transitioning...", true);
+                
+                // ПЕРЕХОДИМ В ГЛАВНОЕ МЕНЮ БЕЗ QueueFree!
+                // Godot сам очистит старую сцену при переходе
+                GetTree().ChangeSceneToFile("res://scenes/main_menu.tscn");
+            }
+            else
+            {
+                Logger.Error("Main menu file not found!");
+                // Fallback - попробуем перезапустить игру
+                GetTree().Quit();
+            }
         }
         catch (Exception ex)
         {
@@ -411,9 +431,13 @@ public partial class LoadingScreen : Control
     /// </summary>
     private void UpdateDOSProgress(int progress)
     {
-        var dots = new string('.', progress / 10);
-        var dashes = new string('.', 10 - progress / 10);
-        var dosProgress = $"[{dots}{dashes}] {progress}%";
+        // Исправляем логику - точки должны быть внутри скобок!
+        var filledDots = progress / 10; // Сколько точек заполнено
+        var emptyDots = 10 - filledDots; // Сколько точек пустых
+        
+        var filled = new string('.', filledDots);
+        var empty = new string('.', emptyDots);
+        var dosProgress = $"[{filled}{empty}] {progress}%";
         
         _dosLogText.Text = $"[color=#00ff00]SERVER STARTING......{dosProgress}[/color]";
     }
