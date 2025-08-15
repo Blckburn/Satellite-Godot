@@ -247,6 +247,13 @@ public partial class NetworkTestUI : Control
     private void OnServerStarted()
     {
         GD.Print("NetworkTestUI: Server started");
+        
+        // Обновляем статус генераторов после запуска сервера
+        if (LevelGenerationManager.Instance != null)
+        {
+            LevelGenerationManager.Instance.UpdateGeneratorStatus();
+        }
+        
         UpdateUI();
     }
 

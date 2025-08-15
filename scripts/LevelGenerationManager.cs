@@ -119,10 +119,15 @@ public partial class LevelGenerationManager : Node
     /// <summary>
     /// Обновление статуса генераторов
     /// </summary>
-    private void UpdateGeneratorStatus()
+    public void UpdateGeneratorStatus()
     {
+        var oldClientAvailable = IsClientAvailable;
+        var oldServerAvailable = IsServerAvailable;
+        
         IsClientAvailable = _clientGenerator?.IsAvailable() ?? false;
         IsServerAvailable = _serverGenerator?.IsAvailable() ?? false;
+        
+        GD.Print($"UpdateGeneratorStatus: Client={IsClientAvailable} (was {oldClientAvailable}), Server={IsServerAvailable} (was {oldServerAvailable})");
         
         SelectGenerator();
     }
