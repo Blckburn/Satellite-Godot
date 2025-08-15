@@ -5,8 +5,8 @@ using System.Text.Json;
 using System.Text;
 
 /// <summary>
-/// BADASS HTTP сервер для сохранений!
-/// Реальный локальный сервер с API
+/// BADASS HTTP сервер для сохранений! (Упрощенная версия)
+/// Имитация локального сервера с API
 /// </summary>
 public partial class SaveServer : Node
 {
@@ -19,8 +19,7 @@ public partial class SaveServer : Node
     [Export] public bool AutoStart { get; set; } = true;
     [Export] public string DataPath { get; set; } = "user://server_data/";
 
-    // HTTP сервер
-    private HttpServer _httpServer;
+    // Состояние сервера
     private bool _isRunning = false;
 
     // База данных (пока в памяти, потом можно SQLite)
@@ -54,7 +53,7 @@ public partial class SaveServer : Node
             StartServer();
         }
 
-        Logger.Debug("SaveServer initialized", true);
+        Logger.Debug("SaveServer initialized (simplified version)", true);
     }
 
     public override void _ExitTree()
@@ -67,7 +66,7 @@ public partial class SaveServer : Node
     }
 
     /// <summary>
-    /// Запускает HTTP сервер
+    /// Запускает HTTP сервер (имитация)
     /// </summary>
     public void StartServer()
     {
@@ -79,17 +78,11 @@ public partial class SaveServer : Node
 
         try
         {
-            // Создаем HTTP сервер
-            _httpServer = new HttpServer();
-            _httpServer.Listen(ServerPort, ServerAddress);
-
-            // Настраиваем обработчики запросов
-            _httpServer.RequestReceived += OnRequestReceived;
-
+            // Имитируем запуск сервера (пока без реального HTTP)
             _isRunning = true;
             EmitSignal(SignalName.ServerStarted, ServerPort);
 
-            Logger.Debug($"BADASS Save Server started on {ServerAddress}:{ServerPort}", true);
+            Logger.Debug($"BADASS Save Server (simulation) started on {ServerAddress}:{ServerPort}", true);
         }
         catch (Exception ex)
         {
@@ -98,21 +91,19 @@ public partial class SaveServer : Node
     }
 
     /// <summary>
-    /// Останавливает HTTP сервер
+    /// Останавливает HTTP сервер (имитация)
     /// </summary>
     public void StopServer()
     {
-        if (!_isRunning || _httpServer == null)
+        if (!_isRunning)
             return;
 
         try
         {
-            _httpServer.Stop();
-            _httpServer = null;
             _isRunning = false;
             EmitSignal(SignalName.ServerStopped);
 
-            Logger.Debug("Save Server stopped", true);
+            Logger.Debug("Save Server (simulation) stopped", true);
         }
         catch (Exception ex)
         {
@@ -121,191 +112,52 @@ public partial class SaveServer : Node
     }
 
     /// <summary>
-    /// Обработчик HTTP запросов
+    /// Обработчик HTTP запросов (имитация)
     /// </summary>
-    private void OnRequestReceived(HttpRequest request)
+    private void OnRequestReceived()
     {
-        EmitSignal(SignalName.RequestReceived, request.Url, request.Method);
-
-        try
-        {
-            switch (request.Url)
-            {
-                case "/save":
-                    HandleSaveRequest(request);
-                    break;
-                case "/load":
-                    HandleLoadRequest(request);
-                    break;
-                case "/status":
-                    HandleStatusRequest(request);
-                    break;
-                case "/health":
-                    HandleHealthRequest(request);
-                    break;
-                default:
-                    SendErrorResponse(request, 404, "Endpoint not found");
-                    break;
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Error handling request {request.Url}: {ex.Message}");
-            SendErrorResponse(request, 500, "Internal server error");
-        }
+        // Пока просто имитируем получение запроса
+        Logger.Debug("HTTP request received (simulation)", true);
     }
 
     /// <summary>
-    /// Обрабатывает запрос на сохранение
+    /// Обрабатывает запрос на сохранение (имитация)
     /// </summary>
-    private void HandleSaveRequest(HttpRequest request)
+    private void HandleSaveRequest()
     {
-        if (request.Method != "POST")
-        {
-            SendErrorResponse(request, 405, "Method not allowed");
-            return;
-        }
-
-        try
-        {
-            // Парсим JSON данные
-            var saveData = JsonSerializer.Deserialize<ServerSaveData>(request.Body);
-            
-            if (saveData == null)
-            {
-                SendErrorResponse(request, 400, "Invalid JSON data");
-                return;
-            }
-
-            // Сохраняем в базу данных
-            _saveDatabase[saveData.PlayerId] = saveData;
-
-            // Сохраняем в файл для персистентности
-            SaveToFile(saveData);
-
-            // Отправляем успешный ответ
-            var response = new HttpResponse
-            {
-                StatusCode = 200,
-                Body = JsonSerializer.Serialize(new { success = true, message = "Save completed" })
-            };
-
-            request.Respond(response);
-            Logger.Debug($"Save completed for player: {saveData.PlayerId}", true);
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Save request failed: {ex.Message}");
-            SendErrorResponse(request, 500, "Save failed");
-        }
+        Logger.Debug("Save request handled (simulation)", true);
     }
 
     /// <summary>
-    /// Обрабатывает запрос на загрузку
+    /// Обрабатывает запрос на загрузку (имитация)
     /// </summary>
-    private void HandleLoadRequest(HttpRequest request)
+    private void HandleLoadRequest()
     {
-        if (request.Method != "GET")
-        {
-            SendErrorResponse(request, 405, "Method not allowed");
-            return;
-        }
-
-        try
-        {
-            // Получаем PlayerId из query параметров
-            var playerId = request.QueryParameters.GetValueOrDefault("playerId", "local_player");
-
-            if (_saveDatabase.TryGetValue(playerId, out var saveData))
-            {
-                // Отправляем данные
-                var response = new HttpResponse
-                {
-                    StatusCode = 200,
-                    Body = JsonSerializer.Serialize(saveData)
-                };
-
-                request.Respond(response);
-                Logger.Debug($"Load completed for player: {playerId}", true);
-            }
-            else
-            {
-                // Создаем новые данные если нет сохранения
-                var newSaveData = CreateNewSaveData(playerId);
-                _saveDatabase[playerId] = newSaveData;
-
-                var response = new HttpResponse
-                {
-                    StatusCode = 200,
-                    Body = JsonSerializer.Serialize(newSaveData)
-                };
-
-                request.Respond(response);
-                Logger.Debug($"New save data created for player: {playerId}", true);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Load request failed: {ex.Message}");
-            SendErrorResponse(request, 500, "Load failed");
-        }
+        Logger.Debug("Load request handled (simulation)", true);
     }
 
     /// <summary>
-    /// Обрабатывает запрос статуса сервера
+    /// Обрабатывает запрос статуса сервера (имитация)
     /// </summary>
-    private void HandleStatusRequest(HttpRequest request)
+    private void HandleStatusRequest()
     {
-        var status = new
-        {
-            server = "BADASS Save Server",
-            version = "1.0.0",
-            status = _isRunning ? "running" : "stopped",
-            port = ServerPort,
-            address = ServerAddress,
-            players = _saveDatabase.Count,
-            uptime = GetUptime()
-        };
-
-        var response = new HttpResponse
-        {
-            StatusCode = 200,
-            Body = JsonSerializer.Serialize(status)
-        };
-
-        request.Respond(response);
+        Logger.Debug("Status request handled (simulation)", true);
     }
 
     /// <summary>
-    /// Обрабатывает health check
+    /// Обрабатывает запрос проверки здоровья сервера (имитация)
     /// </summary>
-    private void HandleHealthRequest(HttpRequest request)
+    private void HandleHealthRequest()
     {
-        var health = new { status = "healthy", timestamp = DateTime.Now };
-        
-        var response = new HttpResponse
-        {
-            StatusCode = 200,
-            Body = JsonSerializer.Serialize(health)
-        };
-
-        request.Respond(response);
+        Logger.Debug("Health request handled (simulation)", true);
     }
 
     /// <summary>
-    /// Отправляет ошибку клиенту
+    /// Отправляет ответ об ошибке (имитация)
     /// </summary>
-    private void SendErrorResponse(HttpRequest request, int statusCode, string message)
+    private void SendErrorResponse(int statusCode, string message)
     {
-        var error = new { error = message, statusCode };
-        
-        var response = new HttpResponse
-        {
-            StatusCode = statusCode,
-            Body = JsonSerializer.Serialize(error)
-        };
-
-        request.Respond(response);
+        Logger.Debug($"Error response sent: {statusCode} - {message} (simulation)", true);
     }
 
     /// <summary>
@@ -313,10 +165,18 @@ public partial class SaveServer : Node
     /// </summary>
     private void CreateDataDirectory()
     {
-        var dir = DirAccess.Open("user://");
-        if (!dir.DirExists("server_data"))
+        try
         {
-            dir.MakeDir("server_data");
+            var dir = DirAccess.Open("user://");
+            if (!dir.DirExists("server_data"))
+            {
+                dir.MakeDir("server_data");
+                Logger.Debug("Created server data directory", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Failed to create data directory: {ex.Message}");
         }
     }
 
@@ -327,12 +187,14 @@ public partial class SaveServer : Node
     {
         try
         {
-            var filePath = $"{DataPath}{saveData.PlayerId}.json";
             var json = JsonSerializer.Serialize(saveData, new JsonSerializerOptions { WriteIndented = true });
+            var filePath = $"{DataPath}save_{saveData.PlayerId}.json";
             
             var file = FileAccess.Open(filePath, FileAccess.ModeFlags.Write);
             file.StoreString(json);
             file.Close();
+            
+            Logger.Debug($"Save data written to file: {filePath}", true);
         }
         catch (Exception ex)
         {
@@ -352,8 +214,21 @@ public partial class SaveServer : Node
             CreatedAt = DateTime.Now,
             LastModified = DateTime.Now,
             DataHash = "",
-            PlayerData = new ServerPlayerData(),
-            GameProgress = new ServerGameProgress(),
+            PlayerData = new ServerPlayerData
+            {
+                Health = 100f,
+                MaxHealth = 100f,
+                Position = Vector2.Zero,
+                CurrentScene = ""
+            },
+            GameProgress = new ServerGameProgress
+            {
+                PlayTime = 0f,
+                UnlockedModules = new List<string>(),
+                CompletedMissions = new List<string>(),
+                DiscoveredPlanets = new List<string>(),
+                Stats = new Dictionary<string, float>()
+            },
             InventoryData = new Dictionary<string, object>(),
             Settings = new Dictionary<string, object>()
         };
@@ -364,12 +239,12 @@ public partial class SaveServer : Node
     /// </summary>
     private string GetUptime()
     {
-        // Простая реализация
-        return "Running";
+        // Пока возвращаем фиксированное значение
+        return "00:05:30";
     }
 
     /// <summary>
-    /// Получает статус сервера
+    /// Проверяет, запущен ли сервер
     /// </summary>
     public bool IsRunning => _isRunning;
 
@@ -379,56 +254,4 @@ public partial class SaveServer : Node
     public string ServerUrl => $"http://{ServerAddress}:{ServerPort}";
 }
 
-/// <summary>
-/// HTTP сервер для Godot
-/// </summary>
-public class HttpServer
-{
-    private HttpRequest _request;
-    private bool _isListening = false;
-    private int _port;
-    private string _address;
-
-    public event Action<HttpRequest> RequestReceived;
-
-    public void Listen(int port, string address)
-    {
-        _port = port;
-        _address = address;
-        _isListening = true;
-        
-        // В реальной реализации здесь будет HTTP сервер
-        // Пока используем Godot's HTTPRequest для имитации
-    }
-
-    public void Stop()
-    {
-        _isListening = false;
-    }
-}
-
-/// <summary>
-/// HTTP запрос
-/// </summary>
-public class HttpRequest
-{
-    public string Url { get; set; } = "";
-    public string Method { get; set; } = "GET";
-    public string Body { get; set; } = "";
-    public Dictionary<string, string> QueryParameters { get; set; } = new Dictionary<string, string>();
-
-    public void Respond(HttpResponse response)
-    {
-        // В реальной реализации здесь будет отправка ответа
-    }
-}
-
-/// <summary>
-/// HTTP ответ
-/// </summary>
-public class HttpResponse
-{
-    public int StatusCode { get; set; } = 200;
-    public string Body { get; set; } = "";
-    public Dictionary<string, string> Headers { get; set; } = new Dictionary<string, string>();
-}
+// Классы данных уже определены в ServerSaveManager.cs
