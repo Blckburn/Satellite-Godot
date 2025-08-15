@@ -332,14 +332,8 @@ public partial class LoadingScreen : Control
                 file.Close();
                 Logger.Debug("Main menu file exists, transitioning...", true);
                 
-                // ПРИНУДИТЕЛЬНО УНИЧТОЖАЕМ LoadingScreen!
-                Logger.Debug("Force destroying LoadingScreen...", true);
-                QueueFree();
-                
-                // Ждем немного для уничтожения
-                await Task.Delay(200);
-                
-                // ПЕРЕХОДИМ В ГЛАВНОЕ МЕНЮ!
+                // ПЕРЕХОДИМ В ГЛАВНОЕ МЕНЮ БЕЗ УНИЧТОЖЕНИЯ!
+                Logger.Debug("Transitioning to main menu...", true);
                 GetTree().ChangeSceneToFile("res://scenes/main_menu.tscn");
             }
             else

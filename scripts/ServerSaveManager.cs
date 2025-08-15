@@ -80,7 +80,7 @@ public partial class ServerSaveManager : Node
     {
         try
         {
-            Logger.Debug("Connecting to BADASS save server...", true);
+            Logger.Debug("Connecting to save server...", true);
             
             // Пока используем имитацию подключения
             // TODO: Реализовать реальные HTTP запросы
@@ -89,7 +89,7 @@ public partial class ServerSaveManager : Node
             IsConnectedToServer = true;
             EmitSignal(SignalName.ServerConnectionChanged, true);
             
-            Logger.Debug("Connected to BADASS save server successfully", true);
+            Logger.Debug("Connected to save server successfully", true);
             
             // Загружаем последнее сохранение с сервера
             await LoadFromServerAsync();
@@ -129,7 +129,7 @@ public partial class ServerSaveManager : Node
 
         try
         {
-            Logger.Debug("Saving to BADASS server...", true);
+            Logger.Debug("Saving to server...", true);
 
             // Обновляем данные перед сохранением
             UpdateSaveData();
@@ -148,7 +148,7 @@ public partial class ServerSaveManager : Node
             success = true;
             message = "Save completed successfully";
 
-            Logger.Debug("Save to BADASS server completed", true);
+            Logger.Debug("Save to server completed", true);
         }
         catch (Exception ex)
         {

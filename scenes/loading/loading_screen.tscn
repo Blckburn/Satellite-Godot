@@ -91,7 +91,7 @@ horizontal_alignment = 1
 
 [node name="Subtitle" type="Label" parent="MainContainer/TitleSection"]
 layout_mode = 2
-text = "BADASS SPACE ADVENTURE"
+text = "SPACE ADVENTURE"
 label_settings = SubResource("LabelSettings_2")
 horizontal_alignment = 1
 
