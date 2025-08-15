@@ -197,9 +197,17 @@ public partial class LevelGenerationUI : Control
         UpdateUI();
     }
 
-    private void OnGenerationCompleted(LevelData levelData)
+    private void OnGenerationCompleted()
     {
-        _statusLabel.Text = $"Generated: {levelData.Width}x{levelData.Height}";
+        if (GameLevelManager.Instance?.LastGeneratedLevel != null)
+        {
+            var levelData = GameLevelManager.Instance.LastGeneratedLevel;
+            _statusLabel.Text = $"Generated: {levelData.Width}x{levelData.Height}";
+        }
+        else
+        {
+            _statusLabel.Text = "Generation completed";
+        }
         UpdateUI();
     }
 

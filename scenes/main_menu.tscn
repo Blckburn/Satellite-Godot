@@ -158,10 +158,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 20
 
 [node name="TitleLabel" type="Label" parent="ServerPanel/VBoxContainer"]
 layout_mode = 2
@@ -179,13 +175,13 @@ theme_override_constants/separation = 10
 
 [node name="StatusLabel" type="Label" parent="ServerPanel/VBoxContainer/StatusSection"]
 layout_mode = 2
-text = "Server Status: Not Running"
 theme_override_font_sizes/font_size = 16
+text = "Server Status: Not Running"
 
 [node name="GeneratorInfoLabel" type="Label" parent="ServerPanel/VBoxContainer/StatusSection"]
 layout_mode = 2
-text = "Generator: Client-side"
 theme_override_font_sizes/font_size = 14
+text = "Generator: Client-side"
 
 [node name="HSeparator2" type="HSeparator" parent="ServerPanel/VBoxContainer"]
 layout_mode = 2
@@ -196,9 +192,9 @@ theme_override_constants/separation = 10
 
 [node name="ServerTitle" type="Label" parent="ServerPanel/VBoxContainer/ServerSection"]
 layout_mode = 2
-text = "Server Controls"
 theme_override_fonts/font = ExtResource("3_8ln24")
 theme_override_font_sizes/font_size = 20
+text = "Server Controls"
 
 [node name="ServerButtons" type="HBoxContainer" parent="ServerPanel/VBoxContainer/ServerSection"]
 layout_mode = 2
@@ -223,9 +219,9 @@ theme_override_constants/separation = 10
 
 [node name="TestTitle" type="Label" parent="ServerPanel/VBoxContainer/TestSection"]
 layout_mode = 2
-text = "Test Generation"
 theme_override_fonts/font = ExtResource("3_8ln24")
 theme_override_font_sizes/font_size = 20
+text = "Test Generation"
 
 [node name="TestGenerationButton" type="Button" parent="ServerPanel/VBoxContainer/TestSection"]
 layout_mode = 2

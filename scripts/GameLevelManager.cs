@@ -22,7 +22,7 @@ public partial class GameLevelManager : Node
 
     // События
     [Signal] public delegate void LevelGenerationStartedEventHandler();
-    [Signal] public delegate void LevelGenerationCompletedEventHandler(LevelData levelData);
+    [Signal] public delegate void LevelGenerationCompletedEventHandler();
     [Signal] public delegate void LevelGenerationFailedEventHandler(string error);
     [Signal] public delegate void ServerStatusChangedEventHandler(bool isRunning);
 
@@ -99,7 +99,7 @@ public partial class GameLevelManager : Node
             {
                 LastGeneratedLevel = levelData;
                 Logger.Debug($"Level generated successfully: {levelData.Width}x{levelData.Height}", true);
-                EmitSignal(SignalName.LevelGenerationCompleted, levelData);
+                EmitSignal(SignalName.LevelGenerationCompleted);
                 return levelData;
             }
             else
