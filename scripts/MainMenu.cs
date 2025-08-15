@@ -11,6 +11,7 @@ public partial class MainMenu : Control
     [Export] public NodePath ContinueButtonPath { get; set; } = "%ContinueButton";
     [Export] public NodePath NewGameButtonPath { get; set; } = "%NewGameButton";
     [Export] public NodePath SettingsButtonPath { get; set; } = "%SettingsButton";
+    [Export] public NodePath ServerButtonPath { get; set; } = "%ServerButton";
     [Export] public NodePath ExitButtonPath { get; set; } = "%ExitButton";
 
     // Путь к первой сцене игры
@@ -20,15 +21,18 @@ public partial class MainMenu : Control
     private Button _continueButton;
     private Button _newGameButton;
     private Button _settingsButton;
+    private Button _serverButton;
     private Button _exitButton;
 
     // Анимация (опционально)
     [Export] public NodePath AnimationPlayerPath { get; set; } = "AnimationPlayer";
     private AnimationPlayer _animationPlayer;
 
-    // Панель настроек (будет реализована в будущем)
+    // Панели
     [Export] public NodePath SettingsPanelPath { get; set; } = "%SettingsPanel";
+    [Export] public NodePath ServerPanelPath { get; set; } = "%ServerPanel";
     private Panel _settingsPanel;
+    private Panel _serverPanel;
 
     public override void _Ready()
     {
@@ -56,13 +60,20 @@ public partial class MainMenu : Control
         _continueButton = GetNode<Button>(ContinueButtonPath);
         _newGameButton = GetNode<Button>(NewGameButtonPath);
         _settingsButton = GetNode<Button>(SettingsButtonPath);
+        _serverButton = GetNode<Button>(ServerButtonPath);
         _exitButton = GetNode<Button>(ExitButtonPath);
 
-        // Получаем ссылку на панель настроек
+        // Получаем ссылки на панели
         _settingsPanel = GetNodeOrNull<Panel>(SettingsPanelPath);
         if (_settingsPanel != null)
         {
             _settingsPanel.Visible = false;
+        }
+
+        _serverPanel = GetNodeOrNull<Panel>(ServerPanelPath);
+        if (_serverPanel != null)
+        {
+            _serverPanel.Visible = false;
         }
 
         // Получаем ссылку на проигрыватель анимаций
@@ -88,6 +99,11 @@ public partial class MainMenu : Control
         if (_settingsButton != null)
         {
             _settingsButton.Pressed += OnSettingsButtonPressed;
+        }
+
+        if (_serverButton != null)
+        {
+            _serverButton.Pressed += OnServerButtonPressed;
         }
 
         if (_exitButton != null)
@@ -246,6 +262,21 @@ public partial class MainMenu : Control
     }
 
     /// <summary>
+    /// Обработчик нажатия на кнопку "Сервер"
+    /// </summary>
+    private void OnServerButtonPressed()
+    {
+        Logger.Debug("Server button pressed", true);
+
+        // Открываем панель управления сервером
+        if (_serverPanel != null)
+        {
+            _serverPanel.Visible = true;
+            InitializeServerPanel();
+        }
+    }
+
+    /// <summary>
     /// Обработчик нажатия на кнопку "Выход"
     /// </summary>
     private void OnExitButtonPressed()
@@ -261,5 +292,154 @@ public partial class MainMenu : Control
 
         // Выходим из игры
         GetTree().Quit();
+    }
+
+    /// <summary>
+    /// Инициализирует панель управления сервером
+    /// </summary>
+    private void InitializeServerPanel()
+    {
+        if (_serverPanel == null) return;
+
+        // Находим элементы управления сервером
+        var startServerButton = _serverPanel.GetNodeOrNull<Button>("VBoxContainer/ServerSection/ServerButtons/StartServerButton");
+        var stopServerButton = _serverPanel.GetNodeOrNull<Button>("VBoxContainer/ServerSection/ServerButtons/StopServerButton");
+        var testGenerationButton = _serverPanel.GetNodeOrNull<Button>("VBoxContainer/TestSection/TestGenerationButton");
+        var backToMenuButton = _serverPanel.GetNodeOrNull<Button>("VBoxContainer/BackSection/BackToMenuButton");
+        var statusLabel = _serverPanel.GetNodeOrNull<Label>("VBoxContainer/StatusSection/StatusLabel");
+        var generatorInfoLabel = _serverPanel.GetNodeOrNull<Label>("VBoxContainer/StatusSection/GeneratorInfoLabel");
+
+        // Подключаем обработчики кнопок
+        if (startServerButton != null)
+            startServerButton.Pressed += OnStartServerPressed;
+        
+        if (stopServerButton != null)
+            stopServerButton.Pressed += OnStopServerPressed;
+        
+        if (testGenerationButton != null)
+            testGenerationButton.Pressed += OnTestGenerationPressed;
+        
+        if (backToMenuButton != null)
+            backToMenuButton.Pressed += OnBackToMenuPressed;
+
+        // Подписываемся на события NetworkManager и LevelGenerationManager
+        if (NetworkManager.Instance != null)
+        {
+            NetworkManager.Instance.ServerStarted += OnServerStarted;
+            NetworkManager.Instance.ServerStopped += OnServerStopped;
+        }
+
+        if (LevelGenerationManager.Instance != null)
+        {
+            LevelGenerationManager.Instance.GeneratorChanged += OnGeneratorChanged;
+        }
+
+        // Обновляем статус
+        UpdateServerStatus(statusLabel, generatorInfoLabel);
+    }
+
+    /// <summary>
+    /// Обновляет статус сервера в UI
+    /// </summary>
+    private void UpdateServerStatus(Label statusLabel, Label generatorInfoLabel)
+    {
+        if (statusLabel != null)
+        {
+            if (NetworkManager.Instance != null && NetworkManager.Instance.IsServerRunning)
+            {
+                statusLabel.Text = $"Server Status: Running (Port: {NetworkManager.Instance.ServerPort})";
+            }
+            else
+            {
+                statusLabel.Text = "Server Status: Not Running";
+            }
+        }
+
+        if (generatorInfoLabel != null)
+        {
+            if (LevelGenerationManager.Instance != null)
+            {
+                generatorInfoLabel.Text = $"Generator: {LevelGenerationManager.Instance.CurrentGeneratorInfo}";
+            }
+            else
+            {
+                generatorInfoLabel.Text = "Generator: Not Available";
+            }
+        }
+    }
+
+    // Обработчики серверных событий
+    private void OnStartServerPressed()
+    {
+        if (NetworkManager.Instance != null)
+        {
+            NetworkManager.Instance.StartServer();
+        }
+    }
+
+    private void OnStopServerPressed()
+    {
+        if (NetworkManager.Instance != null)
+        {
+            NetworkManager.Instance.StopServer();
+        }
+    }
+
+    private async void OnTestGenerationPressed()
+    {
+        if (LevelGenerationManager.Instance == null) return;
+
+        var parameters = new GenerationParameters
+        {
+            BiomeType = 0,
+            MapWidth = 50,
+            MapHeight = 50,
+            Seed = (int)GD.Randi(),
+            MaxRooms = 10,
+            MinRoomSize = 5,
+            MaxRoomSize = 12
+        };
+
+        var levelData = await LevelGenerationManager.Instance.GenerateLevelAsync(parameters);
+        
+        if (levelData != null && levelData.Width > 0)
+        {
+            Logger.Debug($"Test generation successful: {levelData.Width}x{levelData.Height}", true);
+        }
+        else
+        {
+            Logger.Error("Test generation failed");
+        }
+    }
+
+    private void OnBackToMenuPressed()
+    {
+        if (_serverPanel != null)
+        {
+            _serverPanel.Visible = false;
+        }
+    }
+
+    private void OnServerStarted()
+    {
+        var statusLabel = _serverPanel?.GetNodeOrNull<Label>("VBoxContainer/StatusSection/StatusLabel");
+        var generatorInfoLabel = _serverPanel?.GetNodeOrNull<Label>("VBoxContainer/StatusSection/GeneratorInfoLabel");
+        UpdateServerStatus(statusLabel, generatorInfoLabel);
+    }
+
+    private void OnServerStopped()
+    {
+        var statusLabel = _serverPanel?.GetNodeOrNull<Label>("VBoxContainer/StatusSection/StatusLabel");
+        var generatorInfoLabel = _serverPanel?.GetNodeOrNull<Label>("VBoxContainer/StatusSection/GeneratorInfoLabel");
+        UpdateServerStatus(statusLabel, generatorInfoLabel);
+    }
+
+    private void OnGeneratorChanged(string generatorInfo)
+    {
+        var generatorInfoLabel = _serverPanel?.GetNodeOrNull<Label>("VBoxContainer/StatusSection/GeneratorInfoLabel");
+        if (generatorInfoLabel != null)
+        {
+            generatorInfoLabel.Text = $"Generator: {generatorInfo}";
+        }
     }
 }

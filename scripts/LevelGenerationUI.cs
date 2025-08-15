@@ -1,0 +1,216 @@
+using Godot;
+using System;
+using System.Threading.Tasks;
+
+/// <summary>
+/// UI для управления генерацией уровней в игре
+/// </summary>
+public partial class LevelGenerationUI : Control
+{
+    // UI элементы
+    private Label _serverStatusLabel;
+    private Label _generatorInfoLabel;
+    private Button _startServerButton;
+    private Button _stopServerButton;
+    private LineEdit _planetNameInput;
+    private SpinBox _biomeTypeInput;
+    private OptionButton _difficultySelect;
+    private Button _generateButton;
+    private Label _statusLabel;
+    private Button _closeButton;
+
+    // Сложности
+    private readonly string[] _difficulties = { "D", "C", "B", "A", "S", "S+" };
+
+    public override void _Ready()
+    {
+        // Находим UI элементы
+        _serverStatusLabel = GetNode<Label>("Panel/VBoxContainer/ServerSection/ServerStatusLabel");
+        _generatorInfoLabel = GetNode<Label>("Panel/VBoxContainer/ServerSection/GeneratorInfoLabel");
+        _startServerButton = GetNode<Button>("Panel/VBoxContainer/ServerSection/ServerButtons/StartServerButton");
+        _stopServerButton = GetNode<Button>("Panel/VBoxContainer/ServerSection/ServerButtons/StopServerButton");
+        _planetNameInput = GetNode<LineEdit>("Panel/VBoxContainer/GenerationSection/PlanetNameInput");
+        _biomeTypeInput = GetNode<SpinBox>("Panel/VBoxContainer/GenerationSection/BiomeTypeInput");
+        _difficultySelect = GetNode<OptionButton>("Panel/VBoxContainer/GenerationSection/DifficultySelect");
+        _generateButton = GetNode<Button>("Panel/VBoxContainer/GenerationSection/GenerateButton");
+        _statusLabel = GetNode<Label>("Panel/VBoxContainer/StatusSection/StatusLabel");
+        _closeButton = GetNode<Button>("Panel/VBoxContainer/CloseButton");
+
+        // Подключаем обработчики кнопок
+        _startServerButton.Pressed += OnStartServerPressed;
+        _stopServerButton.Pressed += OnStopServerPressed;
+        _generateButton.Pressed += OnGeneratePressed;
+        _closeButton.Pressed += OnClosePressed;
+
+        // Подписываемся на события GameLevelManager
+        if (GameLevelManager.Instance != null)
+        {
+            GameLevelManager.Instance.LevelGenerationStarted += OnGenerationStarted;
+            GameLevelManager.Instance.LevelGenerationCompleted += OnGenerationCompleted;
+            GameLevelManager.Instance.LevelGenerationFailed += OnGenerationFailed;
+            GameLevelManager.Instance.ServerStatusChanged += OnServerStatusChanged;
+        }
+
+        // Инициализируем UI
+        UpdateUI();
+        
+        // Скрываем UI по умолчанию
+        Visible = false;
+    }
+
+    public override void _Process(double delta)
+    {
+        UpdateStatus();
+    }
+
+    /// <summary>
+    /// Показывает UI
+    /// </summary>
+    public void ShowUI()
+    {
+        Visible = true;
+        UpdateUI();
+    }
+
+    /// <summary>
+    /// Скрывает UI
+    /// </summary>
+    public void HideUI()
+    {
+        Visible = false;
+    }
+
+    /// <summary>
+    /// Обновляет UI элементы
+    /// </summary>
+    private void UpdateUI()
+    {
+        if (GameLevelManager.Instance == null) return;
+
+        var isServerRunning = NetworkManager.Instance?.IsServerRunning ?? false;
+        var isGenerating = GameLevelManager.Instance.IsGenerating;
+
+        // Обновляем кнопки сервера
+        _startServerButton.Disabled = isServerRunning;
+        _stopServerButton.Disabled = !isServerRunning;
+
+        // Обновляем кнопку генерации
+        _generateButton.Disabled = isGenerating || string.IsNullOrEmpty(_planetNameInput.Text);
+
+        // Обновляем статус сервера
+        _serverStatusLabel.Text = GameLevelManager.Instance.GetServerStatus();
+        _generatorInfoLabel.Text = $"Generator: {GameLevelManager.Instance.GetGeneratorInfo()}";
+    }
+
+    /// <summary>
+    /// Обновляет статус
+    /// </summary>
+    private void UpdateStatus()
+    {
+        if (GameLevelManager.Instance == null) return;
+
+        if (GameLevelManager.Instance.IsGenerating)
+        {
+            _statusLabel.Text = "Generating level...";
+        }
+        else if (GameLevelManager.Instance.LastGeneratedLevel != null)
+        {
+            var level = GameLevelManager.Instance.LastGeneratedLevel;
+            _statusLabel.Text = $"Last generated: {level.Width}x{level.Height} (Biome: {level.BiomeType})";
+        }
+        else
+        {
+            _statusLabel.Text = "Ready";
+        }
+    }
+
+    // Обработчики кнопок
+    private void OnStartServerPressed()
+    {
+        if (GameLevelManager.Instance != null)
+        {
+            GameLevelManager.Instance.StartGenerationServer();
+        }
+        UpdateUI();
+    }
+
+    private void OnStopServerPressed()
+    {
+        if (GameLevelManager.Instance != null)
+        {
+            GameLevelManager.Instance.StopGenerationServer();
+        }
+        UpdateUI();
+    }
+
+    private async void OnGeneratePressed()
+    {
+        if (GameLevelManager.Instance == null) return;
+
+        var planetName = _planetNameInput.Text.Trim();
+        if (string.IsNullOrEmpty(planetName))
+        {
+            _statusLabel.Text = "Please enter planet name";
+            return;
+        }
+
+        var biomeType = (int)_biomeTypeInput.Value;
+        var difficultyIndex = _difficultySelect.Selected;
+        var difficulty = _difficulties[difficultyIndex];
+
+        _statusLabel.Text = $"Generating level for {planetName}...";
+        UpdateUI();
+
+        try
+        {
+            var levelData = await GameLevelManager.Instance.GeneratePlanetLevelAsync(planetName, biomeType, difficulty);
+            
+            if (levelData != null && levelData.Width > 0)
+            {
+                _statusLabel.Text = $"Generated: {levelData.Width}x{levelData.Height} for {planetName}";
+                Logger.Debug($"Level generated successfully for {planetName}: {levelData.Width}x{levelData.Height}", true);
+            }
+            else
+            {
+                _statusLabel.Text = "Generation failed";
+                Logger.Error($"Failed to generate level for {planetName}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _statusLabel.Text = $"Error: {ex.Message}";
+            Logger.Error($"Exception during level generation: {ex.Message}");
+        }
+
+        UpdateUI();
+    }
+
+    private void OnClosePressed()
+    {
+        HideUI();
+    }
+
+    // Обработчики событий GameLevelManager
+    private void OnGenerationStarted()
+    {
+        _statusLabel.Text = "Generation started...";
+        UpdateUI();
+    }
+
+    private void OnGenerationCompleted(LevelData levelData)
+    {
+        _statusLabel.Text = $"Generated: {levelData.Width}x{levelData.Height}";
+        UpdateUI();
+    }
+
+    private void OnGenerationFailed(string error)
+    {
+        _statusLabel.Text = $"Failed: {error}";
+        UpdateUI();
+    }
+
+    private void OnServerStatusChanged(bool isRunning)
+    {
+        UpdateUI();
+    }
+}

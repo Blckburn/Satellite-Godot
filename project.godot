@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Satellite"
-run/main_scene="res://scenes/test/network_test.tscn"
+run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.4", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -23,6 +23,7 @@ GameTimer="*res://scripts/GameTimer.cs"
 NetworkManager="*res://scripts/NetworkManager.cs"
 LevelGenerator="*res://scripts/LevelGenerator.cs"
 LevelGenerationManager="*res://scripts/LevelGenerationManager.cs"
+GameLevelManager="*res://scripts/GameLevelManager.cs"
 
 [debug]
 

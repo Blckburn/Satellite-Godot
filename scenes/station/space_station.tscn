@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://dk7arq0ta6k33"]
+[gd_scene load_steps=16 format=3 uid="uid://dk7arq0ta6k33"]
 
 [ext_resource type="Script" uid="uid://g0qcls0dppxf" path="res://scripts/SpaceStation.cs" id="1_f3sb1"]
 [ext_resource type="Script" uid="uid://bhja00xilj31x" path="res://scripts/StationGrid.cs" id="3_36ka1"]
@@ -14,6 +14,7 @@
 [ext_resource type="PackedScene" uid="uid://dvkiae0slh4s3" path="res://scenes/ui/ContainerUI.tscn" id="11_vebmi"]
 [ext_resource type="Script" uid="uid://84p0u17egmo6" path="res://scripts/AutoSave.cs" id="13_yjdnh"]
 [ext_resource type="Script" uid="uid://cb6hul3pwncya" path="res://scripts/ForceSaveSystem.cs" id="14_07biw"]
+[ext_resource type="PackedScene" uid="uid://bqx8v2n4k5m6p" path="res://scenes/ui/level_generation_ui.tscn" id="15_level_ui"]
 
 [node name="SpaceStation" type="Node2D"]
 script = ExtResource("1_f3sb1")
@@ -97,5 +98,24 @@ MaxWaitTimeBeforeForceSave = 0.5
 
 [node name="ForceSave" type="Node" parent="."]
 script = ExtResource("14_07biw")
+
+[node name="LevelGenerationButton" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -120.0
+offset_top = -50.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "Level Gen"
+
+[node name="LevelGenerationUI" parent="." instance=ExtResource("15_level_ui")]
+unique_name_in_owner = true
 
 [editable path="ModulesContainer/StationTeleporter"]
