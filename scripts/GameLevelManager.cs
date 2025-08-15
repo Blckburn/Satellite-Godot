@@ -140,43 +140,43 @@ public partial class GameLevelManager : Node
         switch (difficulty.ToUpper())
         {
             case "D": // Легкая
-                parameters.MapWidth = 80;
-                parameters.MapHeight = 80;
-                parameters.MaxRooms = 12;
+                parameters.MapWidth = 40;
+                parameters.MapHeight = 40;
+                parameters.MaxRooms = 8;
                 parameters.MinRoomSize = 10;
                 parameters.MaxRoomSize = 25;
                 break;
             case "C": // Средняя
-                parameters.MapWidth = 100;
-                parameters.MapHeight = 100;
-                parameters.MaxRooms = 15;
+                parameters.MapWidth = 60;
+                parameters.MapHeight = 60;
+                parameters.MaxRooms = 12;
                 parameters.MinRoomSize = 8;
                 parameters.MaxRoomSize = 20;
                 break;
             case "B": // Сложная
-                parameters.MapWidth = 120;
-                parameters.MapHeight = 120;
-                parameters.MaxRooms = 18;
+                parameters.MapWidth = 80;
+                parameters.MapHeight = 80;
+                parameters.MaxRooms = 15;
                 parameters.MinRoomSize = 6;
                 parameters.MaxRoomSize = 18;
                 break;
             case "A": // Очень сложная
-                parameters.MapWidth = 150;
-                parameters.MapHeight = 150;
-                parameters.MaxRooms = 22;
+                parameters.MapWidth = 100;
+                parameters.MapHeight = 100;
+                parameters.MaxRooms = 18;
                 parameters.MinRoomSize = 5;
                 parameters.MaxRoomSize = 15;
                 break;
             case "S": // Экстремальная
-                parameters.MapWidth = 200;
-                parameters.MapHeight = 200;
-                parameters.MaxRooms = 30;
+                parameters.MapWidth = 120;
+                parameters.MapHeight = 120;
+                parameters.MaxRooms = 25;
                 parameters.MinRoomSize = 4;
                 parameters.MaxRoomSize = 12;
                 break;
             case "S+": // Ультра-экстремальная
-                parameters.MapWidth = 250;
-                parameters.MapHeight = 250;
+                parameters.MapWidth = 150;
+                parameters.MapHeight = 150;
                 parameters.MaxRooms = 40;
                 parameters.MinRoomSize = 3;
                 parameters.MaxRoomSize = 10;
