@@ -194,7 +194,16 @@ public partial class NetworkTestUI : Control
 
     private async void OnTestGenerationPressed()
     {
-        if (LevelGenerationManager.Instance == null) return;
+        GD.Print("=== Test Generation Button Pressed ===");
+        
+        if (LevelGenerationManager.Instance == null)
+        {
+            GD.PrintErr("LevelGenerationManager.Instance is null!");
+            return;
+        }
+
+        GD.Print($"LevelGenerationManager status: {LevelGenerationManager.Instance.GetStatusInfo()}");
+        GD.Print($"Current generator: {LevelGenerationManager.Instance.CurrentGeneratorInfo}");
 
         var parameters = new GenerationParameters
         {
@@ -207,16 +216,18 @@ public partial class NetworkTestUI : Control
             MaxRoomSize = 12
         };
 
-        GD.Print("Testing level generation...");
+        GD.Print($"Parameters: Biome={parameters.BiomeType}, Size={parameters.MapWidth}x{parameters.MapHeight}, Seed={parameters.Seed}");
+        GD.Print("Starting level generation...");
+        
         var levelData = await LevelGenerationManager.Instance.GenerateLevelAsync(parameters);
         
-        if (levelData != null)
+        if (levelData != null && levelData.Width > 0)
         {
-            GD.Print($"Test generation successful: {levelData.Width}x{levelData.Height}");
+            GD.Print($"✅ Test generation successful: {levelData.Width}x{levelData.Height}, Biome={levelData.BiomeType}");
         }
         else
         {
-            GD.PrintErr("Test generation failed");
+            GD.PrintErr("❌ Test generation failed - returned null or invalid data");
         }
     }
 

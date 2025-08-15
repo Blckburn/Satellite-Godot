@@ -21,6 +21,7 @@ GameManager="*res://scenes/managers/game_manager.tscn"
 SaveManager="*res://scripts/SaveManager.cs"
 GameTimer="*res://scripts/GameTimer.cs"
 NetworkManager="*res://scripts/NetworkManager.cs"
+LevelGenerator="*res://scripts/LevelGenerator.cs"
 LevelGenerationManager="*res://scripts/LevelGenerationManager.cs"
 
 [debug]
