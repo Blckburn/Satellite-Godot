@@ -256,11 +256,9 @@ public partial class LevelGenerator : Node
         }
         else
         {
-            // Генерируем мульти-секционную карту сразу с задержкой 0.5 секунды
-            GetTree().CreateTimer(0.5).Timeout += () => {
-                // Logger.Debug("Automatically generating multi-section map on startup", true); // СПАМ ОТКЛЮЧЕН
-                GenerateMultiSectionMap();
-            };
+            // ОТКЛЮЧАЕМ АВТОГЕНЕРАЦИЮ ПРИ СТАРТЕ!
+            // Генерируем мульти-секционную карту только по запросу
+            Logger.Debug("LevelGenerator ready - waiting for manual generation", true);
         }
 
         // Инициализируем генератор ресурсов
