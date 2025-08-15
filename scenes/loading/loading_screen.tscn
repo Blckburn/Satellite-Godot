@@ -1,7 +1,6 @@
-[gd_scene load_steps=4 format=3 uid="uid://d9y0w4o6l7n8r"]
+[gd_scene load_steps=10 format=3 uid="uid://d9y0w4o6l7n8r"]
 
 [ext_resource type="Script" path="res://scripts/loading/LoadingScreen.cs" id="1_loading"]
-[ext_resource type="Theme" uid="uid://bqx8v2n4k5m6p" path="res://themes/loading_theme.tres" id="2_theme"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1"]
 bg_color = Color(0.1, 0.1, 0.15, 1)
@@ -9,6 +8,34 @@ corner_radius_top_left = 10
 corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
+
+[sub_resource type="LabelSettings" id="LabelSettings_1"]
+font_size = 48
+font_color = Color(1, 1, 1, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_2"]
+font_size = 24
+font_color = Color(0.8, 0.8, 1, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_3"]
+font_size = 20
+font_color = Color(1, 1, 1, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_4"]
+font_size = 16
+font_color = Color(0.8, 0.8, 1, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_5"]
+font_size = 18
+font_color = Color(1, 1, 0, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_6"]
+font_size = 20
+font_color = Color(1, 1, 0, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_7"]
+font_size = 16
+font_color = Color(0, 1, 0, 1)
 
 [node name="LoadingScreen" type="Control"]
 layout_mode = 3
