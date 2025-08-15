@@ -591,8 +591,23 @@ public partial class LevelGenerator : Node
             Logger.Debug("Creating WorldBiomesGenerator...", true);
             Logger.Debug($"Parameters: World={WorldWidth}x{WorldHeight}, MaxBiomes={MaxBiomeTypes}", true);
             
-            var generator = new WorldBiomesGenerator(_random, _biome, FloorsTileMap, WallsTileMap, WallsOverlayTileMap, FloorsSourceID, WallsSourceID);
-            Logger.Debug("WorldBiomesGenerator created successfully", true);
+            // Проверяем параметры
+            Logger.Debug($"Random: {_random != null}, Biome: {_biome != null}", true);
+            Logger.Debug($"FloorsTileMap: {FloorsTileMap != null}, WallsTileMap: {WallsTileMap != null}", true);
+            Logger.Debug($"FloorsSourceID: {FloorsSourceID}, WallsSourceID: {WallsSourceID}", true);
+            
+            WorldBiomesGenerator generator;
+            try
+            {
+                generator = new WorldBiomesGenerator(_random, _biome, FloorsTileMap, WallsTileMap, WallsOverlayTileMap, FloorsSourceID, WallsSourceID);
+                Logger.Debug("WorldBiomesGenerator created successfully", true);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to create WorldBiomesGenerator: {ex.Message}");
+                Logger.Error($"Stack trace: {ex.StackTrace}");
+                throw;
+            }
             
             LevelGenerator.TileType[,] wm;
             int[,] wb;
