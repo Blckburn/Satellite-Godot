@@ -1,0 +1,116 @@
+[gd_scene load_steps=2 format=3 uid="uid://bqxvn8y7q8m3p"]
+
+[ext_resource type="Script" path="res://scripts/NetworkTestUI.cs" id="1_0k8m2"]
+
+[node name="NetworkTest" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_0k8m2")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+
+[node name="Title" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Network Architecture Test"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="ServerSection" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="ServerLabel" type="Label" parent="VBoxContainer/ServerSection"]
+layout_mode = 2
+text = "Server Controls"
+
+[node name="ServerButtons" type="HBoxContainer" parent="VBoxContainer/ServerSection"]
+layout_mode = 2
+
+[node name="StartServerButton" type="Button" parent="VBoxContainer/ServerSection/ServerButtons"]
+layout_mode = 2
+text = "Start Server"
+
+[node name="StopServerButton" type="Button" parent="VBoxContainer/ServerSection/ServerButtons"]
+layout_mode = 2
+text = "Stop Server"
+
+[node name="HSeparator2" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="ClientSection" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="ClientLabel" type="Label" parent="VBoxContainer/ClientSection"]
+layout_mode = 2
+text = "Client Controls"
+
+[node name="ConnectionSettings" type="HBoxContainer" parent="VBoxContainer/ClientSection"]
+layout_mode = 2
+
+[node name="AddressLabel" type="Label" parent="VBoxContainer/ClientSection/ConnectionSettings"]
+layout_mode = 2
+text = "Address:"
+
+[node name="ServerAddressInput" type="LineEdit" parent="VBoxContainer/ClientSection/ConnectionSettings"]
+layout_mode = 2
+text = "127.0.0.1"
+
+[node name="PortLabel" type="Label" parent="VBoxContainer/ClientSection/ConnectionSettings"]
+layout_mode = 2
+text = "Port:"
+
+[node name="ServerPortInput" type="SpinBox" parent="VBoxContainer/ClientSection/ConnectionSettings"]
+layout_mode = 2
+min_value = 1.0
+max_value = 65535.0
+value = 7777.0
+
+[node name="ClientButtons" type="HBoxContainer" parent="VBoxContainer/ClientSection"]
+layout_mode = 2
+
+[node name="ConnectButton" type="Button" parent="VBoxContainer/ClientSection/ClientButtons"]
+layout_mode = 2
+text = "Connect"
+
+[node name="DisconnectButton" type="Button" parent="VBoxContainer/ClientSection/ClientButtons"]
+layout_mode = 2
+text = "Disconnect"
+
+[node name="HSeparator3" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="TestSection" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="TestLabel" type="Label" parent="VBoxContainer/TestSection"]
+layout_mode = 2
+text = "Level Generation Test"
+
+[node name="TestGenerationButton" type="Button" parent="VBoxContainer/TestSection"]
+layout_mode = 2
+text = "Test Generation"
+
+[node name="HSeparator4" type="HSeparator" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="StatusSection" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="StatusLabel" type="Label" parent="VBoxContainer/StatusSection"]
+layout_mode = 2
+text = "Status: Initializing..."
+
+[node name="GeneratorInfoLabel" type="Label" parent="VBoxContainer/StatusSection"]
+layout_mode = 2
+text = "Generator: None"

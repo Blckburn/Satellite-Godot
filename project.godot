@@ -20,6 +20,8 @@ config/icon="res://icon.svg"
 GameManager="*res://scenes/managers/game_manager.tscn"
 SaveManager="*res://scripts/SaveManager.cs"
 GameTimer="*res://scripts/GameTimer.cs"
+NetworkManager="*res://scripts/NetworkManager.cs"
+LevelGenerationManager="*res://scripts/LevelGenerationManager.cs"
 
 [debug]
 
