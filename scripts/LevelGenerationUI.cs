@@ -220,23 +220,13 @@ public partial class LevelGenerationUI : Control
         {
             Logger.Debug($"Starting transition to Main scene with generated level data", true);
             
-            // Сохраняем данные уровня в ProjectSettings для передачи в Main сцену
-            var levelDataDict = new Dictionary<string, object>
-            {
-                { "Width", levelData.Width },
-                { "Height", levelData.Height },
-                { "BiomeType", levelData.BiomeType },
-                { "SpawnPosition", levelData.SpawnPosition },
-                { "FloorData", levelData.FloorData },
-                { "WallData", levelData.WallData },
-                { "DecorationData", levelData.DecorationData }
-            };
+            // Сохраняем параметры генерации для Main сцены
+            ProjectSettings.SetSetting("GeneratedLevelWidth", Variant.From(levelData.Width));
+            ProjectSettings.SetSetting("GeneratedLevelHeight", Variant.From(levelData.Height));
+            ProjectSettings.SetSetting("GeneratedLevelBiome", Variant.From(levelData.BiomeType));
+            ProjectSettings.SetSetting("LoadGeneratedLevel", Variant.From(true));
             
-            // Сохраняем в ProjectSettings
-            ProjectSettings.SetSetting("GeneratedLevelData", levelDataDict);
-            ProjectSettings.SetSetting("LoadGeneratedLevel", true);
-            
-            Logger.Debug($"Level data saved to ProjectSettings, transitioning to Main scene", true);
+            Logger.Debug($"Level parameters saved, transitioning to Main scene", true);
             
             // Переходим на сцену Main.tscn
             GetTree().ChangeSceneToFile("res://scenes/Main.tscn");
