@@ -2063,4 +2063,58 @@ public partial class LevelGenerator : Node
         
         return info;
     }
+
+    /// <summary>
+    /// Генерирует уровень и возвращает LevelData для клиент-серверной архитектуры
+    /// </summary>
+    public LevelData GenerateLevelData(GenerationParameters parameters)
+    {
+        Logger.Debug($"Generating level data: {parameters.MapWidth}x{parameters.MapHeight}, Biome: {parameters.BiomeType}", true);
+
+        // Устанавливаем параметры генерации
+        MapWidth = parameters.MapWidth;
+        MapHeight = parameters.MapHeight;
+        BiomeType = parameters.BiomeType;
+        MaxRooms = parameters.MaxRooms;
+        MinRoomSize = parameters.MinRoomSize;
+        MaxRoomSize = parameters.MaxRoomSize;
+
+        // Генерируем уровень (используем мульти-секционную карту)
+        GenerateMultiSectionMap();
+
+        // Создаем LevelData
+        var levelData = new LevelData
+        {
+            Width = MapWidth,
+            Height = MapHeight,
+            BiomeType = BiomeType,
+            SpawnPosition = new Vector2I(MapWidth / 2, MapHeight / 2)
+        };
+
+        // Получаем данные тайлмапов
+        int totalTiles = MapWidth * MapHeight;
+        levelData.FloorData = new byte[totalTiles];
+        levelData.WallData = new byte[totalTiles];
+        levelData.DecorationData = new byte[totalTiles];
+
+        // Заполняем данные из тайлмапов
+        for (int x = 0; x < MapWidth; x++)
+        {
+            for (int y = 0; y < MapHeight; y++)
+            {
+                int index = y * MapWidth + x;
+                
+                // Получаем данные из тайлмапов
+                var floorTile = FloorsTileMap.GetCellTileData(new Vector2I(x, y));
+                var wallTile = WallsTileMap.GetCellTileData(new Vector2I(x, y));
+                
+                levelData.FloorData[index] = (byte)(floorTile != null ? 1 : 0);
+                levelData.WallData[index] = (byte)(wallTile != null ? 1 : 0);
+                levelData.DecorationData[index] = 0; // Пока без декораций
+            }
+        }
+
+        Logger.Debug($"Generated level data: {levelData.Width}x{levelData.Height}, Total tiles: {totalTiles}", true);
+        return levelData;
+    }
 }

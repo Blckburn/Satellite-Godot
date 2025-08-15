@@ -99,8 +99,6 @@ MaxWaitTimeBeforeForceSave = 0.5
 [node name="ForceSave" type="Node" parent="."]
 script = ExtResource("14_07biw")
 
-
-
 [node name="LevelGenerationUI" parent="." instance=ExtResource("15_level_ui")]
 unique_name_in_owner = true
 

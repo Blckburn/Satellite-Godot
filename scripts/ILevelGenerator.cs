@@ -42,36 +42,41 @@ public class ClientLevelGenerator : ILevelGenerator
 
     public async Task<LevelData> GenerateLevelAsync(GenerationParameters parameters)
     {
-        // Упрощенная генерация для тестирования - не используем сложную логику
         return await Task.Run(() =>
         {
-            GD.Print($"ClientLevelGenerator: Generating simple level {parameters.MapWidth}x{parameters.MapHeight}");
+            GD.Print($"ClientLevelGenerator: Generating real level {parameters.MapWidth}x{parameters.MapHeight}");
             
-            // Создаем простые данные уровня без использования TileMap
-            var levelData = new LevelData
+            // Используем реальный LevelGenerator
+            var levelGenerator = GetNode<LevelGenerator>("/root/LevelGenerator");
+            if (levelGenerator != null)
             {
-                Width = parameters.MapWidth,
-                Height = parameters.MapHeight,
-                BiomeType = parameters.BiomeType,
-                SpawnPosition = new Vector2I(parameters.MapWidth / 2, parameters.MapHeight / 2)
-            };
-
-            // Создаем простые массивы данных
-            int totalTiles = parameters.MapWidth * parameters.MapHeight;
-            levelData.FloorData = new byte[totalTiles];
-            levelData.WallData = new byte[totalTiles];
-            levelData.DecorationData = new byte[totalTiles];
-
-            // Заполняем простым паттерном
-            for (int i = 0; i < totalTiles; i++)
-            {
-                levelData.FloorData[i] = 1; // Пол
-                levelData.WallData[i] = 0;  // Нет стен
-                levelData.DecorationData[i] = 0; // Нет декораций
+                var levelData = levelGenerator.GenerateLevelData(parameters);
+                GD.Print($"ClientLevelGenerator: Generated real level with {levelData.Width}x{levelData.Height}");
+                return levelData;
             }
-
-            GD.Print($"ClientLevelGenerator: Generated level with {totalTiles} tiles");
-            return levelData;
+            else
+            {
+                GD.PrintErr("ClientLevelGenerator: LevelGenerator not found, falling back to simple generation");
+                // Fallback к простой генерации
+                var levelData = new LevelData
+                {
+                    Width = parameters.MapWidth,
+                    Height = parameters.MapHeight,
+                    BiomeType = parameters.BiomeType,
+                    SpawnPosition = new Vector2I(parameters.MapWidth / 2, parameters.MapHeight / 2)
+                };
+                int totalTiles = parameters.MapWidth * parameters.MapHeight;
+                levelData.FloorData = new byte[totalTiles];
+                levelData.WallData = new byte[totalTiles];
+                levelData.DecorationData = new byte[totalTiles];
+                for (int i = 0; i < totalTiles; i++)
+                {
+                    levelData.FloorData[i] = 1;
+                    levelData.WallData[i] = 0;
+                    levelData.DecorationData[i] = 0;
+                }
+                return levelData;
+            }
         });
     }
 
@@ -83,7 +88,7 @@ public class ClientLevelGenerator : ILevelGenerator
 
     public string GetGeneratorInfo()
     {
-        return "Client-side level generator (simple mode)";
+        return "Client-side level generator (real mode)";
     }
 }
 
@@ -105,33 +110,40 @@ public class ServerLevelGenerator : ILevelGenerator
         // Если сервер запущен, генерируем локально (для тестирования)
         if (_networkManager.IsServerRunning)
         {
-            GD.Print($"ServerLevelGenerator: Generating level locally (server is running)");
+            GD.Print($"ServerLevelGenerator: Generating real level locally (server is running)");
             return await Task.Run(() =>
             {
-                var levelData = new LevelData
+                // Используем реальный LevelGenerator
+                var levelGenerator = GetNode<LevelGenerator>("/root/LevelGenerator");
+                if (levelGenerator != null)
                 {
-                    Width = parameters.MapWidth,
-                    Height = parameters.MapHeight,
-                    BiomeType = parameters.BiomeType,
-                    SpawnPosition = new Vector2I(parameters.MapWidth / 2, parameters.MapHeight / 2)
-                };
-
-                // Создаем простые данные уровня
-                int totalTiles = parameters.MapWidth * parameters.MapHeight;
-                levelData.FloorData = new byte[totalTiles];
-                levelData.WallData = new byte[totalTiles];
-                levelData.DecorationData = new byte[totalTiles];
-
-                // Заполняем простым паттерном
-                for (int i = 0; i < totalTiles; i++)
-                {
-                    levelData.FloorData[i] = 1; // Пол
-                    levelData.WallData[i] = 0;  // Нет стен
-                    levelData.DecorationData[i] = 0; // Нет декораций
+                    var levelData = levelGenerator.GenerateLevelData(parameters);
+                    GD.Print($"ServerLevelGenerator: Generated real level with {levelData.Width}x{levelData.Height}");
+                    return levelData;
                 }
-
-                GD.Print($"ServerLevelGenerator: Generated level with {totalTiles} tiles");
-                return levelData;
+                else
+                {
+                    GD.PrintErr("ServerLevelGenerator: LevelGenerator not found, falling back to simple generation");
+                    // Fallback к простой генерации
+                    var levelData = new LevelData
+                    {
+                        Width = parameters.MapWidth,
+                        Height = parameters.MapHeight,
+                        BiomeType = parameters.BiomeType,
+                        SpawnPosition = new Vector2I(parameters.MapWidth / 2, parameters.MapHeight / 2)
+                    };
+                    int totalTiles = parameters.MapWidth * parameters.MapHeight;
+                    levelData.FloorData = new byte[totalTiles];
+                    levelData.WallData = new byte[totalTiles];
+                    levelData.DecorationData = new byte[totalTiles];
+                    for (int i = 0; i < totalTiles; i++)
+                    {
+                        levelData.FloorData[i] = 1;
+                        levelData.WallData[i] = 0;
+                        levelData.DecorationData[i] = 0;
+                    }
+                    return levelData;
+                }
             });
         }
         else
@@ -148,6 +160,6 @@ public class ServerLevelGenerator : ILevelGenerator
 
     public string GetGeneratorInfo()
     {
-        return $"Server-side level generator (connected: {_networkManager?.IsConnected})";
+        return "Server-side level generator (real mode)";
     }
 }
