@@ -116,18 +116,64 @@ public partial class LoadingScreen : Control
     }
 
         /// <summary>
-    /// Запускает процесс загрузки (УПРОЩЕННАЯ ВЕРСИЯ ДЛЯ ОТЛАДКИ)
+    /// Запускает процесс загрузки (BADASS ВЕРСИЯ С АНИМАЦИЯМИ!)
     /// </summary>
     private async void StartLoadingProcess()
     {
         try
         {
-            Logger.Debug("StartLoadingProcess() started (simplified)", true);
+            Logger.Debug("StartLoadingProcess() started (BADASS version)", true);
             AddLogEntry("Starting BADASS loading sequence...", "yellow");
 
-            // УПРОЩЕННАЯ ВЕРСИЯ - только основные этапы
-            await Task.Delay(1000); // Ждем 1 секунду
-            
+            // Этап 1: Инициализация систем (0-15%)
+            await UpdateLoadingStep(0, 15);
+            AddLogEntry("Systems initialized successfully", "green");
+            AddDOSMessage("Systems initialized successfully", "green");
+
+            // Этап 2: Запуск сервера (15-30%)
+            await UpdateLoadingStep(1, 30);
+            AddLogEntry("Save server starting...", "blue");
+            AddDOSMessage("Save server starting...", "blue");
+
+            // Этап 3: Подключение к серверу (30-50%)
+            await UpdateLoadingStep(2, 50);
+            AddLogEntry("Connecting to save server...", "blue");
+            AddDOSMessage("Connecting to save server...", "blue");
+
+            // Ждем подключения к серверу
+            if (ServerSaveManager.Instance != null)
+            {
+                // Подписываемся на события сервера
+                ServerSaveManager.Instance.ServerConnectionChanged += OnServerConnectionChanged;
+                ServerSaveManager.Instance.SaveCompleted += OnSaveCompleted;
+                ServerSaveManager.Instance.LoadCompleted += OnLoadCompleted;
+
+                // Ждем подключения
+                await WaitForServerConnection();
+            }
+            else
+            {
+                AddLogEntry("WARNING: ServerSaveManager not found!", "red");
+                AddDOSMessage("WARNING: ServerSaveManager not found!", "red");
+                await Task.Delay(1000);
+            }
+
+            // Этап 4: Проверка статуса (50-70%)
+            await UpdateLoadingStep(3, 70);
+            AddLogEntry("Server status verified", "green");
+            AddDOSMessage("Server status verified", "green");
+
+            // Этап 5: Загрузка данных (70-85%)
+            await UpdateLoadingStep(4, 85);
+            AddLogEntry("Loading save data...", "blue");
+            AddDOSMessage("Loading save data...", "blue");
+
+            // Ждем загрузки данных
+            await WaitForDataLoad();
+            AddDOSMessage("Save data loaded successfully", "green");
+
+            // Этап 6: Завершение (85-100%)
+            await UpdateLoadingStep(5, 100);
             AddLogEntry("Loading complete! Ready to launch!", "green");
             AddDOSMessage("Loading complete! Ready to launch!", "green");
 
@@ -264,7 +310,16 @@ public partial class LoadingScreen : Control
                 ServerSaveManager.Instance.LoadCompleted -= OnLoadCompleted;
             }
 
+            // Останавливаем таймер
+            if (_timer != null)
+            {
+                _timer.Stop();
+            }
+
             Logger.Debug("Changing scene to main menu...", true);
+
+            // УБИВАЕМ LoadingScreen полностью!
+            QueueFree();
 
             // Переходим в главное меню
             GetTree().ChangeSceneToFile("res://scenes/main_menu.tscn");
@@ -377,20 +432,45 @@ public partial class LoadingScreen : Control
     }
 
     /// <summary>
-    /// Анимирует звезды (ULTIMATE упрощенная версия)
+    /// Анимирует звезды (BADASS ВЕРСИЯ С КРУТЫМИ ЭФФЕКТАМИ!)
     /// </summary>
     private void AnimateStars()
     {
-        // ULTIMATE упрощенная анимация - статичные звезды для стабильности
-        var stars = GetNode<Node2D>("Stars");
-        
-        // Просто устанавливаем статичную прозрачность - никаких вычислений!
-        for (int i = 0; i < stars.GetChildCount(); i++)
+        try
         {
-            var star = stars.GetChild<ColorRect>(i);
-            // Статичная анимация - никаких синусов!
-            var alpha = 0.6f + (i * 0.1f); // Простая формула
-            star.Modulate = new Color(1, 1, 1, alpha);
+            var stars = GetNode<Node2D>("Stars");
+            var time = Time.GetTimeDictFromSystem();
+            var seconds = (float)time["second"];
+            
+            // КРУТАЯ АНИМАЦИЯ ЗВЕЗД!
+            for (int i = 0; i < stars.GetChildCount(); i++)
+            {
+                var star = stars.GetChild<ColorRect>(i);
+                
+                // Разные фазы для каждой звезды
+                var phase = seconds + (i * 1.5f);
+                var alpha = 0.3f + (Mathf.Sin(phase) * 0.4f);
+                
+                // Добавляем мерцание
+                var flicker = Mathf.Sin(phase * 3.0f) * 0.2f;
+                alpha += flicker;
+                
+                // Ограничиваем значения
+                alpha = Mathf.Clamp(alpha, 0.1f, 1.0f);
+                
+                star.Modulate = new Color(1, 1, 1, alpha);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Если что-то пошло не так, используем статичную версию
+            var stars = GetNode<Node2D>("Stars");
+            for (int i = 0; i < stars.GetChildCount(); i++)
+            {
+                var star = stars.GetChild<ColorRect>(i);
+                var alpha = 0.6f + (i * 0.1f);
+                star.Modulate = new Color(1, 1, 1, alpha);
+            }
         }
     }
 }

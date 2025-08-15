@@ -1,17 +1,9 @@
-[gd_scene load_steps=10 format=3 uid="uid://d9y0w4o6l7n8r"]
+[gd_scene load_steps=9 format=3 uid="uid://bqx8v2n4k5m6p"]
 
-[ext_resource type="Script" path="res://scripts/loading/LoadingScreen.cs" id="1_loading"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1"]
-bg_color = Color(0.1, 0.1, 0.15, 1)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+[ext_resource type="Script" uid="uid://ddofseo8vs5rq" path="res://scripts/loading/LoadingScreen.cs" id="1_loading"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_1"]
 font_size = 48
-font_color = Color(1, 1, 1, 1)
 
 [sub_resource type="LabelSettings" id="LabelSettings_2"]
 font_size = 24
@@ -19,10 +11,8 @@ font_color = Color(0.8, 0.8, 1, 1)
 
 [sub_resource type="LabelSettings" id="LabelSettings_3"]
 font_size = 20
-font_color = Color(1, 1, 1, 1)
 
 [sub_resource type="LabelSettings" id="LabelSettings_4"]
-font_size = 16
 font_color = Color(0.8, 0.8, 1, 1)
 
 [sub_resource type="LabelSettings" id="LabelSettings_5"]
@@ -34,7 +24,6 @@ font_size = 20
 font_color = Color(1, 1, 0, 1)
 
 [sub_resource type="LabelSettings" id="LabelSettings_7"]
-font_size = 16
 font_color = Color(0, 1, 0, 1)
 
 [node name="LoadingScreen" type="Control"]
@@ -42,6 +31,8 @@ layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_loading")
 
 [node name="Background" type="ColorRect" parent="."]
@@ -49,12 +40,13 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 color = Color(0.05, 0.05, 0.1, 1)
 
 [node name="Stars" type="Node2D" parent="."]
 
 [node name="Star1" type="ColorRect" parent="Stars"]
-anchors_preset = 0
 offset_left = 100.0
 offset_top = 50.0
 offset_right = 102.0
@@ -62,7 +54,6 @@ offset_bottom = 52.0
 color = Color(1, 1, 1, 0.8)
 
 [node name="Star2" type="ColorRect" parent="Stars"]
-anchors_preset = 0
 offset_left = 300.0
 offset_top = 120.0
 offset_right = 302.0
@@ -70,7 +61,6 @@ offset_bottom = 122.0
 color = Color(1, 1, 1, 0.6)
 
 [node name="Star3" type="ColorRect" parent="Stars"]
-anchors_preset = 0
 offset_left = 500.0
 offset_top = 80.0
 offset_right = 502.0
@@ -86,6 +76,8 @@ offset_left = 50.0
 offset_top = 50.0
 offset_right = -50.0
 offset_bottom = -50.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="TitleSection" type="VBoxContainer" parent="MainContainer"]
 layout_mode = 2
@@ -117,8 +109,6 @@ horizontal_alignment = 1
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
-max_value = 100.0
-value = 0.0
 
 [node name="ProgressLabel" type="Label" parent="MainContainer/LoadingSection"]
 layout_mode = 2
@@ -142,9 +132,24 @@ bbcode_enabled = true
 text = "[color=#00ff00]System initialized[/color]"
 fit_content = true
 
+[node name="ContinueSection" type="VBoxContainer" parent="MainContainer"]
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="ContinueLabel" type="Label" parent="MainContainer/ContinueSection"]
+layout_mode = 2
+text = "Press any key to continue..."
+label_settings = SubResource("LabelSettings_6")
+horizontal_alignment = 1
+
+[node name="ContinueButton" type="Button" parent="MainContainer/ContinueSection"]
+layout_mode = 2
+size_flags_horizontal = 4
+disabled = true
+text = "CONTINUE"
+
 [node name="DOSLogContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 0
 offset_left = 20.0
 offset_top = 20.0
 offset_right = 420.0
@@ -162,27 +167,11 @@ bbcode_enabled = true
 text = "[color=#00ff00]SERVER STARTING......[............] 0%[/color]"
 fit_content = true
 
-[node name="ContinueSection" type="VBoxContainer" parent="MainContainer"]
-layout_mode = 2
-size_flags_vertical = 4
-
-[node name="ContinueLabel" type="Label" parent="MainContainer/ContinueSection"]
-layout_mode = 2
-text = "Press any key to continue..."
-label_settings = SubResource("LabelSettings_6")
-horizontal_alignment = 1
-
-[node name="ContinueButton" type="Button" parent="MainContainer/ContinueSection"]
-layout_mode = 2
-size_flags_horizontal = 4
-text = "CONTINUE"
-disabled = true
-
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 
 [node name="Timer" type="Timer" parent="."]
 wait_time = 0.1
 autostart = true
 
-[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
 [connection signal="pressed" from="MainContainer/ContinueSection/ContinueButton" to="." method="_on_continue_button_pressed"]
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
